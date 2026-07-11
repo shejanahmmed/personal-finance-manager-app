@@ -4,15 +4,19 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.blur
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Info
@@ -22,6 +26,7 @@ import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.ModalDrawerSheet
 import androidx.compose.material3.ModalNavigationDrawer
 import androidx.compose.material3.NavigationDrawerItem
@@ -145,27 +150,48 @@ fun MainDashboardContainer(database: FinanceDatabase) {
     val monthlyIncome   by transactionDao.getMonthlyIncome(startOfMonth).collectAsState(initial = 0.0)
     val monthlyExpenses by transactionDao.getMonthlyExpenses(startOfMonth).collectAsState(initial = 0.0)
 
+    val blurRadius by animateDpAsState(
+        targetValue = if (drawerState.isOpen) 16.dp else 0.dp,
+        label = "DrawerBlur"
+    )
+
     ModalNavigationDrawer(
         drawerState = drawerState,
+        gesturesEnabled = false,
         drawerContent = {
             ModalDrawerSheet(
+                modifier             = Modifier.fillMaxWidth(0.60f),
                 drawerContainerColor = CardDarker,
                 drawerShape          = RoundedCornerShape(topEnd = 24.dp, bottomEnd = 24.dp)
             ) {
                 Spacer(modifier = Modifier.height(24.dp))
-                Text(
-                    text       = "⚡ FinanceBuddy",
-                    fontSize   = 22.sp,
-                    fontWeight = FontWeight.Bold,
-                    color      = TextPrimary,
-                    modifier   = Modifier.padding(horizontal = 24.dp, vertical = 16.dp)
-                )
-                HorizontalDivider(color = DividerColor, modifier = Modifier.padding(horizontal = 24.dp))
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(start = 20.dp, end = 8.dp, top = 8.dp, bottom = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text       = "⚡ FinanceBuddy",
+                        fontSize   = 18.sp,
+                        fontWeight = FontWeight.Bold,
+                        color      = TextPrimary
+                    )
+                    Spacer(modifier = Modifier.weight(1f))
+                    IconButton(onClick = { scope.launch { drawerState.close() } }) {
+                        Icon(
+                            imageVector        = Icons.Default.Close,
+                            contentDescription = "Close Drawer",
+                            tint               = TextSecondary
+                        )
+                    }
+                }
+                HorizontalDivider(color = DividerColor, modifier = Modifier.padding(horizontal = 20.dp))
                 Spacer(modifier = Modifier.height(16.dp))
 
                 // Menu items
                 NavigationDrawerItem(
-                    label      = { Text("Settings", color = TextPrimary) },
+                    label      = { Text("Settings", color = TextPrimary, fontSize = 14.sp) },
                     selected   = false,
                     onClick    = { scope.launch { drawerState.close() } },
                     icon       = { Icon(Icons.Default.Settings, contentDescription = null, tint = TextSecondary) },
@@ -173,7 +199,7 @@ fun MainDashboardContainer(database: FinanceDatabase) {
                     modifier   = Modifier.padding(horizontal = 12.dp)
                 )
                 NavigationDrawerItem(
-                    label      = { Text("Statistics", color = TextPrimary) },
+                    label      = { Text("Statistics", color = TextPrimary, fontSize = 14.sp) },
                     selected   = false,
                     onClick    = { scope.launch { drawerState.close() } },
                     icon       = { Icon(Icons.Default.DateRange, contentDescription = null, tint = TextSecondary) },
@@ -181,18 +207,19 @@ fun MainDashboardContainer(database: FinanceDatabase) {
                     modifier   = Modifier.padding(horizontal = 12.dp)
                 )
                 NavigationDrawerItem(
-                    label      = { Text("Investment Tracker", color = TextPrimary) },
+                    label      = { Text("Investment Tracker", color = TextPrimary, fontSize = 14.sp) },
                     selected   = false,
                     onClick    = { scope.launch { drawerState.close() } },
                     icon       = { Icon(Icons.Default.Info, contentDescription = null, tint = TextSecondary) },
                     colors     = NavigationDrawerItemDefaults.colors(unselectedContainerColor = Color.Transparent),
-                    modifier   = Modifier.padding(horizontal = 12.dp)
+                    modifier   = Modifier.padding(horizontal = 8.dp)
                 )
             }
         }
     ) {
         Scaffold(
             containerColor = Color.Transparent,
+            modifier = Modifier.blur(blurRadius),
             bottomBar = {
                 NavigationBar(
                     containerColor = CardDarker,
