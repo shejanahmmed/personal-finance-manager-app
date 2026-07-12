@@ -47,6 +47,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.shejan.financebuddy.data.db.AccountEntity
@@ -345,7 +346,7 @@ fun AccountCardChip(
         border  = androidx.compose.foundation.BorderStroke(1.dp, cardColor.copy(alpha = 0.5f)),
         modifier = Modifier
             .width(180.dp)
-            .height(100.dp)
+            .height(115.dp)
     ) {
         Column(
             modifier = Modifier
@@ -356,9 +357,17 @@ fun AccountCardChip(
             Row(
                 modifier              = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment     = Alignment.CenterVertically
+                verticalAlignment     = Alignment.Top
             ) {
-                Text(text = account.name, fontWeight = FontWeight.SemiBold, fontSize = 14.sp, color = TextPrimary)
+                Text(
+                    text = account.name,
+                    fontWeight = FontWeight.SemiBold,
+                    fontSize = 13.sp,
+                    color = TextPrimary,
+                    modifier = Modifier.weight(1f).padding(end = 8.dp),
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
                 Box(
                     modifier = Modifier
                         .clip(RoundedCornerShape(4.dp))
