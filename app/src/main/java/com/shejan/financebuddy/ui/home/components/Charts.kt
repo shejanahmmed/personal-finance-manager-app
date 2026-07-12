@@ -52,32 +52,56 @@ fun ExpenseBarChart(
         Canvas(modifier = Modifier.fillMaxSize()) {
             val w = size.width
             val h = size.height
-            val labelPadding = 24.dp.toPx()
-            val chartH = h - labelPadding
+            val leftPadding = 48.dp.toPx()   // Space for Y-axis labels + margin
+            val rightPadding = 16.dp.toPx()  // Space to prevent right bar clipping
+            val topPadding = 12.dp.toPx()    // Space to prevent top label clipping
+            val bottomPadding = 24.dp.toPx() // Space for day labels on X-axis
+
+            val chartW = w - leftPadding - rightPadding
+            val chartH = h - topPadding - bottomPadding
             val numBars = amounts.size
             if (numBars == 0) return@Canvas
 
-            val spacing = w / (numBars + 1)
+            val spacing = chartW / (numBars + 1)
             val barW = 14.dp.toPx()
 
-            // ── Grid Lines ──────────────────────────────────────
+            // ── Grid Lines and Y-Axis Labels ──────────────────────
             val gridLines = 3
             for (i in 0..gridLines) {
-                val y = chartH * (i / gridLines.toFloat())
+                val y = topPadding + chartH * (i / gridLines.toFloat())
+                val valAtLine = maxVal * (1f - (i / gridLines.toFloat()))
+                
+                // Draw grid line
                 drawLine(
-                    color       = DividerColor.copy(alpha = 0.5f),
-                    start       = Offset(0f, y),
-                    end         = Offset(w, y),
+                    color       = DividerColor.copy(alpha = 0.8f),
+                    start       = Offset(leftPadding, y),
+                    end         = Offset(w - rightPadding, y),
                     strokeWidth = 1.dp.toPx(),
                     pathEffect  = PathEffect.dashPathEffect(floatArrayOf(10f, 10f), 0f)
                 )
+
+                // Format number compactly (e.g. 1.5K, 500)
+                val labelText = if (valAtLine >= 1000) {
+                    val k = valAtLine / 1000.0
+                    if (k % 1.0 == 0.0) "${k.toInt()}K" else String.format(java.util.Locale.US, "%.1fK", k)
+                } else {
+                    valAtLine.toInt().toString()
+                }
+
+                // Draw Y-Axis label (offset 8.dp from absolute left edge)
+                drawText(
+                    textMeasurer = textMeasurer,
+                    text         = labelText,
+                    topLeft      = Offset(8.dp.toPx(), y - 6.dp.toPx()),
+                    style        = TextStyle(color = TextSecondary, fontSize = 10.sp)
+                )
             }
 
-            // ── Bars and Labels ──────────────────────────────────
+            // ── Bars and X-Axis Labels ──────────────────────────
             amounts.forEachIndexed { i, amt ->
                 val barH = (amt / maxVal).toFloat() * chartH * animProgress.value
-                val x = spacing * (i + 1) - barW / 2f
-                val y = chartH - barH
+                val x = leftPadding + spacing * (i + 1) - barW / 2f
+                val y = (topPadding + chartH) - barH
 
                 // Draw Bar
                 drawRoundRect(
@@ -97,7 +121,7 @@ fun ExpenseBarChart(
                 drawText(
                     textMeasurer = textMeasurer,
                     text         = day,
-                    topLeft      = Offset(spacing * (i + 1) - textW / 2f, chartH + 6.dp.toPx()),
+                    topLeft      = Offset(leftPadding + spacing * (i + 1) - textW / 2f, topPadding + chartH + 6.dp.toPx()),
                     style        = TextStyle(color = TextSecondary, fontSize = 11.sp)
                 )
             }
@@ -128,27 +152,49 @@ fun BalanceTrendLineChart(
         Canvas(modifier = Modifier.fillMaxSize()) {
             val w = size.width
             val h = size.height
-            val chartH = h - 16.dp.toPx()
+            val leftPadding = 48.dp.toPx()   // Space for Y-axis labels + margin
+            val rightPadding = 16.dp.toPx()  // Space to prevent line/dot clipping on the right
+            val topPadding = 16.dp.toPx()    // Space to prevent line/dot clipping on the top
+            val bottomPadding = 16.dp.toPx() // Space to prevent line clipping on the bottom
+
+            val chartW = w - leftPadding - rightPadding
+            val chartH = h - topPadding - bottomPadding
             val pointsCount = balances.size
             if (pointsCount < 2) return@Canvas
 
-            // ── Grid Lines ──────────────────────────────────────
+            // ── Grid Lines and Y-Axis Labels ────────────────────
             val gridLines = 3
             for (i in 0..gridLines) {
-                val y = chartH * (i / gridLines.toFloat())
+                val y = topPadding + chartH * (i / gridLines.toFloat())
+                val valAtLine = maxVal - (valRange * (i / gridLines.toFloat()))
+
                 drawLine(
-                    color       = DividerColor.copy(alpha = 0.3f),
-                    start       = Offset(0f, y),
-                    end         = Offset(w, y),
+                    color       = DividerColor.copy(alpha = 0.5f),
+                    start       = Offset(leftPadding, y),
+                    end         = Offset(w - rightPadding, y),
                     strokeWidth = 1.dp.toPx()
+                )
+
+                val labelText = if (valAtLine >= 1000) {
+                    val k = valAtLine / 1000.0
+                    if (k % 1.0 == 0.0) "${k.toInt()}K" else String.format(java.util.Locale.US, "%.1fK", k)
+                } else {
+                    valAtLine.toInt().toString()
+                }
+
+                drawText(
+                    textMeasurer = textMeasurer,
+                    text         = labelText,
+                    topLeft      = Offset(8.dp.toPx(), y - 6.dp.toPx()),
+                    style        = TextStyle(color = TextSecondary, fontSize = 10.sp)
                 )
             }
 
             // ── Path Generation ─────────────────────────────────
-            val xStep = w / (pointsCount - 1)
+            val xStep = chartW / (pointsCount - 1)
             val points = balances.mapIndexed { idx, bal ->
                 val normalizedY = ((bal - minVal) / valRange).toFloat()
-                Offset(idx * xStep, chartH - (normalizedY * chartH * animProgress.value))
+                Offset(leftPadding + idx * xStep, (topPadding + chartH) - (normalizedY * chartH * animProgress.value))
             }
 
             // Draw line curve via bezier
@@ -171,8 +217,8 @@ fun BalanceTrendLineChart(
             // Draw filled gradient area under the curve
             val fillPath = Path().apply {
                 addPath(strokePath)
-                lineTo(w, chartH)
-                lineTo(0f, chartH)
+                lineTo(w - rightPadding, topPadding + chartH)
+                lineTo(leftPadding, topPadding + chartH)
                 close()
             }
 
@@ -181,8 +227,8 @@ fun BalanceTrendLineChart(
                 path  = fillPath,
                 brush = Brush.verticalGradient(
                     colors = listOf(AccentTeal.copy(alpha = 0.15f), Color.Transparent),
-                    startY = 0f,
-                    endY   = chartH
+                    startY = topPadding,
+                    endY   = topPadding + chartH
                 )
             )
 
@@ -191,8 +237,8 @@ fun BalanceTrendLineChart(
                 path  = strokePath,
                 brush = Brush.linearGradient(
                     colors = listOf(AccentTeal, AccentBlue),
-                    start  = Offset(0f, size.height / 2f),
-                    end    = Offset(w, size.height / 2f)
+                    start  = Offset(leftPadding, size.height / 2f),
+                    end    = Offset(w - rightPadding, size.height / 2f)
                 ),
                 style = Stroke(width = 3.dp.toPx(), cap = StrokeCap.Round)
             )
