@@ -6,12 +6,13 @@ import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.sqlite.db.SupportSQLiteDatabase
 
-@Database(entities = [AccountEntity::class, TransactionEntity::class, BudgetEntity::class], version = 3, exportSchema = false)
+@Database(entities = [AccountEntity::class, TransactionEntity::class, BudgetEntity::class, GoalEntity::class], version = 4, exportSchema = false)
 abstract class FinanceDatabase : RoomDatabase() {
 
     abstract fun accountDao(): AccountDao
     abstract fun transactionDao(): TransactionDao
     abstract fun budgetDao(): BudgetDao
+    abstract fun goalDao(): GoalDao
 
     companion object {
         @Volatile

@@ -59,6 +59,7 @@ import com.shejan.financebuddy.data.db.FinanceDatabase
 import com.shejan.financebuddy.data.db.TransactionEntity
 import com.shejan.financebuddy.data.db.BudgetEntity
 import com.shejan.financebuddy.ui.budget.BudgetScreen
+import com.shejan.financebuddy.ui.goals.GoalsScreen
 import com.shejan.financebuddy.ui.home.HomeScreen
 import com.shejan.financebuddy.ui.onboarding.OnboardingScreenRoot
 import com.shejan.financebuddy.ui.theme.AccentBlue
@@ -145,6 +146,7 @@ fun MainDashboardContainer(database: FinanceDatabase) {
     val accountDao     = remember { database.accountDao() }
     val transactionDao = remember { database.transactionDao() }
     val budgetDao      = remember { database.budgetDao() }
+    val goalDao        = remember { database.goalDao() }
 
     val accounts        by accountDao.getAllAccounts().collectAsState(initial = emptyList())
     val allTransactions by transactionDao.getAllTransactions().collectAsState(initial = emptyList())
@@ -156,6 +158,8 @@ fun MainDashboardContainer(database: FinanceDatabase) {
     val budgets by budgetDao.getAllBudgets().collectAsState(initial = emptyList())
     val categoryExpenseSums by transactionDao.getExpensesByCategoryFromDate(startOfMonth).collectAsState(initial = emptyList())
     val spentByCategory = remember(categoryExpenseSums) { categoryExpenseSums.associate { it.category to it.total } }
+
+    val goals by goalDao.getAllGoals().collectAsState(initial = emptyList())
 
     val blurRadius by animateDpAsState(
         targetValue = if (drawerState.isOpen) 16.dp else 0.dp,
@@ -284,7 +288,18 @@ fun MainDashboardContainer(database: FinanceDatabase) {
                             scope.launch(Dispatchers.IO) { budgetDao.deleteBudget(budget) }
                         }
                     )
-                    "goals"  -> PageStub(title = "🎯 Savings Goals\n(Coming soon)")
+                    "goals"  -> GoalsScreen(
+                        goals        = goals,
+                        onAddGoal    = { goal ->
+                            scope.launch(Dispatchers.IO) { goalDao.insertGoal(goal) }
+                        },
+                        onDeposit    = { goalId, amount ->
+                            scope.launch(Dispatchers.IO) { goalDao.depositToGoal(goalId, amount) }
+                        },
+                        onDeleteGoal = { goal ->
+                            scope.launch(Dispatchers.IO) { goalDao.deleteGoal(goal) }
+                        }
+                    )
                 }
             }
         }
