@@ -5,6 +5,8 @@ import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.sqlite.db.SupportSQLiteDatabase
+import net.sqlcipher.database.SQLiteDatabase
+import net.sqlcipher.database.SupportFactory
 
 @Database(entities = [AccountEntity::class, TransactionEntity::class, BudgetEntity::class, GoalEntity::class], version = 4, exportSchema = false)
 abstract class FinanceDatabase : RoomDatabase() {
@@ -20,11 +22,17 @@ abstract class FinanceDatabase : RoomDatabase() {
 
         fun getDatabase(context: Context): FinanceDatabase {
             return INSTANCE ?: synchronized(this) {
+                // Retrieve (or generate on first launch) the AES-256 passphrase
+                // from Android Keystore-backed EncryptedSharedPreferences.
+                val passphrase: ByteArray = DatabaseKeyManager.getOrCreatePassphrase(context)
+                val factory = SupportFactory(passphrase)
+
                 val instance = Room.databaseBuilder(
                     context.applicationContext,
                     FinanceDatabase::class.java,
-                    "finance_buddy_database"
+                    "financebuddy_encrypted.db"   // new name → fresh encrypted DB; old plain file is ignored
                 )
+                .openHelperFactory(factory)
                 .addCallback(object : RoomDatabase.Callback() {
                     override fun onCreate(db: SupportSQLiteDatabase) {
                         super.onCreate(db)
@@ -66,7 +74,7 @@ abstract class FinanceDatabase : RoomDatabase() {
                         db.execSQL("INSERT INTO accounts (name, type, balance, colorHex) VALUES ('MyCash', 'MFS', 0.0, '#3F51B5')")
                     }
                 })
-                .fallbackToDestructiveMigration()
+                .addMigrations(*DatabaseMigrations.ALL)
                 .build()
                 INSTANCE = instance
                 instance
