@@ -57,6 +57,8 @@ import androidx.navigation.compose.rememberNavController
 import com.shejan.financebuddy.data.PreferencesManager
 import com.shejan.financebuddy.data.db.FinanceDatabase
 import com.shejan.financebuddy.data.db.TransactionEntity
+import com.shejan.financebuddy.data.db.BudgetEntity
+import com.shejan.financebuddy.ui.budget.BudgetScreen
 import com.shejan.financebuddy.ui.home.HomeScreen
 import com.shejan.financebuddy.ui.onboarding.OnboardingScreenRoot
 import com.shejan.financebuddy.ui.theme.AccentBlue
@@ -142,6 +144,7 @@ fun MainDashboardContainer(database: FinanceDatabase) {
     // Local DB Flows
     val accountDao     = remember { database.accountDao() }
     val transactionDao = remember { database.transactionDao() }
+    val budgetDao      = remember { database.budgetDao() }
 
     val accounts        by accountDao.getAllAccounts().collectAsState(initial = emptyList())
     val allTransactions by transactionDao.getAllTransactions().collectAsState(initial = emptyList())
@@ -149,6 +152,10 @@ fun MainDashboardContainer(database: FinanceDatabase) {
     val startOfMonth = remember { getStartOfMonthTimestamp() }
     val monthlyIncome   by transactionDao.getMonthlyIncome(startOfMonth).collectAsState(initial = 0.0)
     val monthlyExpenses by transactionDao.getMonthlyExpenses(startOfMonth).collectAsState(initial = 0.0)
+
+    val budgets by budgetDao.getAllBudgets().collectAsState(initial = emptyList())
+    val categoryExpenseSums by transactionDao.getExpensesByCategoryFromDate(startOfMonth).collectAsState(initial = emptyList())
+    val spentByCategory = remember(categoryExpenseSums) { categoryExpenseSums.associate { it.category to it.total } }
 
     val blurRadius by animateDpAsState(
         targetValue = if (drawerState.isOpen) 16.dp else 0.dp,
@@ -267,7 +274,16 @@ fun MainDashboardContainer(database: FinanceDatabase) {
                         },
                         onOpenDrawer       = { scope.launch { drawerState.open() } }
                     )
-                    "budget" -> PageStub(title = "📊 Budget Page\n(Coming soon)")
+                    "budget" -> BudgetScreen(
+                        budgets           = budgets,
+                        spentByCategory   = spentByCategory,
+                        onAddBudget       = { budget ->
+                            scope.launch(Dispatchers.IO) { budgetDao.insertBudget(budget) }
+                        },
+                        onDeleteBudget    = { budget ->
+                            scope.launch(Dispatchers.IO) { budgetDao.deleteBudget(budget) }
+                        }
+                    )
                     "goals"  -> PageStub(title = "🎯 Savings Goals\n(Coming soon)")
                 }
             }

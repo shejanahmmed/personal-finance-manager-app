@@ -24,6 +24,10 @@ abstract class TransactionDao {
     @Query("SELECT SUM(amount) FROM transactions WHERE type = 'INCOME' AND timestamp >= :start")
     abstract fun getMonthlyIncome(start: Long): Flow<Double?>
 
+    // Returns total expense per category for current month — used by BudgetScreen
+    @Query("SELECT category, SUM(amount) as total FROM transactions WHERE type = 'EXPENSE' AND timestamp >= :start GROUP BY category")
+    abstract fun getExpensesByCategoryFromDate(start: Long): Flow<List<CategoryExpenseSum>>
+
     @Query("UPDATE accounts SET balance = balance + :amount WHERE id = :id")
     abstract suspend fun adjustAccountBalance(id: Int, amount: Double)
 
