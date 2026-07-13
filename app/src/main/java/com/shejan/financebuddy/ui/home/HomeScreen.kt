@@ -98,6 +98,17 @@ fun HomeScreen(
     val currencyFormat = remember { DecimalFormat("##,##,##0.00") }
     val totalBalance   = accounts.sumOf { it.balance }
 
+    val sortedAccounts = remember(accounts, allTransactions) {
+        accounts.sortedWith(
+            compareByDescending<AccountEntity> { account ->
+                allTransactions
+                    .filter { it.fromAccountId == account.id || it.toAccountId == account.id }
+                    .maxOfOrNull { it.timestamp } ?: 0L
+            }.thenBy { it.name }
+        )
+    }
+
+
     var isTopBarVisible by remember { mutableStateOf(true) }
     val nestedScrollConnection = remember {
         object : NestedScrollConnection {
@@ -187,7 +198,7 @@ fun HomeScreen(
                     contentPadding        = PaddingValues(horizontal = 20.dp, vertical = 12.dp),
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    items(accounts) { account ->
+                    items(sortedAccounts) { account ->
                         AccountCardChip(account = account, currencyFormat = currencyFormat)
                     }
                 }

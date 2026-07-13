@@ -7,13 +7,17 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.blur
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
@@ -54,6 +58,13 @@ import androidx.compose.ui.unit.sp
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.graphics.Brush
+import com.shejan.financebuddy.R
 import com.shejan.financebuddy.data.PreferencesManager
 import com.shejan.financebuddy.data.db.FinanceDatabase
 import com.shejan.financebuddy.data.db.TransactionEntity
@@ -181,60 +192,141 @@ fun MainDashboardContainer(database: FinanceDatabase) {
         gesturesEnabled = false,
         drawerContent = {
             ModalDrawerSheet(
-                modifier             = Modifier.fillMaxWidth(0.60f),
+                modifier             = Modifier.fillMaxWidth(0.70f), // slightly wider for better readability
                 drawerContainerColor = CardDarker,
                 drawerShape          = RoundedCornerShape(topEnd = 24.dp, bottomEnd = 24.dp)
             ) {
-                Spacer(modifier = Modifier.height(24.dp))
-                Row(
+                // Header Box (App Logo + App Name + Close Button in corner)
+                Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(start = 20.dp, end = 8.dp, top = 8.dp, bottom = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically
+                        .padding(top = 28.dp, start = 20.dp, end = 12.dp, bottom = 12.dp)
                 ) {
-                    Text(
-                        text       = "⚡ FinanceBuddy",
-                        fontSize   = 18.sp,
-                        fontWeight = FontWeight.Bold,
-                        color      = TextPrimary
-                    )
-                    Spacer(modifier = Modifier.weight(1f))
-                    IconButton(onClick = { scope.launch { drawerState.close() } }) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.padding(end = 40.dp) // buffer for close icon
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(38.dp)
+                                .clip(CircleShape)
+                                .background(Color.White)
+                                .padding(4.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Image(
+                                painter = painterResource(id = R.drawable.financebuddy),
+                                contentDescription = "App Logo",
+                                modifier = Modifier.fillMaxSize()
+                            )
+                        }
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Text(
+                            text       = "FinanceBuddy",
+                            fontSize   = 16.sp,
+                            fontWeight = FontWeight.Bold,
+                            color      = TextPrimary
+                        )
+                    }
+
+                    IconButton(
+                        onClick = { scope.launch { drawerState.close() } },
+                        modifier = Modifier.align(Alignment.CenterEnd)
+                    ) {
                         Icon(
                             imageVector        = Icons.Default.Close,
                             contentDescription = "Close Drawer",
-                            tint               = TextSecondary
+                            tint               = TextSecondary,
+                            modifier           = Modifier.size(20.dp)
                         )
                     }
                 }
-                HorizontalDivider(color = DividerColor, modifier = Modifier.padding(horizontal = 20.dp))
-                Spacer(modifier = Modifier.height(16.dp))
 
-                // Menu items
-                NavigationDrawerItem(
-                    label      = { Text("Settings", color = TextPrimary, fontSize = 14.sp) },
-                    selected   = false,
-                    onClick    = { scope.launch { drawerState.close() } },
-                    icon       = { Icon(Icons.Default.Settings, contentDescription = null, tint = TextSecondary) },
-                    colors     = NavigationDrawerItemDefaults.colors(unselectedContainerColor = Color.Transparent),
-                    modifier   = Modifier.padding(horizontal = 12.dp)
+                HorizontalDivider(color = DividerColor, modifier = Modifier.padding(horizontal = 20.dp))
+                
+                // User / Wallet Info Card
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 20.dp, vertical = 16.dp)
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(CardDark)
+                        .padding(12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(36.dp)
+                            .clip(CircleShape)
+                            .background(Brush.linearGradient(colors = listOf(AccentTeal, AccentBlue))),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "BD",
+                            color = BackgroundDark,
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Column {
+                        Text(
+                            text = "Personal Wallet",
+                            color = TextPrimary,
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                        Text(
+                            text = "Dhaka, BD 🇧🇩",
+                            color = TextMuted,
+                            fontSize = 11.sp
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // Menu items with custom styling
+                DrawerMenuItem(
+                    icon = Icons.Default.Settings,
+                    label = "Settings",
+                    onClick = { scope.launch { drawerState.close() } }
                 )
-                NavigationDrawerItem(
-                    label      = { Text("Statistics", color = TextPrimary, fontSize = 14.sp) },
-                    selected   = false,
-                    onClick    = { scope.launch { drawerState.close() } },
-                    icon       = { Icon(Icons.Default.DateRange, contentDescription = null, tint = TextSecondary) },
-                    colors     = NavigationDrawerItemDefaults.colors(unselectedContainerColor = Color.Transparent),
-                    modifier   = Modifier.padding(horizontal = 12.dp)
+                DrawerMenuItem(
+                    icon = Icons.Default.DateRange,
+                    label = "Statistics",
+                    badgeText = "New",
+                    onClick = { scope.launch { drawerState.close() } }
                 )
-                NavigationDrawerItem(
-                    label      = { Text("Investment Tracker", color = TextPrimary, fontSize = 14.sp) },
-                    selected   = false,
-                    onClick    = { scope.launch { drawerState.close() } },
-                    icon       = { Icon(Icons.Default.Info, contentDescription = null, tint = TextSecondary) },
-                    colors     = NavigationDrawerItemDefaults.colors(unselectedContainerColor = Color.Transparent),
-                    modifier   = Modifier.padding(horizontal = 8.dp)
+                DrawerMenuItem(
+                    icon = Icons.Default.Info,
+                    label = "Investment Tracker",
+                    badgeText = "New",
+                    onClick = { scope.launch { drawerState.close() } }
                 )
+
+                Spacer(modifier = Modifier.weight(1f))
+
+                // Footer section
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 20.dp, vertical = 24.dp),
+                    horizontalAlignment = Alignment.Start
+                ) {
+                    Text(
+                        text = "Local Storage Secured",
+                        color = AccentTeal,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = "v1.0.0 (AES-256 Encrypted)",
+                        color = TextMuted,
+                        fontSize = 10.sp
+                    )
+                }
             }
         }
     ) {
@@ -354,4 +446,54 @@ private fun getStartOfMonthTimestamp(): Long {
     calendar.set(Calendar.SECOND, 0)
     calendar.set(Calendar.MILLISECOND, 0)
     return calendar.timeInMillis
+}
+
+// ─── Custom Drawer Menu Item Composable ──────────────────────
+
+@Composable
+fun DrawerMenuItem(
+    icon: ImageVector,
+    label: String,
+    badgeText: String? = null,
+    onClick: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 12.dp, vertical = 2.dp)
+            .clip(RoundedCornerShape(12.dp))
+            .clickable { onClick() }
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = label,
+            tint = TextSecondary,
+            modifier = Modifier.size(20.dp)
+        )
+        Spacer(modifier = Modifier.width(16.dp))
+        Text(
+            text = label,
+            color = TextPrimary,
+            fontSize = 14.sp,
+            fontWeight = FontWeight.Medium,
+            modifier = Modifier.weight(1f)
+        )
+        if (badgeText != null) {
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(6.dp))
+                    .background(AccentTeal.copy(alpha = 0.15f))
+                    .padding(horizontal = 6.dp, vertical = 2.dp)
+            ) {
+                Text(
+                    text = badgeText,
+                    color = AccentTeal,
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+        }
+    }
 }
