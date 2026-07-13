@@ -1,6 +1,16 @@
-# FinanceBuddy
+<p align="center">
+  <img src="app/src/main/res/drawable/financebuddy.png" alt="FinanceBuddy Logo" width="120" />
+</p>
 
-FinanceBuddy is a modern, premium, and offline-first personal finance manager designed specifically for Bangladeshi users. Built with modern Android development patterns, the application allows users to track incomes, daily expenses, inter-account transfers, category budgets, and savings goals across local banks and mobile financial services (MFS) with complete security, hardware-backed encryption, and total offline privacy.
+<h1 align="center">FinanceBuddy</h1>
+
+<p align="center">
+  <strong>A premium, offline-first personal finance manager tailored for Bangladesh.</strong>
+</p>
+
+---
+
+**FinanceBuddy** is a modern, premium, and offline-first personal finance manager designed specifically for Bangladeshi users. Built with modern Android development patterns, the application allows users to track incomes, daily expenses, inter-account transfers, category budgets, and savings goals across local banks and mobile financial services (MFS) with complete security, hardware-backed encryption, and total offline privacy.
 
 ---
 
@@ -12,8 +22,9 @@ FinanceBuddy is engineered using Clean Architecture principles, leveraging decla
 
 *   **Zero-Cloud Offline Privacy**: All transaction records, budget configurations, and savings targets are persisted locally on the device with no external server sync, ensuring complete financial privacy.
 *   **Hardware-Backed Security**: The local SQLite database is fully encrypted at rest. Passphrases are generated cryptographically and secured inside the device's hardware Keystore.
+*   **Automated SMS Parsing**: Fully on-device parsing of transaction SMS notifications from Bangladeshi banks and MFS providers, using regex engines with whitelist sender filters.
 *   **Persistent Schema Migrations**: Avoids destructive database drops by utilizing version-controlled migration scripts for schema updates.
-*   **Single-Activity Scaffolding**: Uses Jetpack Compose Navigation (`NavHost`) to manage state transitions across screens (Home, Budget, Goals).
+*   **Single-Activity Scaffolding**: Uses Jetpack Compose Navigation (`NavHost`) to manage state transitions across screens.
 *   **Reactive Flow Channels**: Employs Room Database queries that expose asynchronous stream values (`Flow`), which are collected as state within UI composables to instantly reflect changes.
 *   **Custom Graphics Rendering**: Utilizes lower-level `Canvas` APIs for custom rendering of data charts, arc overviews, and progress rings to maximize drawing performance.
 
@@ -47,6 +58,10 @@ To protect sensitive financial information, FinanceBuddy implements a multi-laye
 1.  **Database-Level Encryption**: The entire database is encrypted using **SQLCipher** (AES-256-CBC). Unencrypted database files cannot be read even on rooted devices.
 2.  **Key Management**: A cryptographically secure 256-bit random passphrase is generated on the first run using `SecureRandom`.
 3.  **Hardware Storage**: The passphrase is stored in `EncryptedSharedPreferences`, encrypted with a Master Key generated inside the **Android Keystore** (utilizing a hardware-backed Trusted Execution Environment / TEE if available on the device).
+4.  **Secure SMS Pipeline**: 
+    *   **Local Processing Only**: SMS messages are parsed in-memory without any network activity.
+    *   **Sender Whitelisting**: Generic numbers are automatically rejected. Only whitelisted shortcodes (e.g., `bKash`, `Nagad`, `BRACBANK`) are processed.
+    *   **Security Restrictions**: The `SmsReceiver` is configured with `android:exported="false"` and guarded with the `BROADCAST_SMS` permission, ensuring only the OS can trigger it.
 
 ---
 
@@ -55,8 +70,8 @@ To protect sensitive financial information, FinanceBuddy implements a multi-laye
 *   **UI Framework**: Jetpack Compose (Declarative UI) with custom Material 3 design tokens.
 *   **Security & Crypto**: SQLCipher for Android (`android-database-sqlcipher`), Android Jetpack Security (`security-crypto`).
 *   **Local Persistence Layer**: 
-    *   **Room Database**: Relational SQLite engine wrapper for financial transactions, accounts, budgets, and savings goals.
-    *   **Preferences DataStore**: Jetpack DataStore key-value store for lightweight configuration states (onboarding completion).
+    *   **Room Database**: Relational SQLite engine wrapper for transactions, accounts, budgets, and savings goals.
+    *   **Preferences DataStore**: Jetpack DataStore key-value store for lightweight configuration states (onboarding and SMS setup selections).
 *   **Asynchronous Concurrency**: Kotlin Coroutines & Reactive Flow for non-blocking I/O.
 *   **Code Generation**: Kotlin Symbol Processing (KSP) for compile-time database mapping and query validation.
 *   **Typography Assets**: Bundled custom Outfit Sans typeface weights.
@@ -85,6 +100,20 @@ erDiagram
         int fromAccountId FK "Links to ACCOUNTS.id"
         int toAccountId FK "Links to ACCOUNTS.id (Nullable)"
         string note "Optional Memo"
+    }
+    PENDING_SMS_TRANSACTIONS {
+        int id PK "Auto-Increment"
+        string rawSmsBody "Original message body"
+        string senderAddress "e.g., bKash, BRACBank"
+        double amount "Parsed Amount"
+        string type "INCOME | EXPENSE"
+        string category "Suggested Category"
+        string note "Merchant/Ref Note"
+        string detectedAccountName "Matched Account Name"
+        int fromAccountId "Matched Account ID"
+        int toAccountId "Nullable"
+        long timestamp "Parsed Transaction Timestamp"
+        long receivedAt "Receival Timestamp"
     }
     BUDGETS {
         int id PK "Auto-Increment"
@@ -120,36 +149,46 @@ The database design delegates transaction-balance math to database-level transac
 app/src/main/java/com/shejan/financebuddy/
 ├── data/
 │   ├── db/
-│   │   ├── AccountEntity.kt      # Account database model
-│   │   ├── TransactionEntity.kt  # Transaction database model
-│   │   ├── BudgetEntity.kt       # Budget limit database model
-│   │   ├── GoalEntity.kt         # Savings Goal database model
-│   │   ├── AccountDao.kt         # Queries for wallets/institutions
-│   │   ├── TransactionDao.kt     # Atomic balance-adjusting transaction queries
-│   │   ├── BudgetDao.kt          # Category-based budget constraint queries
-│   │   ├── GoalDao.kt            # Savings goal deposit and CRUD queries
-│   │   ├── DatabaseMigrations.kt # Version-controlled schema migration scripts (1→2, 2→3, 3→4)
-│   │   ├── DatabaseKeyManager.kt # Android Keystore-backed database encryption keys
-│   │   └── FinanceDatabase.kt    # Encrypted Room database configuration & seeding logic
-│   └── PreferencesManager.kt     # DataStore preferences configuration (Onboarding state)
+│   │   ├── AccountEntity.kt              # Account database model
+│   │   ├── TransactionEntity.kt          # Transaction database model
+│   │   ├── BudgetEntity.kt               # Budget limit database model
+│   │   ├── GoalEntity.kt                 # Savings Goal database model
+│   │   ├── PendingSmsTransactionEntity.kt# Temporary SMS transaction model
+│   │   ├── AccountDao.kt                 # Queries for wallets/institutions
+│   │   ├── TransactionDao.kt             # Atomic balance-adjusting transaction queries
+│   │   ├── BudgetDao.kt                  # Category-based budget constraint queries
+│   │   ├── GoalDao.kt                    # Savings goal deposit and CRUD queries
+│   │   ├── PendingSmsDao.kt              # CRUD operations for Transaction Inbox
+│   │   ├── DatabaseMigrations.kt         # Version-controlled schema migrations (1→2, 2→3, 3→4, 4→5)
+│   │   ├── DatabaseKeyManager.kt         # Android Keystore-backed database encryption keys
+│   │   └── FinanceDatabase.kt            # Encrypted Room database configuration & seeding logic
+│   └── PreferencesManager.kt             # DataStore configurations (Onboarding & SMS Setup)
+├── sms/
+│   ├── SmsParser.kt                      # Pure-Kotlin regex-based SMS parsing engine
+│   ├── ParsedSmsData.kt                  # Model for parsed SMS transaction parameters
+│   ├── SmsReceiver.kt                    # Secured BroadcastReceiver for incoming SMS
+│   ├── SmsSyncHelper.kt                  # ContentProvider scanner for historical SMS sync
+│   └── SmsPermissionHandler.kt           # Setup choice dialog & permission requester
 ├── ui/
 │   ├── home/
 │   │   ├── components/
-│   │   │   └── Charts.kt         # Custom Canvas-drawn Bar & Line charts
-│   │   ├── HomeScreen.kt         # Dashboard UI implementation
-│   │   └── AddTransactionSheet.kt# Sliding modal transaction form sheet
+│   │   │   └── Charts.kt                 # Custom Canvas-drawn Bar & Line charts
+│   │   ├── HomeScreen.kt                 # Dashboard UI implementation
+│   │   └── AddTransactionSheet.kt        # Sliding modal transaction form sheet
 │   ├── budget/
-│   │   └── BudgetScreen.kt       # Budgeting interface, Canvas overview arc, and CRUD sheets
+│   │   └── BudgetScreen.kt               # Budgeting interface, Canvas arc, and CRUD sheets
 │   ├── goals/
-│   │   └── GoalsScreen.kt        # Savings goal progress rings, deposit forms, and emoji selectors
+│   │   └── GoalsScreen.kt                # Savings goal progress rings & deposit forms
+│   ├── pending/
+│   │   └── PendingTransactionsScreen.kt  # Transaction Inbox queue & manual scan UI
 │   ├── onboarding/
-│   │   ├── OnboardingPage.kt     # Pager metadata model
-│   │   └── OnboardingScreen.kt   # Interactive slider & Canvas visuals
+│   │   ├── OnboardingPage.kt             # Pager metadata model
+│   │   └── OnboardingScreen.kt           # Interactive onboarding walk-through
 │   └── theme/
-│       ├── Color.kt              # Dark fintech color palettes
-│       ├── Type.kt               # Custom Outfit font definitions
-│       └── Theme.kt              # Edge-to-edge system window theme hooks
-└── MainActivity.kt               # Root Navigation host, Drawer layout, and database lifecycle
+│       ├── Color.kt                      # Dark fintech color palettes
+│       ├── Type.kt                       # Custom Outfit font definitions
+│       └── Theme.kt                      # Edge-to-edge system window theme hooks
+└── MainActivity.kt                       # Root navigation host & App entry point
 ```
 
 ---
@@ -161,17 +200,27 @@ Upon initialization, the database seeds default local financial institutions:
 - **Banks**: BRAC Bank PLC, The City Bank PLC, Eastern Bank PLC (EBL), Dutch-Bangla Bank PLC (DBBL), Prime Bank PLC, Mutual Trust Bank PLC, Islami Bank Bangladesh PLC (IBBL), Al-Arafah Islami Bank PLC, Shahjalal Islami Bank PLC.
 - **MFS**: bKash, Nagad, Rocket, Upay, CellFin (IBBL), Ok Wallet, MyCash.
 
-### 2. High-Performance Custom Charts
+### 2. Transaction Inbox & SMS Auto-Detection
+FinanceBuddy automates expense tracking through local SMS interceptors:
+- **On-Device Regex Parser**: Extracts transaction type, amounts, account keywords, and reference notes from bank SMS.
+- **Glassmorphic Setup Options**: At first start, users choose to:
+  *   *Sync History & Future SMS*: Intercepts incoming SMS and retroactively parses inbox messages from the past 30 days.
+  *   *Track Future SMS Only*: Only detects transaction messages arriving after permission is granted.
+  *   *Keep Manual*: Disables SMS permissions and automation entirely.
+- **Inbox Review Queue**: SMS transactions are placed in the *Transaction Inbox* (formerly pending list) where users review, edit, confirm, or dismiss them before balances adjust.
+- **Manual Historical Scan**: Offers scan triggers in the empty state and top header of the inbox to scan or re-scan messages at any time.
+
+### 3. High-Performance Custom Charts
 Bespoke charts designed with native Compose Canvas drawing APIs:
 - **Weekly Expenses Bar Chart**: Automatically sums and visualizes daily expense totals for the last 7 calendar days.
 - **Balance Trend Bezier Chart**: Computes running balances dynamically by subtracting daily net-change from the total balance going backward. Plots a smooth curved line.
 
-### 3. Dynamic Budgeting Dashboard
+### 4. Dynamic Budgeting Dashboard
 - **Monthly Limit Constraints**: Set monthly spending limits per category.
 - **Visual Warning Metrics**: Visualizes total budget usage with a custom Canvas arc meter that dynamically updates color states as categories approach thresholds.
 - **Spent-vs-Limit Trackers**: Highlights remaining balance versus spent totals per category.
 
-### 4. Interactive Savings Goals
+### 5. Interactive Savings Goals
 - **Animated Circular Progress**: Renders a custom 360-degree Canvas progress ring around goal indicators.
 - **Secure Deposits**: Add manual savings increments directly to goals (contributions are tracked in-app).
 - **Goal Personalization**: Complete custom emoji grid picker and dynamic color-coding.
