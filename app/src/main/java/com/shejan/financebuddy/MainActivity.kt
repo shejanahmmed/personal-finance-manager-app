@@ -101,6 +101,10 @@ import com.shejan.financebuddy.ui.theme.TextPrimary
 import com.shejan.financebuddy.ui.theme.TextSecondary
 import com.shejan.financebuddy.ui.settings.SettingsScreen
 import com.shejan.financebuddy.sms.SmsPermissionHandler
+import com.shejan.financebuddy.ui.profile.EditProfileDialog
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.material.icons.filled.Person
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -265,6 +269,25 @@ fun MainDashboardContainer(
     val scope       = rememberCoroutineScope()
     var currentTab by remember { mutableStateOf("home") } // "home", "budget", "goals"
 
+    val profileName by preferencesManager.profileName.collectAsState(initial = "User")
+    val profileImagePath by preferencesManager.profileImagePath.collectAsState(initial = "")
+    var showEditProfileDialog by remember { mutableStateOf(false) }
+
+    if (showEditProfileDialog) {
+        EditProfileDialog(
+            currentName = profileName,
+            currentImagePath = profileImagePath,
+            onDismiss = { showEditProfileDialog = false },
+            onSave = { name, path ->
+                scope.launch {
+                    preferencesManager.setProfileName(name)
+                    preferencesManager.setProfileImagePath(path)
+                    showEditProfileDialog = false
+                }
+            }
+        )
+    }
+
     val smsSyncChoice by preferencesManager.smsSyncChoice.collectAsState(initial = "PENDING")
     if (smsSyncChoice == "PENDING") {
         SmsPermissionHandler(
@@ -356,40 +379,63 @@ fun MainDashboardContainer(
 
                 HorizontalDivider(color = DividerColor, modifier = Modifier.padding(horizontal = 20.dp))
                 
-                // User / Wallet Info Card
+                // User Profile Info Card
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 20.dp, vertical = 16.dp)
                         .clip(RoundedCornerShape(16.dp))
                         .background(CardDark)
+                        .clickable { showEditProfileDialog = true }
                         .padding(12.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Box(
                         modifier = Modifier
-                            .size(36.dp)
+                            .size(38.dp)
                             .clip(CircleShape)
-                            .background(Brush.linearGradient(colors = listOf(AccentTeal, AccentBlue))),
+                            .background(Brush.linearGradient(colors = listOf(AccentTeal.copy(alpha = 0.15f), AccentBlue.copy(alpha = 0.15f)))),
                         contentAlignment = Alignment.Center
                     ) {
-                        Text(
-                            text = "BD",
-                            color = BackgroundDark,
-                            fontSize = 13.sp,
-                            fontWeight = FontWeight.Bold
-                        )
+                        val profileBitmap = remember(profileImagePath) {
+                            if (profileImagePath.isNotEmpty()) {
+                                try {
+                                    val file = java.io.File(profileImagePath)
+                                    if (file.exists()) {
+                                        android.graphics.BitmapFactory.decodeFile(file.absolutePath)
+                                    } else null
+                                } catch (e: Exception) {
+                                    null
+                                }
+                            } else null
+                        }
+
+                        if (profileBitmap != null) {
+                            Image(
+                                bitmap = profileBitmap.asImageBitmap(),
+                                contentDescription = "Profile Photo",
+                                modifier = Modifier.fillMaxSize(),
+                                contentScale = ContentScale.Crop
+                            )
+                        } else {
+                            Icon(
+                                imageVector = Icons.Default.Person,
+                                contentDescription = "Default Profile Photo",
+                                tint = AccentTeal,
+                                modifier = Modifier.fillMaxSize(0.6f)
+                            )
+                        }
                     }
                     Spacer(modifier = Modifier.width(12.dp))
                     Column {
                         Text(
-                            text = "Personal Wallet",
+                            text = profileName,
                             color = TextPrimary,
                             fontSize = 13.sp,
                             fontWeight = FontWeight.SemiBold
                         )
                         Text(
-                            text = "Dhaka, BD 🇧🇩",
+                            text = "Tap to edit profile",
                             color = TextMuted,
                             fontSize = 11.sp
                         )
@@ -412,13 +458,11 @@ fun MainDashboardContainer(
                 DrawerMenuItem(
                     icon = Icons.Default.DateRange,
                     label = "Statistics",
-                    badgeText = "New",
                     onClick = { scope.launch { drawerState.close() } }
                 )
                 DrawerMenuItem(
                     icon = Icons.Default.Info,
                     label = "Investment Tracker",
-                    badgeText = "New",
                     onClick = { scope.launch { drawerState.close() } }
                 )
                 DrawerMenuItem(

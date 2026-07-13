@@ -18,6 +18,8 @@ class PreferencesManager(private val context: Context) {
         private val ONBOARDING_COMPLETED = booleanPreferencesKey("onboarding_completed")
         private val SMS_SYNC_CHOICE = stringPreferencesKey("sms_sync_choice")
         private val THEME_MODE = stringPreferencesKey("theme_mode")
+        private val PROFILE_NAME = stringPreferencesKey("profile_name")
+        private val PROFILE_IMAGE_PATH = stringPreferencesKey("profile_image_path")
     }
 
     /** Emits true if the user has already completed onboarding. */
@@ -53,6 +55,30 @@ class PreferencesManager(private val context: Context) {
     suspend fun setThemeMode(mode: String) {
         context.dataStore.edit { prefs ->
             prefs[THEME_MODE] = mode
+        }
+    }
+
+    /** Emits the user's profile name. Defaults to "User". */
+    val profileName: Flow<String> = context.dataStore.data.map { prefs ->
+        prefs[PROFILE_NAME] ?: "User"
+    }
+
+    /** Sets the user's profile name. */
+    suspend fun setProfileName(name: String) {
+        context.dataStore.edit { prefs ->
+            prefs[PROFILE_NAME] = name
+        }
+    }
+
+    /** Emits the user's profile image path. Defaults to empty string. */
+    val profileImagePath: Flow<String> = context.dataStore.data.map { prefs ->
+        prefs[PROFILE_IMAGE_PATH] ?: ""
+    }
+
+    /** Sets the user's profile image path. */
+    suspend fun setProfileImagePath(path: String) {
+        context.dataStore.edit { prefs ->
+            prefs[PROFILE_IMAGE_PATH] = path
         }
     }
 }
