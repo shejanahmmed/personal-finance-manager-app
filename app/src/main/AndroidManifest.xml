@@ -5,6 +5,7 @@
     <!-- SMS permission: used only to detect incoming bank/MFS transactions in real-time.
          No SMS data is ever uploaded or stored permanently — only parsed on-device. -->
     <uses-permission android:name="android.permission.RECEIVE_SMS" />
+    <uses-permission android:name="android.permission.READ_SMS" />
 
     <application
         android:allowBackup="true"

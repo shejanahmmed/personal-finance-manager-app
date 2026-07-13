@@ -23,11 +23,16 @@ import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material.icons.filled.Category
 import androidx.compose.material.icons.filled.CreditCard
 import androidx.compose.material.icons.filled.Sms
+import androidx.compose.material.icons.filled.History
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import kotlinx.coroutines.launch
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -59,12 +64,61 @@ private val CATEGORIES = listOf(
 fun PendingTransactionsScreen(
     pendingList: List<PendingSmsTransactionEntity>,
     accounts: List<AccountEntity>,
+    database: com.shejan.financebuddy.data.db.FinanceDatabase,
     onConfirm: (PendingSmsTransactionEntity, PendingSmsTransactionEntity) -> Unit,
     onDismiss: (PendingSmsTransactionEntity) -> Unit,
     onUpdate: (PendingSmsTransactionEntity) -> Unit,
     onDismissAll: () -> Unit,
     onBack: () -> Unit
 ) {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    var isScanning by remember { mutableStateOf(false) }
+
+    val permissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        if (isGranted) {
+            isScanning = true
+            scope.launch {
+                val count = com.shejan.financebuddy.sms.SmsSyncHelper.syncPreviousSms(context, database)
+                isScanning = false
+                android.widget.Toast.makeText(
+                    context,
+                    if (count > 0) "Imported $count transaction messages!" else "No new transaction messages found.",
+                    android.widget.Toast.LENGTH_LONG
+                ).show()
+            }
+        } else {
+            android.widget.Toast.makeText(
+                context,
+                "Permission denied. Cannot scan SMS history.",
+                android.widget.Toast.LENGTH_SHORT
+            ).show()
+        }
+    }
+
+    fun triggerHistoryScan() {
+        val hasReadPermission = androidx.core.content.ContextCompat.checkSelfPermission(
+            context,
+            android.Manifest.permission.READ_SMS
+        ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+        if (hasReadPermission) {
+            isScanning = true
+            scope.launch {
+                val count = com.shejan.financebuddy.sms.SmsSyncHelper.syncPreviousSms(context, database)
+                isScanning = false
+                android.widget.Toast.makeText(
+                    context,
+                    if (count > 0) "Imported $count transaction messages!" else "No new transaction messages found.",
+                    android.widget.Toast.LENGTH_LONG
+                ).show()
+            }
+        } else {
+            permissionLauncher.launch(android.Manifest.permission.READ_SMS)
+        }
+    }
+
     var editTarget by remember { mutableStateOf<PendingSmsTransactionEntity?>(null) }
     var showDismissAllDialog by remember { mutableStateOf(false) }
 
@@ -118,6 +172,26 @@ fun PendingTransactionsScreen(
                         )
                     }
 
+                    IconButton(
+                        onClick = { triggerHistoryScan() },
+                        enabled = !isScanning,
+                        modifier = Modifier.padding(end = 4.dp)
+                    ) {
+                        if (isScanning) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(20.dp),
+                                strokeWidth = 2.dp,
+                                color = AccentTeal
+                            )
+                        } else {
+                            Icon(
+                                imageVector = Icons.Default.History,
+                                contentDescription = "Scan SMS History",
+                                tint = AccentTeal
+                            )
+                        }
+                    }
+
                     if (pendingList.isNotEmpty()) {
                         Button(
                             onClick = { showDismissAllDialog = true },
@@ -137,7 +211,10 @@ fun PendingTransactionsScreen(
 
             // ── Scrollable list with entrance animations ──────────────────────
             if (pendingList.isEmpty()) {
-                EmptyState()
+                EmptyState(
+                    isScanning = isScanning,
+                    onScanHistory = { triggerHistoryScan() }
+                )
             } else {
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
@@ -780,7 +857,10 @@ private fun EditPendingSheet(
 // ─── Empty State Composable ──────────────────────────────────────────────────
 
 @Composable
-private fun EmptyState() {
+private fun EmptyState(
+    isScanning: Boolean,
+    onScanHistory: () -> Unit
+) {
     Box(
         modifier = Modifier.fillMaxSize(),
         contentAlignment = Alignment.Center
@@ -820,6 +900,31 @@ private fun EmptyState() {
                 lineHeight = 20.sp,
                 fontWeight = FontWeight.Medium
             )
+            Spacer(modifier = Modifier.height(24.dp))
+            OutlinedButton(
+                onClick = onScanHistory,
+                enabled = !isScanning,
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = AccentTeal),
+                border = BorderStroke(1.dp, AccentTeal),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                if (isScanning) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(16.dp),
+                        strokeWidth = 2.dp,
+                        color = AccentTeal
+                    )
+                } else {
+                    Icon(
+                        imageVector = Icons.Default.History,
+                        contentDescription = null,
+                        modifier = Modifier.size(16.dp),
+                        tint = AccentTeal
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Scan Past 30 Days SMS", fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                }
+            }
         }
     }
 }

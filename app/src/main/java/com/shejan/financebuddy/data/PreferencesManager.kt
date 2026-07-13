@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
+import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.flow.Flow
@@ -15,6 +16,7 @@ class PreferencesManager(private val context: Context) {
 
     companion object {
         private val ONBOARDING_COMPLETED = booleanPreferencesKey("onboarding_completed")
+        private val SMS_SYNC_CHOICE = stringPreferencesKey("sms_sync_choice")
     }
 
     /** Emits true if the user has already completed onboarding. */
@@ -26,6 +28,18 @@ class PreferencesManager(private val context: Context) {
     suspend fun setOnboardingCompleted() {
         context.dataStore.edit { prefs ->
             prefs[ONBOARDING_COMPLETED] = true
+        }
+    }
+
+    /** Emits the user's SMS sync preference: "PENDING", "SYNC_PREVIOUS", "START_NEW", or "DISABLED". */
+    val smsSyncChoice: Flow<String> = context.dataStore.data.map { prefs ->
+        prefs[SMS_SYNC_CHOICE] ?: "PENDING"
+    }
+
+    /** Sets the user's SMS sync choice. */
+    suspend fun setSmsSyncChoice(choice: String) {
+        context.dataStore.edit { prefs ->
+            prefs[SMS_SYNC_CHOICE] = choice
         }
     }
 }

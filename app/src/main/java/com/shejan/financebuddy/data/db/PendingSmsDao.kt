@@ -32,4 +32,7 @@ interface PendingSmsDao {
     /** Clears all pending entries (e.g. dismiss-all action). */
     @Query("DELETE FROM pending_sms_transactions")
     suspend fun clearAll()
+
+    @Query("SELECT EXISTS(SELECT 1 FROM pending_sms_transactions WHERE rawSmsBody = :rawBody LIMIT 1)")
+    suspend fun isSmsExists(rawBody: String): Boolean
 }

@@ -157,6 +157,7 @@ fun AppNavigation(
 
             composable("main_dashboard") {
                 MainDashboardContainer(
+                    preferencesManager = preferencesManager,
                     database      = database,
                     onNavigateToPending = { navController.navigate("pending_transactions") }
                 )
@@ -169,6 +170,7 @@ fun AppNavigation(
                 PendingTransactionsScreen(
                     pendingList  = pendingList,
                     accounts     = accounts,
+                    database     = database,
                     onConfirm    = { pending, edited -> viewModel.confirm(pending, edited) },
                     onDismiss    = { viewModel.dismiss(it) },
                     onUpdate     = { viewModel.update(it) },
@@ -184,6 +186,7 @@ fun AppNavigation(
 
 @Composable
 fun MainDashboardContainer(
+    preferencesManager: PreferencesManager,
     database: FinanceDatabase,
     onNavigateToPending: () -> Unit
 ) {
@@ -191,10 +194,13 @@ fun MainDashboardContainer(
     val scope       = rememberCoroutineScope()
     var currentTab by remember { mutableStateOf("home") } // "home", "budget", "goals"
 
-    // SMS permission — shown once after onboarding completes
-    var showSmsPermission by remember { mutableStateOf(true) }
-    if (showSmsPermission) {
-        SmsPermissionHandler(onPermissionResult = { showSmsPermission = false })
+    val smsSyncChoice by preferencesManager.smsSyncChoice.collectAsState(initial = "PENDING")
+    if (smsSyncChoice == "PENDING") {
+        SmsPermissionHandler(
+            preferencesManager = preferencesManager,
+            database = database,
+            onDismiss = {}
+        )
     }
 
     // Local DB Flows
