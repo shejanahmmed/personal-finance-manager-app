@@ -17,6 +17,7 @@ class PreferencesManager(private val context: Context) {
     companion object {
         private val ONBOARDING_COMPLETED = booleanPreferencesKey("onboarding_completed")
         private val SMS_SYNC_CHOICE = stringPreferencesKey("sms_sync_choice")
+        private val THEME_MODE = stringPreferencesKey("theme_mode")
     }
 
     /** Emits true if the user has already completed onboarding. */
@@ -40,6 +41,18 @@ class PreferencesManager(private val context: Context) {
     suspend fun setSmsSyncChoice(choice: String) {
         context.dataStore.edit { prefs ->
             prefs[SMS_SYNC_CHOICE] = choice
+        }
+    }
+
+    /** Emits the user's theme selection: "SYSTEM", "LIGHT", or "DARK". */
+    val themeMode: Flow<String> = context.dataStore.data.map { prefs ->
+        prefs[THEME_MODE] ?: "SYSTEM"
+    }
+
+    /** Sets the user's theme preference. */
+    suspend fun setThemeMode(mode: String) {
+        context.dataStore.edit { prefs ->
+            prefs[THEME_MODE] = mode
         }
     }
 }

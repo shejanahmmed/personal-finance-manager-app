@@ -3,6 +3,7 @@ package com.shejan.financebuddy.ui.home
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -116,19 +117,20 @@ fun TransactionListScreen(
                     }
 
                     // Request: "add a small back button at the top right corner when tap it will work"
-                    IconButton(
-                        onClick = onBack,
+                    Box(
                         modifier = Modifier
-                            .size(30.dp)
-                            .clip(RoundedCornerShape(6.dp))
+                            .size(34.dp)
+                            .clip(RoundedCornerShape(8.dp))
                             .background(CardDark)
-                            .border(1.dp, DividerColor, RoundedCornerShape(6.dp))
+                            .border(1.dp, DividerColor, RoundedCornerShape(8.dp))
+                            .clickable { onBack() },
+                        contentAlignment = Alignment.Center
                     ) {
                         Icon(
                             imageVector = Icons.Default.Close,
                             contentDescription = "Go Back",
                             tint = TextPrimary,
-                            modifier = Modifier.size(15.dp)
+                            modifier = Modifier.size(18.dp)
                         )
                     }
                 }

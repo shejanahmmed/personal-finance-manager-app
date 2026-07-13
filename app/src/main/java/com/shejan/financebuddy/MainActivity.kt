@@ -70,6 +70,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -98,6 +99,7 @@ import com.shejan.financebuddy.ui.theme.FinanceBuddyTheme
 import com.shejan.financebuddy.ui.theme.TextMuted
 import com.shejan.financebuddy.ui.theme.TextPrimary
 import com.shejan.financebuddy.ui.theme.TextSecondary
+import com.shejan.financebuddy.ui.settings.SettingsScreen
 import com.shejan.financebuddy.sms.SmsPermissionHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -117,7 +119,13 @@ class MainActivity : ComponentActivity() {
         database = FinanceDatabase.getDatabase(applicationContext)
 
         setContent {
-            FinanceBuddyTheme {
+            val themeMode by preferencesManager.themeMode.collectAsState(initial = "SYSTEM")
+            val darkTheme = when (themeMode) {
+                "DARK" -> true
+                "LIGHT" -> false
+                else -> isSystemInDarkTheme()
+            }
+            FinanceBuddyTheme(darkTheme = darkTheme) {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
@@ -186,7 +194,15 @@ fun AppNavigation(
                     allTransactions = allTransactions,
                     onNavigateToPending = { navController.navigate("pending_transactions") },
                     onNavigateToIncome = { navController.navigate("income_list") },
-                    onNavigateToExpenses = { navController.navigate("expense_list") }
+                    onNavigateToExpenses = { navController.navigate("expense_list") },
+                    onNavigateToSettings = { navController.navigate("settings") }
+                )
+            }
+
+            composable("settings") {
+                SettingsScreen(
+                    preferencesManager = preferencesManager,
+                    onBack = { navController.popBackStack() }
                 )
             }
 
@@ -242,7 +258,8 @@ fun MainDashboardContainer(
     allTransactions: List<TransactionEntity>,
     onNavigateToPending: () -> Unit,
     onNavigateToIncome: () -> Unit,
-    onNavigateToExpenses: () -> Unit
+    onNavigateToExpenses: () -> Unit,
+    onNavigateToSettings: () -> Unit
 ) {
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val scope       = rememberCoroutineScope()
@@ -385,7 +402,12 @@ fun MainDashboardContainer(
                 DrawerMenuItem(
                     icon = Icons.Default.Settings,
                     label = "Settings",
-                    onClick = { scope.launch { drawerState.close() } }
+                    onClick = {
+                        scope.launch {
+                            drawerState.close()
+                            onNavigateToSettings()
+                        }
+                    }
                 )
                 DrawerMenuItem(
                     icon = Icons.Default.DateRange,
