@@ -4,7 +4,12 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -123,10 +128,26 @@ fun GoalsScreen(
     val addSheetState     = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val depositSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
+    var isTopBarVisible by remember { mutableStateOf(true) }
+    val nestedScrollConnection = remember {
+        object : NestedScrollConnection {
+            override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
+                val delta = available.y
+                if (delta < -12f) {
+                    isTopBarVisible = false
+                } else if (delta > 12f) {
+                    isTopBarVisible = true
+                }
+                return Offset.Zero
+            }
+        }
+    }
+
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(BackgroundDark)
+            .nestedScroll(nestedScrollConnection)
     ) {
         // Ambient glow
         Box(
@@ -142,38 +163,7 @@ fun GoalsScreen(
 
         Scaffold(
             containerColor = Color.Transparent,
-            topBar = {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .statusBarsPadding()
-                        .padding(horizontal = 20.dp, vertical = 12.dp),
-                    verticalAlignment     = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Text(
-                        text       = "Goals",
-                        style      = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold,
-                        color      = TextPrimary
-                    )
-                    if (completed > 0) {
-                        Box(
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(8.dp))
-                                .background(IncomeGreen.copy(alpha = 0.15f))
-                                .padding(horizontal = 10.dp, vertical = 4.dp)
-                        ) {
-                            Text(
-                                text      = "🎉 $completed Completed",
-                                fontSize  = 12.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                color     = IncomeGreen
-                            )
-                        }
-                    }
-                }
-            },
+            topBar = {},
             floatingActionButton = {
                 FloatingActionButton(
                     onClick        = { showAddSheet = true },
@@ -196,10 +186,14 @@ fun GoalsScreen(
             LazyColumn(
                 modifier            = Modifier
                     .fillMaxSize()
-                    .padding(innerPadding),
+                    .padding(bottom = innerPadding.calculateBottomPadding()),
                 contentPadding      = PaddingValues(bottom = 100.dp),
                 verticalArrangement = Arrangement.spacedBy(0.dp)
             ) {
+                // Spacer matching top bar height (64.dp) + status bar padding
+                item {
+                    Spacer(modifier = Modifier.statusBarsPadding().height(64.dp))
+                }
                 // ── Summary overview card ────────────────────────
                 item {
                     GoalsSummaryCard(
@@ -282,6 +276,45 @@ fun GoalsScreen(
                     depositGoal = null
                 }
             )
+        }
+
+        // ── Top Bar Overlay (Translucent and Animated) ───────────────
+        AnimatedVisibility(
+            visible = isTopBarVisible,
+            enter   = slideInVertically(initialOffsetY = { -it }) + fadeIn(),
+            exit    = slideOutVertically(targetOffsetY = { -it }) + fadeOut(),
+            modifier = Modifier.align(Alignment.TopCenter)
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .statusBarsPadding()
+                    .padding(horizontal = 20.dp, vertical = 12.dp),
+                verticalAlignment     = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(
+                    text       = "Goals",
+                    style      = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    color      = TextPrimary
+                )
+                if (completed > 0) {
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(IncomeGreen.copy(alpha = 0.15f))
+                            .padding(horizontal = 10.dp, vertical = 4.dp)
+                    ) {
+                        Text(
+                            text      = "🎉 $completed Completed",
+                            fontSize  = 12.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color     = IncomeGreen
+                        )
+                    }
+                }
+            }
         }
     }
 }

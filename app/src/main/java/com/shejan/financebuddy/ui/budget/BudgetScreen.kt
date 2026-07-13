@@ -22,6 +22,15 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
@@ -111,10 +120,26 @@ fun BudgetScreen(
     var showAddSheet by remember { mutableStateOf(false) }
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
+    var isTopBarVisible by remember { mutableStateOf(true) }
+    val nestedScrollConnection = remember {
+        object : NestedScrollConnection {
+            override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
+                val delta = available.y
+                if (delta < -12f) {
+                    isTopBarVisible = false
+                } else if (delta > 12f) {
+                    isTopBarVisible = true
+                }
+                return Offset.Zero
+            }
+        }
+    }
+
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(BackgroundDark)
+            .nestedScroll(nestedScrollConnection)
     ) {
         // Ambient top glow
         Box(
@@ -130,28 +155,7 @@ fun BudgetScreen(
 
         Scaffold(
             containerColor = Color.Transparent,
-            topBar = {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .statusBarsPadding()
-                        .padding(horizontal = 20.dp, vertical = 12.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Text(
-                        text       = "Budget",
-                        style      = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold,
-                        color      = TextPrimary
-                    )
-                    Text(
-                        text  = "This Month",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = TextSecondary
-                    )
-                }
-            },
+            topBar = {},
             floatingActionButton = {
                 FloatingActionButton(
                     onClick        = { showAddSheet = true },
@@ -174,10 +178,14 @@ fun BudgetScreen(
             LazyColumn(
                 modifier            = Modifier
                     .fillMaxSize()
-                    .padding(innerPadding),
+                    .padding(bottom = innerPadding.calculateBottomPadding()),
                 contentPadding      = PaddingValues(bottom = 100.dp),
                 verticalArrangement = Arrangement.spacedBy(0.dp)
             ) {
+                // Spacer matching top bar height (64.dp) + status bar padding
+                item {
+                    Spacer(modifier = Modifier.statusBarsPadding().height(64.dp))
+                }
                 // ── Monthly Overview Arc Card ──────────────────────
                 item {
                     MonthlyOverviewCard(
@@ -270,6 +278,35 @@ fun BudgetScreen(
                     showAddSheet = false
                 }
             )
+        }
+
+        // ── Top Bar Overlay (Translucent and Animated) ───────────────
+        AnimatedVisibility(
+            visible = isTopBarVisible,
+            enter   = slideInVertically(initialOffsetY = { -it }) + fadeIn(),
+            exit    = slideOutVertically(targetOffsetY = { -it }) + fadeOut(),
+            modifier = Modifier.align(Alignment.TopCenter)
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .statusBarsPadding()
+                    .padding(horizontal = 20.dp, vertical = 12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(
+                    text       = "Budget",
+                    style      = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    color      = TextPrimary
+                )
+                Text(
+                    text  = "This Month",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = TextSecondary
+                )
+            }
         }
     }
 }

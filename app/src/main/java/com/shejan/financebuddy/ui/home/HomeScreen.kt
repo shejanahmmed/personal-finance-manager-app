@@ -20,6 +20,15 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Menu
@@ -89,10 +98,26 @@ fun HomeScreen(
     val currencyFormat = remember { DecimalFormat("##,##,##0.00") }
     val totalBalance   = accounts.sumOf { it.balance }
 
+    var isTopBarVisible by remember { mutableStateOf(true) }
+    val nestedScrollConnection = remember {
+        object : NestedScrollConnection {
+            override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
+                val delta = available.y
+                if (delta < -12f) {
+                    isTopBarVisible = false
+                } else if (delta > 12f) {
+                    isTopBarVisible = true
+                }
+                return Offset.Zero
+            }
+        }
+    }
+
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(BackgroundDark)
+            .nestedScroll(nestedScrollConnection)
     ) {
         // Ambient top glow flowing under the status bar
         Box(
@@ -108,32 +133,8 @@ fun HomeScreen(
 
         Scaffold(
             containerColor = Color.Transparent,
-            topBar = {
-                // ── Top Bar ──────────────────────────────────────────
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .statusBarsPadding()
-                        .padding(horizontal = 16.dp, vertical = 12.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    IconButton(onClick = onOpenDrawer) {
-                        Icon(imageVector = Icons.Default.Menu, contentDescription = "Menu", tint = TextPrimary)
-                    }
-
-                    Text(
-                        text       = "FinanceBuddy",
-                        style      = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        color      = TextPrimary
-                    )
-
-                    IconButton(onClick = { /* notification action */ }) {
-                        Icon(imageVector = Icons.Default.Notifications, contentDescription = "Notifications", tint = TextPrimary)
-                    }
-                }
-            },
+            // Empty topBar so we can overlay the floating top bar smoothly
+            topBar = {},
             floatingActionButton = {
                 // ── Floating Action Button (FAB) ─────────────────────
                 FloatingActionButton(
@@ -159,9 +160,12 @@ fun HomeScreen(
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(innerPadding)
+                    .padding(bottom = innerPadding.calculateBottomPadding())
                     .verticalScroll(rememberScrollState())
             ) {
+                // Spacer matching top bar height (64.dp) + status bar padding
+                Spacer(modifier = Modifier.statusBarsPadding().height(64.dp))
+
                 // ── 1. Balance Overview Card ──────────────────────────
                 Column(
                     modifier = Modifier
@@ -315,6 +319,38 @@ fun HomeScreen(
                 }
 
                 Spacer(modifier = Modifier.height(48.dp))
+            }
+        }
+
+        // ── Top Bar Overlay (Translucent and Animated) ───────────────
+        AnimatedVisibility(
+            visible = isTopBarVisible,
+            enter   = slideInVertically(initialOffsetY = { -it }) + fadeIn(),
+            exit    = slideOutVertically(targetOffsetY = { -it }) + fadeOut(),
+            modifier = Modifier.align(Alignment.TopCenter)
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .statusBarsPadding()
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                IconButton(onClick = onOpenDrawer) {
+                    Icon(imageVector = Icons.Default.Menu, contentDescription = "Menu", tint = TextPrimary)
+                }
+
+                Text(
+                    text       = "FinanceBuddy",
+                    style      = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color      = TextPrimary
+                )
+
+                IconButton(onClick = { /* notification action */ }) {
+                    Icon(imageVector = Icons.Default.Notifications, contentDescription = "Notifications", tint = TextPrimary)
+                }
             }
         }
 
