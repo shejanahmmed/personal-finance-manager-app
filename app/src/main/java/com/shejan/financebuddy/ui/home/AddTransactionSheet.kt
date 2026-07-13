@@ -16,8 +16,18 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
+import android.content.Context
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.border
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material3.Surface
+import androidx.compose.material3.TextButton
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DropdownMenu
@@ -65,7 +75,7 @@ import com.shejan.financebuddy.ui.theme.TextPrimary
 import com.shejan.financebuddy.ui.theme.TextSecondary
 import com.shejan.financebuddy.ui.theme.TransferYellow
 
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class, ExperimentalFoundationApi::class)
 @Composable
 fun AddTransactionSheet(
     accounts: List<AccountEntity>,
@@ -85,9 +95,43 @@ fun AddTransactionSheet(
     var fromAccountExpanded by remember { mutableStateOf(false) }
     var toAccountExpanded by remember { mutableStateOf(false) }
 
-    val incomeCategories = listOf("Salary", "Freelance", "Investment", "Pocket Money", "Other")
-    val expenseCategories = listOf("Food", "Groceries", "Rent", "Utilities", "Travel", "Shopping", "Entertainment", "Medical", "Other")
-    val activeCategories = if (selectedType == "INCOME") incomeCategories else if (selectedType == "EXPENSE") expenseCategories else listOf("Transfer")
+    val context = LocalContext.current
+    val sharedPreferences = remember { context.getSharedPreferences("finance_buddy_prefs", Context.MODE_PRIVATE) }
+
+    var customIncomeCategories by remember {
+        mutableStateOf(
+            sharedPreferences.getString("custom_income_categories", "")
+                ?.split("|")
+                ?.filter { it.isNotEmpty() }
+                ?: emptyList()
+        )
+    }
+    var customExpenseCategories by remember {
+        mutableStateOf(
+            sharedPreferences.getString("custom_expense_categories", "")
+                ?.split("|")
+                ?.filter { it.isNotEmpty() }
+                ?: emptyList()
+        )
+    }
+
+    val defaultIncomeCategories = listOf("Salary", "Freelance", "Investment", "Pocket Money", "Other")
+    val defaultExpenseCategories = listOf("Food", "Groceries", "Rent", "Utilities", "Travel", "Shopping", "Entertainment", "Medical", "Other")
+
+    val activeCategories = remember(selectedType, customIncomeCategories, customExpenseCategories) {
+        if (selectedType == "INCOME") {
+            defaultIncomeCategories + customIncomeCategories
+        } else if (selectedType == "EXPENSE") {
+            defaultExpenseCategories + customExpenseCategories
+        } else {
+            listOf("Transfer")
+        }
+    }
+
+    var showAddCategoryDialog by remember { mutableStateOf(false) }
+    var showDeleteDialog by remember { mutableStateOf(false) }
+    var categoryToDelete by remember { mutableStateOf("") }
+    var newCategoryName by remember { mutableStateOf("") }
 
     // Reset default category if type changes
     LaunchedEffectForType(selectedType) {
@@ -286,11 +330,20 @@ fun AddTransactionSheet(
                 ) {
                     activeCategories.forEach { cat ->
                         val isSelected = selectedCategory == cat
+                        val isCustom = if (selectedType == "INCOME") cat in customIncomeCategories else cat in customExpenseCategories
                         Box(
                             modifier = Modifier
                                 .clip(RoundedCornerShape(20.dp))
                                 .background(if (isSelected) indicatorColor else CardDark)
-                                .clickable { selectedCategory = cat }
+                                .combinedClickable(
+                                    onClick = { selectedCategory = cat },
+                                    onLongClick = {
+                                        if (isCustom) {
+                                            categoryToDelete = cat
+                                            showDeleteDialog = true
+                                        }
+                                    }
+                                )
                                 .padding(horizontal = 14.dp, vertical = 8.dp)
                         ) {
                             Text(
@@ -298,6 +351,33 @@ fun AddTransactionSheet(
                                 color      = if (isSelected) BackgroundDark else TextPrimary,
                                 fontSize   = 12.sp,
                                 fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal
+                            )
+                        }
+                    }
+
+                    // Add Custom Category Chip
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(20.dp))
+                            .background(CardDark.copy(alpha = 0.6f))
+                            .border(1.dp, AccentTeal.copy(alpha = 0.5f), RoundedCornerShape(20.dp))
+                            .clickable { showAddCategoryDialog = true }
+                            .padding(horizontal = 14.dp, vertical = 8.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                imageVector = Icons.Default.Add,
+                                contentDescription = "Add Category",
+                                tint = AccentTeal,
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                text = "New",
+                                color = AccentTeal,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.SemiBold
                             )
                         }
                     }
@@ -367,6 +447,143 @@ fun AddTransactionSheet(
                         style = androidx.compose.material3.MaterialTheme.typography.titleMedium,
                         color = if (isValid) BackgroundDark else TextMuted
                     )
+                }
+            }
+        }
+
+        // ── Custom Category Dialogs ──────────────────────────────
+        if (showAddCategoryDialog) {
+            androidx.compose.ui.window.Dialog(onDismissRequest = { showAddCategoryDialog = false }) {
+                Surface(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .wrapContentHeight()
+                        .padding(24.dp),
+                    shape = RoundedCornerShape(24.dp),
+                    color = CardDark
+                ) {
+                    Column(
+                        modifier = Modifier.padding(24.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Text(
+                            text = "Add Custom Category",
+                            style = androidx.compose.material3.MaterialTheme.typography.titleMedium,
+                            color = TextPrimary,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
+                        OutlinedTextField(
+                            value = newCategoryName,
+                            onValueChange = { newCategoryName = it },
+                            label = { Text("Category Name", color = TextSecondary) },
+                            singleLine = true,
+                            colors = TextFieldColors(),
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        Spacer(modifier = Modifier.height(24.dp))
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.End
+                        ) {
+                            TextButton(onClick = {
+                                showAddCategoryDialog = false
+                                newCategoryName = ""
+                            }) {
+                                Text("Cancel", color = TextSecondary)
+                            }
+                            Spacer(modifier = Modifier.width(16.dp))
+                            Button(
+                                onClick = {
+                                    val trimmed = newCategoryName.trim()
+                                    if (trimmed.isNotEmpty()) {
+                                        if (selectedType == "INCOME") {
+                                            val updated = customIncomeCategories + trimmed
+                                            customIncomeCategories = updated
+                                            sharedPreferences.edit().putString("custom_income_categories", updated.joinToString("|")).apply()
+                                            selectedCategory = trimmed
+                                        } else if (selectedType == "EXPENSE") {
+                                            val updated = customExpenseCategories + trimmed
+                                            customExpenseCategories = updated
+                                            sharedPreferences.edit().putString("custom_expense_categories", updated.joinToString("|")).apply()
+                                            selectedCategory = trimmed
+                                        }
+                                    }
+                                    showAddCategoryDialog = false
+                                    newCategoryName = ""
+                                },
+                                enabled = newCategoryName.trim().isNotEmpty(),
+                                colors = ButtonDefaults.buttonColors(containerColor = AccentTeal)
+                            ) {
+                                Text("Add", color = BackgroundDark, fontWeight = FontWeight.Bold)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        if (showDeleteDialog) {
+            androidx.compose.ui.window.Dialog(onDismissRequest = { showDeleteDialog = false }) {
+                Surface(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .wrapContentHeight()
+                        .padding(24.dp),
+                    shape = RoundedCornerShape(24.dp),
+                    color = CardDark
+                ) {
+                    Column(
+                        modifier = Modifier.padding(24.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Text(
+                            text = "Delete Category?",
+                            style = androidx.compose.material3.MaterialTheme.typography.titleMedium,
+                            color = TextPrimary,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Text(
+                            text = "Are you sure you want to delete the category \"$categoryToDelete\"?",
+                            color = TextSecondary,
+                            fontSize = 14.sp,
+                            textAlign = TextAlign.Center
+                        )
+                        Spacer(modifier = Modifier.height(24.dp))
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.End
+                        ) {
+                            TextButton(onClick = { showDeleteDialog = false }) {
+                                Text("Cancel", color = TextSecondary)
+                            }
+                            Spacer(modifier = Modifier.width(16.dp))
+                            Button(
+                                onClick = {
+                                    if (selectedType == "INCOME") {
+                                        val updated = customIncomeCategories.filter { it != categoryToDelete }
+                                        customIncomeCategories = updated
+                                        sharedPreferences.edit().putString("custom_income_categories", updated.joinToString("|")).apply()
+                                        if (selectedCategory == categoryToDelete) {
+                                            selectedCategory = (defaultIncomeCategories + updated).first()
+                                        }
+                                    } else if (selectedType == "EXPENSE") {
+                                        val updated = customExpenseCategories.filter { it != categoryToDelete }
+                                        customExpenseCategories = updated
+                                        sharedPreferences.edit().putString("custom_expense_categories", updated.joinToString("|")).apply()
+                                        if (selectedCategory == categoryToDelete) {
+                                            selectedCategory = (defaultExpenseCategories + updated).first()
+                                        }
+                                    }
+                                    showDeleteDialog = false
+                                },
+                                colors = ButtonDefaults.buttonColors(containerColor = ExpenseRed)
+                            ) {
+                                Text("Delete", color = Color.White, fontWeight = FontWeight.Bold)
+                            }
+                        }
+                    }
                 }
             }
         }

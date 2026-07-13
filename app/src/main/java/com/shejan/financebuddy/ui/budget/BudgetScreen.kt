@@ -77,6 +77,8 @@ import com.shejan.financebuddy.ui.theme.DividerColor
 import com.shejan.financebuddy.ui.theme.ExpenseRed
 import com.shejan.financebuddy.ui.theme.GradientEnd
 import com.shejan.financebuddy.ui.theme.GradientStart
+import android.content.Context
+import androidx.compose.ui.platform.LocalContext
 import com.shejan.financebuddy.ui.theme.IncomeGreen
 import com.shejan.financebuddy.ui.theme.TextMuted
 import com.shejan.financebuddy.ui.theme.TextPrimary
@@ -104,6 +106,19 @@ private val categoryColors = mapOf(
     "Medical"       to "#FF3B6F",
     "Other"         to "#8A94B2"
 )
+
+private val niceColors = listOf(
+    "#FF5C7C", "#00C897", "#0096FF", "#FFBD2E", "#7C5CFC",
+    "#FF7A45", "#00D4AA", "#FF3B6F", "#E040FB", "#00E5FF",
+    "#FFB300", "#1B5E20", "#3F51B5", "#9C27B0", "#00BCD4"
+)
+
+private fun getCategoryColor(category: String): String {
+    val existingColor = categoryColors[category]
+    if (existingColor != null) return existingColor
+    val index = Math.abs(category.hashCode()) % niceColors.size
+    return niceColors[index]
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -602,17 +617,34 @@ fun AddBudgetSheet(
     onDismiss: () -> Unit,
     onSave: (BudgetEntity) -> Unit
 ) {
-    var selectedCategory by remember { mutableStateOf(expenseCategories.first()) }
+    val context = LocalContext.current
+    val sharedPreferences = remember { context.getSharedPreferences("finance_buddy_prefs", Context.MODE_PRIVATE) }
+    val customExpenseCategories = remember {
+        sharedPreferences.getString("custom_expense_categories", "")
+            ?.split("|")
+            ?.filter { it.isNotEmpty() }
+            ?: emptyList()
+    }
+    val allExpenseCategories = remember(customExpenseCategories) {
+        expenseCategories + customExpenseCategories
+    }
+
+    var selectedCategory by remember(allExpenseCategories) {
+        val availableCats = allExpenseCategories.filter { it !in existingCategories }
+        mutableStateOf(if (availableCats.isNotEmpty()) availableCats.first() else "")
+    }
     var limitAmount      by remember { mutableStateOf("") }
     var error            by remember { mutableStateOf<String?>(null) }
 
     // Available categories = those not already budgeted
-    val available = expenseCategories.filter { it !in existingCategories }
+    val available = remember(allExpenseCategories, existingCategories) {
+        allExpenseCategories.filter { it !in existingCategories }
+    }
 
     // If all categories are budgeted, close the sheet
     LaunchedEffect(available) {
         if (available.isEmpty()) onDismiss()
-        else selectedCategory = available.first()
+        else if (selectedCategory !in available) selectedCategory = available.first()
     }
 
     ModalBottomSheet(
@@ -653,7 +685,7 @@ fun AddBudgetSheet(
                 available.forEach { cat ->
                     val isSelected = selectedCategory == cat
                     val catColor = try {
-                        Color(android.graphics.Color.parseColor(categoryColors[cat] ?: "#8A94B2"))
+                        Color(android.graphics.Color.parseColor(getCategoryColor(cat)))
                     } catch (e: Exception) { AccentTeal }
 
                     Box(
@@ -724,7 +756,7 @@ fun AddBudgetSheet(
                                 BudgetEntity(
                                     category    = selectedCategory,
                                     limitAmount = amount,
-                                    colorHex    = categoryColors[selectedCategory] ?: "#8A94B2"
+                                    colorHex    = getCategoryColor(selectedCategory)
                                 )
                             )
                         }
