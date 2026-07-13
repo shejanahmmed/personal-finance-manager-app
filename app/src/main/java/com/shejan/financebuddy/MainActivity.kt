@@ -26,7 +26,7 @@ import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.Sms
+import androidx.compose.material.icons.filled.Inbox
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
@@ -342,6 +342,15 @@ fun MainDashboardContainer(
                     badgeText = "New",
                     onClick = { scope.launch { drawerState.close() } }
                 )
+                DrawerMenuItem(
+                    icon = Icons.Default.Inbox,
+                    label = "Transaction Inbox",
+                    badgeText = if (pendingCount > 0) pendingCount.toString() else null,
+                    onClick = {
+                        scope.launch { drawerState.close() }
+                        onNavigateToPending()
+                    }
+                )
 
                 Spacer(modifier = Modifier.weight(1f))
 
@@ -397,7 +406,7 @@ fun MainDashboardContainer(
                         label    = { Text("Goals") },
                         colors   = NavigationBarItemColors()
                     )
-                    // Pending SMS tab with live badge
+                    // Pending SMS/Inbox tab with live badge
                     NavigationBarItem(
                         selected = false,
                         onClick  = onNavigateToPending,
@@ -416,12 +425,12 @@ fun MainDashboardContainer(
                                 }
                             ) {
                                 Icon(
-                                    imageVector = Icons.Default.Sms,
-                                    contentDescription = "Pending SMS",
+                                    imageVector = Icons.Default.Inbox,
+                                    contentDescription = "Transaction Inbox",
                                 )
                             }
                         },
-                        label    = { Text("SMS") },
+                        label    = { Text("Inbox") },
                         colors   = NavigationBarItemColors()
                     )
                 }

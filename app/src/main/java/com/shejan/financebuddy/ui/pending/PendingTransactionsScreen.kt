@@ -11,6 +11,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.Notes
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
@@ -18,6 +19,10 @@ import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.SwapHoriz
+import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material.icons.filled.Category
+import androidx.compose.material.icons.filled.CreditCard
+import androidx.compose.material.icons.filled.Sms
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -25,6 +30,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
@@ -62,7 +68,7 @@ fun PendingTransactionsScreen(
     var editTarget by remember { mutableStateOf<PendingSmsTransactionEntity?>(null) }
     var showDismissAllDialog by remember { mutableStateOf(false) }
 
-    // Edit bottom sheet
+    // Edit bottom sheet state
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
     Box(
@@ -72,14 +78,17 @@ fun PendingTransactionsScreen(
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
 
-            // ── Top Bar ──────────────────────────────────────────────────────
+            // ── Premium Top Bar ──────────────────────────────────────────────
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .background(
-                        Brush.verticalGradient(listOf(CardDarker, BackgroundDark))
+                        Brush.verticalGradient(
+                            colors = listOf(CardDarker, BackgroundDark.copy(alpha = 0.95f))
+                        )
                     )
-                    .padding(top = 48.dp, start = 16.dp, end = 16.dp, bottom = 16.dp)
+                    .border(width = 1.dp, color = DividerColor.copy(alpha = 0.5f), shape = RoundedCornerShape(0.dp))
+                    .padding(top = 44.dp, start = 8.dp, end = 16.dp, bottom = 16.dp)
             ) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -95,45 +104,62 @@ fun PendingTransactionsScreen(
                     Spacer(modifier = Modifier.width(4.dp))
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            text = "Pending Transactions",
+                            text = "Transaction Inbox",
                             color = TextPrimary,
-                            fontSize = 18.sp,
-                            fontWeight = FontWeight.Bold
+                            fontSize = 20.sp,
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = (-0.5).sp
                         )
                         Text(
-                            text = "${pendingList.size} detected from SMS",
+                            text = if (pendingList.isEmpty()) "No unreviewed transactions" else "${pendingList.size} unreviewed transactions",
                             color = TextSecondary,
-                            fontSize = 12.sp
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Medium
                         )
                     }
 
                     if (pendingList.isNotEmpty()) {
-                        TextButton(onClick = { showDismissAllDialog = true }) {
-                            Text("Dismiss All", color = ExpenseRed, fontSize = 12.sp)
+                        Button(
+                            onClick = { showDismissAllDialog = true },
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = ExpenseRed.copy(alpha = 0.12f),
+                                contentColor = ExpenseRed
+                            ),
+                            shape = RoundedCornerShape(10.dp),
+                            contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp),
+                            modifier = Modifier.height(34.dp)
+                        ) {
+                            Text("Dismiss All", fontSize = 11.sp, fontWeight = FontWeight.Bold)
                         }
                     }
                 }
             }
 
-            // ── Content ──────────────────────────────────────────────────────
+            // ── Scrollable list with entrance animations ──────────────────────
             if (pendingList.isEmpty()) {
                 EmptyState()
             } else {
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 16.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
                     items(pendingList, key = { it.id }) { pending ->
-                        PendingTransactionCard(
-                            pending  = pending,
-                            accounts = accounts,
-                            onConfirm = { onConfirm(pending, it) },
-                            onDismiss = { onDismiss(pending) },
-                            onEdit    = { editTarget = pending }
-                        )
+                        AnimatedVisibility(
+                            visible = true,
+                            enter = fadeIn() + expandVertically(),
+                            exit = fadeOut() + shrinkVertically()
+                        ) {
+                            PendingTransactionCard(
+                                pending   = pending,
+                                accounts  = accounts,
+                                onConfirm = { onConfirm(pending, it) },
+                                onDismiss = { onDismiss(pending) },
+                                onEdit    = { editTarget = pending }
+                            )
+                        }
                     }
-                    item { Spacer(modifier = Modifier.height(24.dp)) }
+                    item { Spacer(modifier = Modifier.height(32.dp)) }
                 }
             }
         }
@@ -144,7 +170,18 @@ fun PendingTransactionsScreen(
                 onDismissRequest = { editTarget = null },
                 sheetState       = sheetState,
                 containerColor   = CardDarker,
-                shape            = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
+                shape            = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
+                tonalElevation   = 8.dp,
+                dragHandle = {
+                    Box(
+                        modifier = Modifier
+                            .padding(vertical = 12.dp)
+                            .width(36.dp)
+                            .height(4.dp)
+                            .clip(CircleShape)
+                            .background(DividerColor)
+                    )
+                }
             ) {
                 EditPendingSheet(
                     pending  = target,
@@ -158,19 +195,36 @@ fun PendingTransactionsScreen(
             }
         }
 
-        // ── Dismiss All Confirmation ───────────────────────────────────────
+        // ── Dismiss All Dialog ─────────────────────────────────────────────
         if (showDismissAllDialog) {
             AlertDialog(
                 onDismissRequest = { showDismissAllDialog = false },
                 containerColor   = CardDarker,
-                title = { Text("Dismiss All?", color = TextPrimary, fontWeight = FontWeight.Bold) },
-                text  = { Text("All ${pendingList.size} pending SMS transactions will be removed without saving.", color = TextSecondary) },
+                title = {
+                    Text(
+                        "Dismiss All transactions?",
+                        color = TextPrimary,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 18.sp
+                    )
+                },
+                text = {
+                    Text(
+                        "All ${pendingList.size} unconfirmed SMS detections will be permanently cleared from the queue.",
+                        color = TextSecondary,
+                        fontSize = 14.sp
+                    )
+                },
                 confirmButton = {
-                    TextButton(onClick = {
-                        onDismissAll()
-                        showDismissAllDialog = false
-                    }) {
-                        Text("Dismiss All", color = ExpenseRed, fontWeight = FontWeight.Bold)
+                    Button(
+                        onClick = {
+                            onDismissAll()
+                            showDismissAllDialog = false
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = ExpenseRed),
+                        shape = RoundedCornerShape(10.dp)
+                    ) {
+                        Text("Dismiss All", color = Color.White, fontWeight = FontWeight.Bold)
                     }
                 },
                 dismissButton = {
@@ -183,7 +237,7 @@ fun PendingTransactionsScreen(
     }
 }
 
-// ─── Pending Card ─────────────────────────────────────────────────────────────
+// ─── Pending Card Composable ──────────────────────────────────────────────────
 
 @Composable
 private fun PendingTransactionCard(
@@ -207,29 +261,47 @@ private fun PendingTransactionCard(
         else       -> Icons.Default.SwapHoriz
     }
 
-    Card(
-        modifier  = Modifier.fillMaxWidth(),
-        shape     = RoundedCornerShape(16.dp),
-        colors    = CardDefaults.cardColors(containerColor = CardDark),
-        elevation = CardDefaults.cardElevation(0.dp)
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(20.dp))
+            .background(CardDark)
+            .border(
+                border = BorderStroke(1.dp, DividerColor.copy(alpha = 0.7f)),
+                shape = RoundedCornerShape(20.dp)
+            )
     ) {
-        Column(modifier = Modifier.padding(16.dp)) {
+        // Left side type indicator bar
+        Box(
+            modifier = Modifier
+                .align(Alignment.CenterStart)
+                .fillMaxHeight()
+                .width(4.dp)
+                .background(typeColor)
+        )
 
-            // ── Header row ───────────────────────────────────────────────────
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                // Type icon badge
+        Column(
+            modifier = Modifier
+                .padding(start = 16.dp, top = 16.dp, end = 16.dp, bottom = 16.dp)
+        ) {
+            // Header Row (Origin & Amount)
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                // Circle Badge for Institution Icon
                 Box(
                     modifier = Modifier
-                        .size(40.dp)
+                        .size(42.dp)
                         .clip(CircleShape)
-                        .background(typeColor.copy(alpha = 0.15f)),
+                        .background(typeColor.copy(alpha = 0.12f)),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
                         imageVector = typeIcon,
                         contentDescription = null,
                         tint = typeColor,
-                        modifier = Modifier.size(22.dp)
+                        modifier = Modifier.size(24.dp)
                     )
                 }
 
@@ -239,128 +311,226 @@ private fun PendingTransactionCard(
                     Text(
                         text = pending.detectedAccountName,
                         color = TextPrimary,
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.SemiBold,
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.Bold,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
                     Text(
                         text = formatTimestamp(pending.receivedAt),
                         color = TextMuted,
-                        fontSize = 11.sp
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Medium
                     )
                 }
 
-                // Amount
                 Column(horizontalAlignment = Alignment.End) {
                     Text(
                         text = "৳${formatAmount(pending.amount)}",
                         color = typeColor,
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.Bold
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.ExtraBold,
+                        letterSpacing = (-0.5).sp
                     )
-                    // Type badge
+                    Spacer(modifier = Modifier.height(2.dp))
                     Box(
                         modifier = Modifier
                             .clip(RoundedCornerShape(6.dp))
                             .background(typeColor.copy(alpha = 0.12f))
                             .padding(horizontal = 6.dp, vertical = 2.dp)
                     ) {
-                        Text(typeLabel, color = typeColor, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                        Text(
+                            text = typeLabel,
+                            color = typeColor,
+                            fontSize = 9.sp,
+                            fontWeight = FontWeight.ExtraBold
+                        )
                     }
                 }
             }
 
-            // ── Details row ──────────────────────────────────────────────────
-            if (pending.note.isNotBlank() || matchedAccount != null || pending.category.isNotBlank()) {
-                Spacer(modifier = Modifier.height(10.dp))
-                HorizontalDivider(color = DividerColor)
-                Spacer(modifier = Modifier.height(10.dp))
+            Spacer(modifier = Modifier.height(14.dp))
 
-                if (pending.note.isNotBlank()) {
-                    DetailRow(label = "Note", value = pending.note)
+            // Unmatched Warning Banner
+            if (pending.fromAccountId == -1) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(TransferYellow.copy(alpha = 0.08f), RoundedCornerShape(12.dp))
+                        .border(1.dp, TransferYellow.copy(alpha = 0.25f), RoundedCornerShape(12.dp))
+                        .padding(10.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Warning,
+                        contentDescription = null,
+                        tint = TransferYellow,
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "Unknown bank/MFS source. Please link an account.",
+                        color = TransferYellow,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold
+                    )
                 }
-                if (pending.category.isNotBlank()) {
-                    DetailRow(label = "Category", value = pending.category)
+                Spacer(modifier = Modifier.height(12.dp))
+            }
+
+            // Metadata card section
+            if (pending.note.isNotBlank() || matchedAccount != null || pending.category.isNotBlank()) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(CardDarker.copy(alpha = 0.6f), RoundedCornerShape(12.dp))
+                        .border(1.dp, DividerColor.copy(alpha = 0.5f), RoundedCornerShape(12.dp))
+                        .padding(12.dp)
+                ) {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        if (pending.note.isNotBlank()) {
+                            DetailRowItem(
+                                icon = Icons.AutoMirrored.Filled.Notes,
+                                label = "Note",
+                                value = pending.note
+                            )
+                        }
+                        if (pending.category.isNotBlank()) {
+                            DetailRowItem(
+                                icon = Icons.Default.Category,
+                                label = "Category",
+                                value = pending.category
+                            )
+                        }
+                        DetailRowItem(
+                            icon = Icons.Default.CreditCard,
+                            label = "Account",
+                            value = matchedAccount?.name ?: "Tap Edit to choose account",
+                            valueColor = if (matchedAccount != null) TextSecondary else TransferYellow
+                        )
+                    }
                 }
-                if (matchedAccount != null) {
-                    DetailRow(label = "Account", value = matchedAccount.name)
-                } else {
-                    DetailRow(label = "Account", value = "⚠ Not matched — please select", valueColor = TransferYellow)
+                Spacer(modifier = Modifier.height(12.dp))
+            }
+
+            // Raw SMS Message bubble
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(CardDarker, RoundedCornerShape(12.dp))
+                    .padding(12.dp)
+            ) {
+                Column {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Sms,
+                            contentDescription = null,
+                            tint = AccentTeal.copy(alpha = 0.7f),
+                            modifier = Modifier.size(12.dp)
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = "SMS SENDER: ${pending.senderAddress}",
+                            color = TextMuted,
+                            fontSize = 9.sp,
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = 0.5.sp
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Text(
+                        text = pending.rawSmsBody,
+                        color = TextSecondary,
+                        fontSize = 11.sp,
+                        lineHeight = 16.sp,
+                        fontWeight = FontWeight.Normal
+                    )
                 }
             }
 
-            // ── SMS snippet ──────────────────────────────────────────────────
-            Spacer(modifier = Modifier.height(10.dp))
-            Text(
-                text = "\"${pending.rawSmsBody.take(120)}${if (pending.rawSmsBody.length > 120) "…" else ""}\"",
-                color = TextMuted,
-                fontSize = 10.sp,
-                lineHeight = 14.sp,
-                fontStyle = androidx.compose.ui.text.font.FontStyle.Italic
-            )
+            Spacer(modifier = Modifier.height(16.dp))
 
-            // ── Action buttons ───────────────────────────────────────────────
-            Spacer(modifier = Modifier.height(14.dp))
+            // Action Buttons
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                // Dismiss
+                // Dismiss Button
                 OutlinedButton(
                     onClick = onDismiss,
                     modifier = Modifier.weight(1f),
-                    shape = RoundedCornerShape(10.dp),
-                    colors = ButtonDefaults.outlinedButtonColors(contentColor = ExpenseRed),
-                    border = BorderStroke(1.dp, ExpenseRed.copy(alpha = 0.4f))
+                    shape = RoundedCornerShape(12.dp),
+                    colors = ButtonDefaults.outlinedButtonColors(
+                        contentColor = ExpenseRed,
+                        containerColor = Color.Transparent
+                    ),
+                    border = BorderStroke(1.dp, ExpenseRed.copy(alpha = 0.3f))
                 ) {
-                    Icon(Icons.Default.Close, contentDescription = null, modifier = Modifier.size(14.dp))
+                    Icon(
+                        imageVector = Icons.Default.Close,
+                        contentDescription = null,
+                        modifier = Modifier.size(14.dp)
+                    )
                     Spacer(modifier = Modifier.width(4.dp))
-                    Text("Dismiss", fontSize = 12.sp)
+                    Text("Dismiss", fontSize = 12.sp, fontWeight = FontWeight.Bold)
                 }
 
-                // Edit
+                // Edit Button
                 OutlinedButton(
                     onClick = onEdit,
                     modifier = Modifier.weight(1f),
-                    shape = RoundedCornerShape(10.dp),
-                    colors = ButtonDefaults.outlinedButtonColors(contentColor = TextSecondary),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = ButtonDefaults.outlinedButtonColors(
+                        contentColor = TextSecondary,
+                        containerColor = Color.Transparent
+                    ),
                     border = BorderStroke(1.dp, DividerColor)
                 ) {
-                    Icon(Icons.Default.Edit, contentDescription = null, modifier = Modifier.size(14.dp))
+                    Icon(
+                        imageVector = Icons.Default.Edit,
+                        contentDescription = null,
+                        modifier = Modifier.size(14.dp)
+                    )
                     Spacer(modifier = Modifier.width(4.dp))
-                    Text("Edit", fontSize = 12.sp)
+                    Text("Edit", fontSize = 12.sp, fontWeight = FontWeight.Bold)
                 }
 
-                // Confirm
+                // Confirm Button
+                val canConfirm = pending.fromAccountId != -1
                 Button(
                     onClick = { onConfirm(pending) },
                     modifier = Modifier.weight(1f),
-                    shape = RoundedCornerShape(10.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = IncomeGreen),
-                    enabled = pending.fromAccountId != -1
+                    shape = RoundedCornerShape(12.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = IncomeGreen,
+                        disabledContainerColor = IncomeGreen.copy(alpha = 0.15f),
+                        disabledContentColor = TextMuted
+                    ),
+                    enabled = canConfirm
                 ) {
-                    Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(14.dp), tint = BackgroundDark)
+                    Icon(
+                        imageVector = Icons.Default.Check,
+                        contentDescription = null,
+                        modifier = Modifier.size(14.dp),
+                        tint = if (canConfirm) BackgroundDark else TextMuted
+                    )
                     Spacer(modifier = Modifier.width(4.dp))
-                    Text("Confirm", fontSize = 12.sp, color = BackgroundDark, fontWeight = FontWeight.Bold)
+                    Text(
+                        text = "Confirm",
+                        fontSize = 12.sp,
+                        color = if (canConfirm) BackgroundDark else TextMuted,
+                        fontWeight = FontWeight.ExtraBold
+                    )
                 }
-            }
-
-            if (pending.fromAccountId == -1) {
-                Spacer(modifier = Modifier.height(6.dp))
-                Text(
-                    text = "⚠ Tap Edit to select an account before confirming",
-                    color = TransferYellow,
-                    fontSize = 10.sp,
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier.fillMaxWidth()
-                )
             }
         }
     }
 }
 
-// ─── Edit Sheet ───────────────────────────────────────────────────────────────
+// ─── Edit Bottom Sheet Composable ─────────────────────────────────────────────
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -370,16 +540,16 @@ private fun EditPendingSheet(
     onSave: (PendingSmsTransactionEntity) -> Unit,
     onCancel: () -> Unit
 ) {
-    var amount       by remember { mutableStateOf(pending.amount.toString()) }
-    var type         by remember { mutableStateOf(pending.type) }
-    var category     by remember { mutableStateOf(pending.category) }
-    var note         by remember { mutableStateOf(pending.note) }
+    var amount        by remember { mutableStateOf(pending.amount.toString()) }
+    var type          by remember { mutableStateOf(pending.type) }
+    var category      by remember { mutableStateOf(pending.category) }
+    var note          by remember { mutableStateOf(pending.note) }
     var fromAccountId by remember { mutableStateOf(pending.fromAccountId) }
-    var toAccountId  by remember { mutableStateOf(pending.toAccountId) }
+    var toAccountId   by remember { mutableStateOf(pending.toAccountId) }
 
-    var showCategoryDropdown by remember { mutableStateOf(false) }
+    var showCategoryDropdown    by remember { mutableStateOf(false) }
     var showFromAccountDropdown by remember { mutableStateOf(false) }
-    var showToAccountDropdown by remember { mutableStateOf(false) }
+    var showToAccountDropdown   by remember { mutableStateOf(false) }
 
     Column(
         modifier = Modifier
@@ -387,49 +557,39 @@ private fun EditPendingSheet(
             .padding(horizontal = 20.dp, vertical = 8.dp)
             .verticalScroll(rememberScrollState())
     ) {
-        // Handle
-        Box(
-            modifier = Modifier
-                .width(40.dp)
-                .height(4.dp)
-                .clip(CircleShape)
-                .background(DividerColor)
-                .align(Alignment.CenterHorizontally)
-        )
-
-        Spacer(modifier = Modifier.height(20.dp))
-
         Text(
-            text = "Edit Transaction",
+            text = "Fine-tune Transaction",
             color = TextPrimary,
-            fontSize = 18.sp,
-            fontWeight = FontWeight.Bold
+            fontSize = 20.sp,
+            fontWeight = FontWeight.Bold,
+            letterSpacing = (-0.5).sp
         )
         Text(
-            text = "from ${pending.senderAddress}",
+            text = "From message: \"${pending.senderAddress}\"",
             color = TextSecondary,
-            fontSize = 12.sp
+            fontSize = 12.sp,
+            fontWeight = FontWeight.Medium
         )
 
         Spacer(modifier = Modifier.height(20.dp))
 
         // ── Amount ──────────────────────────────────────────────────────────
-        SheetLabel("Amount (৳)")
+        SheetLabel("Transaction Amount (৳)")
         OutlinedTextField(
             value = amount,
             onValueChange = { amount = it },
             modifier = Modifier.fillMaxWidth(),
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-            shape = RoundedCornerShape(12.dp),
+            shape = RoundedCornerShape(14.dp),
             colors = outlinedTextFieldColors(),
             singleLine = true,
-            leadingIcon = { Text("৳", color = AccentTeal, fontWeight = FontWeight.Bold, modifier = Modifier.padding(start = 8.dp)) }
+            leadingIcon = { Text("৳", color = AccentTeal, fontWeight = FontWeight.Bold, fontSize = 16.sp, modifier = Modifier.padding(start = 12.dp)) }
         )
 
         Spacer(modifier = Modifier.height(14.dp))
 
-        // ── Type ─────────────────────────────────────────────────────────────
-        SheetLabel("Type")
+        // ── Type Chips ───────────────────────────────────────────────────────
+        SheetLabel("Transaction Type")
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             listOf("INCOME", "EXPENSE", "TRANSFER").forEach { t ->
                 val selected = type == t
@@ -441,9 +601,9 @@ private fun EditPendingSheet(
                 FilterChip(
                     selected = selected,
                     onClick  = { type = t },
-                    label    = { Text(t, fontSize = 11.sp, fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal) },
+                    label    = { Text(t, fontSize = 11.sp, fontWeight = FontWeight.ExtraBold) },
                     colors   = FilterChipDefaults.filterChipColors(
-                        selectedContainerColor = color.copy(alpha = 0.2f),
+                        selectedContainerColor = color.copy(alpha = 0.15f),
                         selectedLabelColor     = color,
                         labelColor             = TextSecondary,
                         containerColor         = CardDark
@@ -451,14 +611,15 @@ private fun EditPendingSheet(
                     border = FilterChipDefaults.filterChipBorder(
                         enabled = true, selected = selected,
                         selectedBorderColor = color, borderColor = DividerColor
-                    )
+                    ),
+                    shape = RoundedCornerShape(10.dp)
                 )
             }
         }
 
         Spacer(modifier = Modifier.height(14.dp))
 
-        // ── Category ─────────────────────────────────────────────────────────
+        // ── Category Dropdown ────────────────────────────────────────────────
         SheetLabel("Category")
         ExposedDropdownMenuBox(
             expanded = showCategoryDropdown,
@@ -468,9 +629,11 @@ private fun EditPendingSheet(
                 value = category,
                 onValueChange = {},
                 readOnly = true,
-                modifier = Modifier.fillMaxWidth().menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable),
                 trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = showCategoryDropdown) },
-                shape = RoundedCornerShape(12.dp),
+                shape = RoundedCornerShape(14.dp),
                 colors = outlinedTextFieldColors()
             )
             ExposedDropdownMenu(
@@ -489,22 +652,22 @@ private fun EditPendingSheet(
 
         Spacer(modifier = Modifier.height(14.dp))
 
-        // ── Note ─────────────────────────────────────────────────────────────
-        SheetLabel("Note / Merchant")
+        // ── Note / Merchant ──────────────────────────────────────────────────
+        SheetLabel("Merchant / Description")
         OutlinedTextField(
             value = note,
             onValueChange = { note = it },
             modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(12.dp),
+            shape = RoundedCornerShape(14.dp),
             colors = outlinedTextFieldColors(),
             maxLines = 2,
-            placeholder = { Text("e.g. Shajahan Restaurant", color = TextMuted) }
+            placeholder = { Text("e.g. bKash cash out fee, Restora...", color = TextMuted) }
         )
 
         Spacer(modifier = Modifier.height(14.dp))
 
-        // ── From Account ──────────────────────────────────────────────────────
-        SheetLabel("Account")
+        // ── Source Account Dropdown ──────────────────────────────────────────
+        SheetLabel(if (type == "TRANSFER") "From Account" else "Account")
         ExposedDropdownMenuBox(
             expanded = showFromAccountDropdown,
             onExpandedChange = { showFromAccountDropdown = it }
@@ -513,9 +676,11 @@ private fun EditPendingSheet(
                 value = accounts.firstOrNull { it.id == fromAccountId }?.name ?: "Select account",
                 onValueChange = {},
                 readOnly = true,
-                modifier = Modifier.fillMaxWidth().menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable),
                 trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = showFromAccountDropdown) },
-                shape = RoundedCornerShape(12.dp),
+                shape = RoundedCornerShape(14.dp),
                 colors = outlinedTextFieldColors()
             )
             ExposedDropdownMenu(
@@ -532,10 +697,10 @@ private fun EditPendingSheet(
             }
         }
 
-        // ── To Account (Transfer only) ─────────────────────────────────────
+        // ── Destination Account Dropdown (TRANSFER only) ──────────────────────
         if (type == "TRANSFER") {
             Spacer(modifier = Modifier.height(14.dp))
-            SheetLabel("Transfer To Account")
+            SheetLabel("To Account")
             ExposedDropdownMenuBox(
                 expanded = showToAccountDropdown,
                 onExpandedChange = { showToAccountDropdown = it }
@@ -544,9 +709,11 @@ private fun EditPendingSheet(
                     value = accounts.firstOrNull { it.id == toAccountId }?.name ?: "Select destination",
                     onValueChange = {},
                     readOnly = true,
-                    modifier = Modifier.fillMaxWidth().menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable),
                     trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = showToAccountDropdown) },
-                    shape = RoundedCornerShape(12.dp),
+                    shape = RoundedCornerShape(14.dp),
                     colors = outlinedTextFieldColors()
                 )
                 ExposedDropdownMenu(
@@ -564,9 +731,9 @@ private fun EditPendingSheet(
             }
         }
 
-        Spacer(modifier = Modifier.height(24.dp))
+        Spacer(modifier = Modifier.height(28.dp))
 
-        // ── Save button ───────────────────────────────────────────────────────
+        // ── Save and Cancel Buttons ──────────────────────────────────────────
         Button(
             onClick = {
                 val parsedAmount = amount.toDoubleOrNull() ?: pending.amount
@@ -583,36 +750,34 @@ private fun EditPendingSheet(
             },
             modifier = Modifier
                 .fillMaxWidth()
-                .height(50.dp),
+                .height(52.dp),
             shape = RoundedCornerShape(14.dp),
-            colors = ButtonDefaults.buttonColors(
-                containerColor = AccentTeal
-            )
+            colors = ButtonDefaults.buttonColors(containerColor = AccentTeal)
         ) {
             Icon(Icons.Default.Check, contentDescription = null, tint = BackgroundDark)
             Spacer(modifier = Modifier.width(8.dp))
-            Text("Save Changes", color = BackgroundDark, fontWeight = FontWeight.Bold)
+            Text("Update & Save Details", color = BackgroundDark, fontWeight = FontWeight.Bold)
         }
 
-        Spacer(modifier = Modifier.height(8.dp))
+        Spacer(modifier = Modifier.height(10.dp))
 
         OutlinedButton(
             onClick = onCancel,
             modifier = Modifier
                 .fillMaxWidth()
-                .height(46.dp),
+                .height(48.dp),
             shape = RoundedCornerShape(14.dp),
             colors = ButtonDefaults.outlinedButtonColors(contentColor = TextSecondary),
             border = BorderStroke(1.dp, DividerColor)
         ) {
-            Text("Cancel")
+            Text("Go Back")
         }
 
         Spacer(modifier = Modifier.height(32.dp))
     }
 }
 
-// ─── Empty State ─────────────────────────────────────────────────────────────
+// ─── Empty State Composable ──────────────────────────────────────────────────
 
 @Composable
 private fun EmptyState() {
@@ -620,49 +785,95 @@ private fun EmptyState() {
         modifier = Modifier.fillMaxSize(),
         contentAlignment = Alignment.Center
     ) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = Modifier.padding(horizontal = 32.dp)
+        ) {
             Box(
                 modifier = Modifier
-                    .size(80.dp)
+                    .size(90.dp)
                     .clip(CircleShape)
-                    .background(CardDark),
+                    .background(CardDark)
+                    .border(1.dp, DividerColor, CircleShape),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
                     imageVector = Icons.Default.CheckCircle,
                     contentDescription = null,
-                    tint = IncomeGreen.copy(alpha = 0.7f),
-                    modifier = Modifier.size(40.dp)
+                    tint = IncomeGreen,
+                    modifier = Modifier.size(46.dp)
                 )
             }
-            Spacer(modifier = Modifier.height(16.dp))
-            Text("All caught up!", color = TextPrimary, fontSize = 18.sp, fontWeight = FontWeight.Bold)
-            Spacer(modifier = Modifier.height(6.dp))
+            Spacer(modifier = Modifier.height(20.dp))
             Text(
-                text = "No pending SMS transactions.\nNew bank/MFS messages will appear here automatically.",
+                text = "Perfect Sync!",
+                color = TextPrimary,
+                fontSize = 18.sp,
+                fontWeight = FontWeight.Bold
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = "All detected bank and MFS SMS messages have been processed. New notifications will appear here instantly.",
                 color = TextSecondary,
                 fontSize = 13.sp,
                 textAlign = TextAlign.Center,
-                lineHeight = 20.sp
+                lineHeight = 20.sp,
+                fontWeight = FontWeight.Medium
             )
         }
     }
 }
 
-// ─── Helper composables ───────────────────────────────────────────────────────
+// ─── Helper Custom Row Composable ─────────────────────────────────────────────
+
+@Composable
+private fun DetailRowItem(
+    icon: ImageVector,
+    label: String,
+    value: String,
+    valueColor: Color = TextSecondary
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            tint = TextMuted,
+            modifier = Modifier.size(16.dp)
+        )
+        Spacer(modifier = Modifier.width(8.dp))
+        Text(
+            text = label,
+            color = TextMuted,
+            fontSize = 12.sp,
+            fontWeight = FontWeight.Medium,
+            modifier = Modifier.width(72.dp)
+        )
+        Text(
+            text = value,
+            color = valueColor,
+            fontSize = 12.sp,
+            fontWeight = FontWeight.Bold,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.weight(1f)
+        )
+    }
+}
+
+// ─── Helper Styles ────────────────────────────────────────────────────────────
 
 @Composable
 private fun SheetLabel(text: String) {
-    Text(text, color = TextSecondary, fontSize = 12.sp, fontWeight = FontWeight.Medium)
+    Text(
+        text = text,
+        color = TextSecondary,
+        fontSize = 12.sp,
+        fontWeight = FontWeight.Bold
+    )
     Spacer(modifier = Modifier.height(6.dp))
-}
-
-@Composable
-private fun DetailRow(label: String, value: String, valueColor: Color = TextSecondary) {
-    Row(modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp)) {
-        Text(label, color = TextMuted, fontSize = 12.sp, modifier = Modifier.width(80.dp))
-        Text(value, color = valueColor, fontSize = 12.sp, modifier = Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis)
-    }
 }
 
 @Composable
@@ -672,11 +883,11 @@ private fun outlinedTextFieldColors() = OutlinedTextFieldDefaults.colors(
     focusedTextColor     = TextPrimary,
     unfocusedTextColor   = TextPrimary,
     cursorColor          = AccentTeal,
-    focusedContainerColor   = CardDark,
-    unfocusedContainerColor = CardDark
+    focusedContainerColor   = CardDarker,
+    unfocusedContainerColor = CardDarker
 )
 
-// ─── Format helpers ───────────────────────────────────────────────────────────
+// ─── Format Helpers ───────────────────────────────────────────────────────────
 
 private fun formatAmount(amount: Double): String {
     val nf = NumberFormat.getNumberInstance()
@@ -689,3 +900,4 @@ private fun formatTimestamp(ms: Long): String {
     val sdf = SimpleDateFormat("dd MMM yyyy, hh:mm a", Locale.getDefault())
     return sdf.format(Date(ms))
 }
+
