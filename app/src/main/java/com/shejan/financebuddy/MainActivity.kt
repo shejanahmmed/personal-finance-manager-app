@@ -5,6 +5,11 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -39,9 +44,11 @@ import androidx.compose.material3.ModalNavigationDrawer
 import androidx.compose.material3.NavigationDrawerItem
 import androidx.compose.material3.NavigationDrawerItemDefaults
 import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
@@ -70,11 +77,13 @@ import androidx.compose.ui.graphics.Brush
 import com.shejan.financebuddy.R
 import com.shejan.financebuddy.data.PreferencesManager
 import com.shejan.financebuddy.data.db.FinanceDatabase
+import com.shejan.financebuddy.data.db.AccountEntity
 import com.shejan.financebuddy.data.db.TransactionEntity
 import com.shejan.financebuddy.data.db.BudgetEntity
 import com.shejan.financebuddy.ui.budget.BudgetScreen
 import com.shejan.financebuddy.ui.goals.GoalsScreen
 import com.shejan.financebuddy.ui.home.HomeScreen
+import com.shejan.financebuddy.ui.home.TransactionListScreen
 import com.shejan.financebuddy.ui.onboarding.OnboardingScreenRoot
 import com.shejan.financebuddy.ui.pending.PendingTransactionsScreen
 import com.shejan.financebuddy.ui.pending.PendingTransactionsViewModel
@@ -109,10 +118,15 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             FinanceBuddyTheme {
-                AppNavigation(
-                    preferencesManager = preferencesManager,
-                    database           = database
-                )
+                Surface(
+                    modifier = Modifier.fillMaxSize(),
+                    color = MaterialTheme.colorScheme.background
+                ) {
+                    AppNavigation(
+                        preferencesManager = preferencesManager,
+                        database           = database
+                    )
+                }
             }
         }
     }
@@ -126,6 +140,10 @@ fun AppNavigation(
     database: FinanceDatabase
 ) {
     val onboardingCompleted by preferencesManager.isOnboardingCompleted.collectAsState(initial = null)
+
+    // Lift database flows to parent level to prevent reload screen flashing on transitions
+    val accounts by database.accountDao().getAllAccounts().collectAsState(initial = emptyList())
+    val allTransactions by database.transactionDao().getAllTransactions().collectAsState(initial = emptyList())
 
     if (onboardingCompleted == null) {
         // Render a dark screen matching the splash screen while loading preference state
@@ -141,6 +159,11 @@ fun AppNavigation(
         NavHost(
             navController    = navController,
             startDestination = startDestination,
+            modifier         = Modifier.fillMaxSize().background(BackgroundDark),
+            enterTransition = { fadeIn(animationSpec = tween(220)) + slideInHorizontally(animationSpec = tween(220), initialOffsetX = { it }) },
+            exitTransition = { fadeOut(animationSpec = tween(220)) + slideOutHorizontally(animationSpec = tween(220), targetOffsetX = { -it }) },
+            popEnterTransition = { fadeIn(animationSpec = tween(220)) + slideInHorizontally(animationSpec = tween(220), initialOffsetX = { -it }) },
+            popExitTransition = { fadeOut(animationSpec = tween(220)) + slideOutHorizontally(animationSpec = tween(220), targetOffsetX = { it }) }
         ) {
             composable("onboarding") {
                 OnboardingScreenRoot(
@@ -159,14 +182,41 @@ fun AppNavigation(
                 MainDashboardContainer(
                     preferencesManager = preferencesManager,
                     database      = database,
-                    onNavigateToPending = { navController.navigate("pending_transactions") }
+                    accounts      = accounts,
+                    allTransactions = allTransactions,
+                    onNavigateToPending = { navController.navigate("pending_transactions") },
+                    onNavigateToIncome = { navController.navigate("income_list") },
+                    onNavigateToExpenses = { navController.navigate("expense_list") }
+                )
+            }
+
+            composable("income_list") {
+                val incomeTransactions = remember(allTransactions) {
+                    allTransactions.filter { it.type == "INCOME" }
+                }
+                TransactionListScreen(
+                    type = "INCOME",
+                    transactions = incomeTransactions,
+                    accounts = accounts,
+                    onBack = { navController.popBackStack() }
+                )
+            }
+
+            composable("expense_list") {
+                val expenseTransactions = remember(allTransactions) {
+                    allTransactions.filter { it.type == "EXPENSE" }
+                }
+                TransactionListScreen(
+                    type = "EXPENSE",
+                    transactions = expenseTransactions,
+                    accounts = accounts,
+                    onBack = { navController.popBackStack() }
                 )
             }
 
             composable("pending_transactions") {
                 val viewModel = remember { PendingTransactionsViewModel(database) }
                 val pendingList by viewModel.pendingList.collectAsState()
-                val accounts   by database.accountDao().getAllAccounts().collectAsState(initial = emptyList())
                 PendingTransactionsScreen(
                     pendingList  = pendingList,
                     accounts     = accounts,
@@ -188,7 +238,11 @@ fun AppNavigation(
 fun MainDashboardContainer(
     preferencesManager: PreferencesManager,
     database: FinanceDatabase,
-    onNavigateToPending: () -> Unit
+    accounts: List<AccountEntity>,
+    allTransactions: List<TransactionEntity>,
+    onNavigateToPending: () -> Unit,
+    onNavigateToIncome: () -> Unit,
+    onNavigateToExpenses: () -> Unit
 ) {
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val scope       = rememberCoroutineScope()
@@ -212,9 +266,6 @@ fun MainDashboardContainer(
     val transactionDao = remember { database.transactionDao() }
     val budgetDao      = remember { database.budgetDao() }
     val goalDao        = remember { database.goalDao() }
-
-    val accounts        by accountDao.getAllAccounts().collectAsState(initial = emptyList())
-    val allTransactions by transactionDao.getAllTransactions().collectAsState(initial = emptyList())
 
     val startOfMonth = remember { getStartOfMonthTimestamp() }
     val monthlyIncome   by transactionDao.getMonthlyIncome(startOfMonth).collectAsState(initial = 0.0)
@@ -458,7 +509,9 @@ fun MainDashboardContainer(
                                 transactionDao.insertTransaction(tx)
                             }
                         },
-                        onOpenDrawer       = { scope.launch { drawerState.open() } }
+                        onOpenDrawer       = { scope.launch { drawerState.open() } },
+                        onIncomeClick      = onNavigateToIncome,
+                        onExpenseClick     = onNavigateToExpenses
                     )
                     "budget" -> BudgetScreen(
                         budgets           = budgets,

@@ -1,6 +1,7 @@
 package com.shejan.financebuddy.ui.home
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -89,7 +90,9 @@ fun HomeScreen(
     monthlyIncome: Double,
     monthlyExpenses: Double,
     onSaveTransaction: (TransactionEntity) -> Unit,
-    onOpenDrawer: () -> Unit
+    onOpenDrawer: () -> Unit,
+    onIncomeClick: () -> Unit,
+    onExpenseClick: () -> Unit
 ) {
     var showAddSheet by remember { mutableStateOf(false) }
     val sheetState   = rememberModalBottomSheetState(skipPartiallyExpanded = true)
@@ -217,14 +220,16 @@ fun HomeScreen(
                         amount     = monthlyIncome,
                         color      = IncomeGreen,
                         modifier   = Modifier.weight(1f),
-                        formatter  = currencyFormat
+                        formatter  = currencyFormat,
+                        onClick    = onIncomeClick
                     )
                     SummaryCard(
                         title      = "Expenses",
                         amount     = monthlyExpenses,
                         color      = ExpenseRed,
                         modifier   = Modifier.weight(1f),
-                        formatter  = currencyFormat
+                        formatter  = currencyFormat,
+                        onClick    = onExpenseClick
                     )
                 }
 
@@ -441,12 +446,19 @@ fun SummaryCard(
     amount: Double,
     color: Color,
     modifier: Modifier = Modifier,
-    formatter: DecimalFormat
+    formatter: DecimalFormat,
+    onClick: () -> Unit
 ) {
+    val interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
     Card(
         shape    = RoundedCornerShape(16.dp),
         colors   = CardDefaults.cardColors(containerColor = CardDark),
-        modifier = modifier.height(84.dp)
+        modifier = modifier
+            .height(84.dp)
+            .clickable(
+                interactionSource = interactionSource,
+                indication = null
+            ) { onClick() }
     ) {
         Column(
             modifier = Modifier
