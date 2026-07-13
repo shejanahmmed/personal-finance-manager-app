@@ -26,7 +26,10 @@ import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Sms
 import androidx.compose.material.icons.filled.Star
+import androidx.compose.material3.Badge
+import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -73,16 +76,20 @@ import com.shejan.financebuddy.ui.budget.BudgetScreen
 import com.shejan.financebuddy.ui.goals.GoalsScreen
 import com.shejan.financebuddy.ui.home.HomeScreen
 import com.shejan.financebuddy.ui.onboarding.OnboardingScreenRoot
+import com.shejan.financebuddy.ui.pending.PendingTransactionsScreen
+import com.shejan.financebuddy.ui.pending.PendingTransactionsViewModel
 import com.shejan.financebuddy.ui.theme.AccentBlue
 import com.shejan.financebuddy.ui.theme.AccentTeal
 import com.shejan.financebuddy.ui.theme.BackgroundDark
 import com.shejan.financebuddy.ui.theme.CardDark
 import com.shejan.financebuddy.ui.theme.CardDarker
 import com.shejan.financebuddy.ui.theme.DividerColor
+import com.shejan.financebuddy.ui.theme.ExpenseRed
 import com.shejan.financebuddy.ui.theme.FinanceBuddyTheme
 import com.shejan.financebuddy.ui.theme.TextMuted
 import com.shejan.financebuddy.ui.theme.TextPrimary
 import com.shejan.financebuddy.ui.theme.TextSecondary
+import com.shejan.financebuddy.sms.SmsPermissionHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -149,7 +156,25 @@ fun AppNavigation(
             }
 
             composable("main_dashboard") {
-                MainDashboardContainer(database = database)
+                MainDashboardContainer(
+                    database      = database,
+                    onNavigateToPending = { navController.navigate("pending_transactions") }
+                )
+            }
+
+            composable("pending_transactions") {
+                val viewModel = remember { PendingTransactionsViewModel(database) }
+                val pendingList by viewModel.pendingList.collectAsState()
+                val accounts   by database.accountDao().getAllAccounts().collectAsState(initial = emptyList())
+                PendingTransactionsScreen(
+                    pendingList  = pendingList,
+                    accounts     = accounts,
+                    onConfirm    = { pending, edited -> viewModel.confirm(pending, edited) },
+                    onDismiss    = { viewModel.dismiss(it) },
+                    onUpdate     = { viewModel.update(it) },
+                    onDismissAll = { viewModel.dismissAll() },
+                    onBack       = { navController.popBackStack() }
+                )
             }
         }
     }
@@ -158,12 +183,25 @@ fun AppNavigation(
 // ─── Main Scaffold Container (Side Drawer + Bottom Nav) ────────
 
 @Composable
-fun MainDashboardContainer(database: FinanceDatabase) {
+fun MainDashboardContainer(
+    database: FinanceDatabase,
+    onNavigateToPending: () -> Unit
+) {
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val scope       = rememberCoroutineScope()
     var currentTab by remember { mutableStateOf("home") } // "home", "budget", "goals"
 
+    // SMS permission — shown once after onboarding completes
+    var showSmsPermission by remember { mutableStateOf(true) }
+    if (showSmsPermission) {
+        SmsPermissionHandler(onPermissionResult = { showSmsPermission = false })
+    }
+
     // Local DB Flows
+    // Pending SMS badge count
+    val pendingSmsDao   = remember { database.pendingSmsDao() }
+    val pendingCount    by pendingSmsDao.getPendingCount().collectAsState(initial = 0)
+
     val accountDao     = remember { database.accountDao() }
     val transactionDao = remember { database.transactionDao() }
     val budgetDao      = remember { database.budgetDao() }
@@ -357,6 +395,33 @@ fun MainDashboardContainer(database: FinanceDatabase) {
                         onClick  = { currentTab = "goals" },
                         icon     = { Icon(imageVector = Icons.Default.Star, contentDescription = "Goals") },
                         label    = { Text("Goals") },
+                        colors   = NavigationBarItemColors()
+                    )
+                    // Pending SMS tab with live badge
+                    NavigationBarItem(
+                        selected = false,
+                        onClick  = onNavigateToPending,
+                        icon = {
+                            BadgedBox(
+                                badge = {
+                                    if (pendingCount > 0) {
+                                        Badge(containerColor = ExpenseRed) {
+                                            Text(
+                                                text = if (pendingCount > 99) "99+" else pendingCount.toString(),
+                                                color = TextPrimary,
+                                                fontSize = 9.sp
+                                            )
+                                        }
+                                    }
+                                }
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Sms,
+                                    contentDescription = "Pending SMS",
+                                )
+                            }
+                        },
+                        label    = { Text("SMS") },
                         colors   = NavigationBarItemColors()
                     )
                 }

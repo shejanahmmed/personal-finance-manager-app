@@ -10,6 +10,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
  *  v1 → v2 : Initial schema — accounts + transactions tables
  *  v2 → v3 : Added budgets table
  *  v3 → v4 : Added goals table
+ *  v4 → v5 : Added pending_sms_transactions table (SMS auto-detection feature)
  *
  * Rule: NEVER use fallbackToDestructiveMigration in production.
  * Every schema change must have a corresponding Migration here.
@@ -97,6 +98,32 @@ object DatabaseMigrations {
         }
     }
 
+    // ─────────────────────────────────────────────────────────
+    // v4 → v5 : Add pending_sms_transactions table
+    // ─────────────────────────────────────────────────────────
+    val MIGRATION_4_5 = object : Migration(4, 5) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL(
+                """
+                CREATE TABLE IF NOT EXISTS `pending_sms_transactions` (
+                    `id`                  INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                    `rawSmsBody`          TEXT    NOT NULL,
+                    `senderAddress`       TEXT    NOT NULL,
+                    `amount`              REAL    NOT NULL,
+                    `type`                TEXT    NOT NULL,
+                    `category`            TEXT    NOT NULL,
+                    `note`                TEXT    NOT NULL,
+                    `detectedAccountName` TEXT    NOT NULL,
+                    `fromAccountId`       INTEGER NOT NULL,
+                    `toAccountId`         INTEGER,
+                    `timestamp`           INTEGER NOT NULL,
+                    `receivedAt`          INTEGER NOT NULL
+                )
+                """.trimIndent()
+            )
+        }
+    }
+
     /** Convenience list — pass this to addMigrations() */
-    val ALL = arrayOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
+    val ALL = arrayOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
 }

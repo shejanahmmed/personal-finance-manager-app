@@ -12,6 +12,10 @@ interface AccountDao {
     @Query("SELECT * FROM accounts ORDER BY name ASC")
     fun getAllAccounts(): Flow<List<AccountEntity>>
 
+    /** One-shot (non-Flow) query used in BroadcastReceiver coroutine to resolve account IDs. */
+    @Query("SELECT * FROM accounts ORDER BY name ASC")
+    suspend fun getAllAccountsOnce(): List<AccountEntity>
+
     @Query("SELECT * FROM accounts WHERE id = :id")
     suspend fun getAccountById(id: Int): AccountEntity?
 

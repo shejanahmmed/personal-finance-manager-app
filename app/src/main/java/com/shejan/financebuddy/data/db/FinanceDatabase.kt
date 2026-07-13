@@ -8,13 +8,14 @@ import androidx.sqlite.db.SupportSQLiteDatabase
 import net.sqlcipher.database.SQLiteDatabase
 import net.sqlcipher.database.SupportFactory
 
-@Database(entities = [AccountEntity::class, TransactionEntity::class, BudgetEntity::class, GoalEntity::class], version = 4, exportSchema = false)
+@Database(entities = [AccountEntity::class, TransactionEntity::class, BudgetEntity::class, GoalEntity::class, PendingSmsTransactionEntity::class], version = 5, exportSchema = false)
 abstract class FinanceDatabase : RoomDatabase() {
 
     abstract fun accountDao(): AccountDao
     abstract fun transactionDao(): TransactionDao
     abstract fun budgetDao(): BudgetDao
     abstract fun goalDao(): GoalDao
+    abstract fun pendingSmsDao(): PendingSmsDao
 
     companion object {
         @Volatile

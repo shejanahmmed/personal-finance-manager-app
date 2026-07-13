@@ -2,6 +2,10 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
+    <!-- SMS permission: used only to detect incoming bank/MFS transactions in real-time.
+         No SMS data is ever uploaded or stored permanently — only parsed on-device. -->
+    <uses-permission android:name="android.permission.RECEIVE_SMS" />
+
     <application
         android:allowBackup="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
@@ -23,6 +27,24 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!--
+            SmsReceiver: intercepts incoming SMS from Bangladeshi banks and MFS.
+
+            Security:
+              - android:exported="false"  → only the system can trigger this receiver.
+              - android:permission="android.permission.BROADCAST_SMS"
+                → only the Android telephony system is allowed to send this broadcast.
+              - Priority 999 ensures we receive the SMS before low-priority apps.
+        -->
+        <receiver
+            android:name=".sms.SmsReceiver"
+            android:exported="false"
+            android:permission="android.permission.BROADCAST_SMS">
+            <intent-filter android:priority="999">
+                <action android:name="android.provider.Telephony.SMS_RECEIVED" />
+            </intent-filter>
+        </receiver>
     </application>
 
 </manifest>
