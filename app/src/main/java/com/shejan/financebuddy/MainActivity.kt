@@ -107,29 +107,39 @@ fun AppNavigation(
     preferencesManager: PreferencesManager,
     database: FinanceDatabase
 ) {
-    val navController = rememberNavController()
-    val onboardingCompleted by preferencesManager.isOnboardingCompleted.collectAsState(initial = false)
-    val startDestination = if (onboardingCompleted) "main_dashboard" else "onboarding"
+    val onboardingCompleted by preferencesManager.isOnboardingCompleted.collectAsState(initial = null)
 
-    NavHost(
-        navController    = navController,
-        startDestination = startDestination,
-    ) {
-        composable("onboarding") {
-            OnboardingScreenRoot(
-                onFinished = {
-                    CoroutineScope(Dispatchers.IO).launch {
-                        preferencesManager.setOnboardingCompleted()
-                    }
-                    navController.navigate("main_dashboard") {
-                        popUpTo("onboarding") { inclusive = true }
-                    }
-                }
-            )
-        }
+    if (onboardingCompleted == null) {
+        // Render a dark screen matching the splash screen while loading preference state
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(BackgroundDark)
+        )
+    } else {
+        val navController = rememberNavController()
+        val startDestination = if (onboardingCompleted == true) "main_dashboard" else "onboarding"
 
-        composable("main_dashboard") {
-            MainDashboardContainer(database = database)
+        NavHost(
+            navController    = navController,
+            startDestination = startDestination,
+        ) {
+            composable("onboarding") {
+                OnboardingScreenRoot(
+                    onFinished = {
+                        CoroutineScope(Dispatchers.IO).launch {
+                            preferencesManager.setOnboardingCompleted()
+                        }
+                        navController.navigate("main_dashboard") {
+                            popUpTo("onboarding") { inclusive = true }
+                        }
+                    }
+                )
+            }
+
+            composable("main_dashboard") {
+                MainDashboardContainer(database = database)
+            }
         }
     }
 }
@@ -162,7 +172,7 @@ fun MainDashboardContainer(database: FinanceDatabase) {
     val goals by goalDao.getAllGoals().collectAsState(initial = emptyList())
 
     val blurRadius by animateDpAsState(
-        targetValue = if (drawerState.isOpen) 16.dp else 0.dp,
+        targetValue = if (drawerState.targetValue == DrawerValue.Open) 16.dp else 0.dp,
         label = "DrawerBlur"
     )
 
