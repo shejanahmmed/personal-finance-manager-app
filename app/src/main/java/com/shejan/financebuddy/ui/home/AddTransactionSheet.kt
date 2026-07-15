@@ -104,6 +104,11 @@ fun AddTransactionSheet(
     var isOwnAccount by remember { mutableStateOf(true) }
     var recipientName by remember { mutableStateOf("") }
 
+    val selectedBalance = selectedFromAccount?.balance ?: 0.0
+    val parsedAmount = amount.toDoubleOrNull() ?: 0.0
+    val isInsufficient = (selectedType == "EXPENSE" || selectedType == "TRANSFER") &&
+            selectedFromAccount != null && parsedAmount > selectedBalance
+
     val context = LocalContext.current
     val sharedPreferences = remember { context.getSharedPreferences("finance_buddy_prefs", Context.MODE_PRIVATE) }
 
@@ -223,6 +228,17 @@ fun AddTransactionSheet(
                 modifier      = Modifier.fillMaxWidth(),
                 colors        = TextFieldColors()
             )
+
+            if (isInsufficient) {
+                Spacer(modifier = Modifier.height(6.dp))
+                Text(
+                    text = "Warning: Insufficient balance in ${selectedFromAccount?.name} (Available: ৳${String.format("%,.2f", selectedBalance)})",
+                    color = ExpenseRed,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Medium,
+                    modifier = Modifier.padding(horizontal = 4.dp)
+                )
+            }
 
             Spacer(modifier = Modifier.height(18.dp))
 
@@ -529,7 +545,7 @@ fun AddTransactionSheet(
 
             // ── Save Button ────────────────────────────────────
             val isValid = amount.isNotEmpty() && amount.toDoubleOrNull() != null && amount.toDouble() > 0 &&
-                    selectedFromAccount != null &&
+                    selectedFromAccount != null && !isInsufficient &&
                     (selectedType != "TRANSFER" || 
                         (selectedToAccount != null && 
                             ((isOwnAccount && selectedToAccount?.id != selectedFromAccount?.id) ||

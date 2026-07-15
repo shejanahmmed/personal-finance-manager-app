@@ -455,6 +455,37 @@ private fun PendingTransactionCard(
                 Spacer(modifier = Modifier.height(12.dp))
             }
 
+            // Insufficient Balance Warning Banner
+            val sourceAccount = accounts.find { it.id == pending.fromAccountId }
+            val isInsufficient = (pending.type == "EXPENSE" || pending.type == "TRANSFER") &&
+                    sourceAccount != null && pending.amount > sourceAccount.balance
+
+            if (pending.fromAccountId != -1 && isInsufficient) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(ExpenseRed.copy(alpha = 0.08f), RoundedCornerShape(12.dp))
+                        .border(1.dp, ExpenseRed.copy(alpha = 0.25f), RoundedCornerShape(12.dp))
+                        .padding(10.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Warning,
+                        contentDescription = null,
+                        tint = ExpenseRed,
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "Insufficient balance in ${sourceAccount?.name} (Available: ৳${String.format("%,.2f", sourceAccount?.balance ?: 0.0)})",
+                        color = ExpenseRed,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+                Spacer(modifier = Modifier.height(12.dp))
+            }
+
             // Metadata card section
             if (pending.note.isNotBlank() || matchedAccount != null || pending.category.isNotBlank()) {
                 Box(
@@ -576,7 +607,10 @@ private fun PendingTransactionCard(
                 }
 
                 // Confirm Button
-                val canConfirm = pending.fromAccountId != -1
+                val sourceAccount = accounts.find { it.id == pending.fromAccountId }
+                val isInsufficient = (pending.type == "EXPENSE" || pending.type == "TRANSFER") &&
+                        sourceAccount != null && pending.amount > sourceAccount.balance
+                val canConfirm = pending.fromAccountId != -1 && !isInsufficient
                 Button(
                     onClick = { onConfirm(pending) },
                     modifier = Modifier.weight(1f),
@@ -657,6 +691,11 @@ private fun EditPendingSheet(
     var showFromAccountDropdown by remember { mutableStateOf(false) }
     var showToAccountDropdown   by remember { mutableStateOf(false) }
 
+    val selectedBalance = accounts.find { it.id == fromAccountId }?.balance ?: 0.0
+    val parsedAmount = amount.toDoubleOrNull() ?: 0.0
+    val isInsufficient = (type == "EXPENSE" || type == "TRANSFER") &&
+            fromAccountId != -1 && parsedAmount > selectedBalance
+
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -691,6 +730,17 @@ private fun EditPendingSheet(
             singleLine = true,
             leadingIcon = { Text("৳", color = AccentTeal, fontWeight = FontWeight.Bold, fontSize = 16.sp, modifier = Modifier.padding(start = 12.dp)) }
         )
+
+        if (isInsufficient) {
+            Spacer(modifier = Modifier.height(6.dp))
+            Text(
+                text = "Warning: Insufficient balance in ${accounts.find { it.id == fromAccountId }?.name} (Available: ৳${String.format("%,.2f", selectedBalance)})",
+                color = ExpenseRed,
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.padding(horizontal = 4.dp)
+            )
+        }
 
         Spacer(modifier = Modifier.height(14.dp))
 
@@ -977,7 +1027,7 @@ private fun EditPendingSheet(
 
         Spacer(modifier = Modifier.height(28.dp))
 
-        val isValid = fromAccountId != -1 &&
+        val isValid = fromAccountId != -1 && !isInsufficient &&
                 (type != "TRANSFER" || 
                     (toAccountId != null && 
                         ((isOwnAccount && toAccountId != fromAccountId) ||
