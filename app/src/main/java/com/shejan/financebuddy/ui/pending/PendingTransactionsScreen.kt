@@ -624,6 +624,13 @@ private fun EditPendingSheet(
     var fromAccountId by remember { mutableStateOf(pending.fromAccountId) }
     var toAccountId   by remember { mutableStateOf(pending.toAccountId) }
 
+    var fromAccountSearchText by remember(fromAccountId) {
+        mutableStateOf(accounts.find { it.id == fromAccountId }?.name ?: "")
+    }
+    var toAccountSearchText by remember(toAccountId) {
+        mutableStateOf(accounts.find { it.id == toAccountId }?.name ?: "")
+    }
+
     var showCategoryDropdown    by remember { mutableStateOf(false) }
     var showFromAccountDropdown by remember { mutableStateOf(false) }
     var showToAccountDropdown   by remember { mutableStateOf(false) }
@@ -747,29 +754,74 @@ private fun EditPendingSheet(
         SheetLabel(if (type == "TRANSFER") "From Account" else "Account")
         ExposedDropdownMenuBox(
             expanded = showFromAccountDropdown,
-            onExpandedChange = { showFromAccountDropdown = it }
+            onExpandedChange = {
+                showFromAccountDropdown = it
+                if (it) {
+                    fromAccountSearchText = ""
+                }
+            }
         ) {
             OutlinedTextField(
-                value = accounts.firstOrNull { it.id == fromAccountId }?.name ?: "Select account",
-                onValueChange = {},
-                readOnly = true,
+                value = fromAccountSearchText,
+                onValueChange = {
+                    fromAccountSearchText = it
+                    showFromAccountDropdown = true
+                },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable),
+                    .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryEditable),
                 trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = showFromAccountDropdown) },
                 shape = RoundedCornerShape(14.dp),
                 colors = outlinedTextFieldColors()
             )
             ExposedDropdownMenu(
                 expanded = showFromAccountDropdown,
-                onDismissRequest = { showFromAccountDropdown = false },
+                onDismissRequest = {
+                    showFromAccountDropdown = false
+                    fromAccountSearchText = accounts.find { it.id == fromAccountId }?.name ?: ""
+                },
                 modifier = Modifier.background(CardDarker)
             ) {
-                accounts.forEach { acc ->
+                val filteredBanks = accounts.filter { it.type == "BANK" && it.name.contains(fromAccountSearchText, ignoreCase = true) }
+                val filteredMfs = accounts.filter { it.type == "MFS" && it.name.contains(fromAccountSearchText, ignoreCase = true) }
+
+                if (filteredBanks.isNotEmpty()) {
                     DropdownMenuItem(
-                        text = { Text(acc.name, color = TextPrimary, fontSize = 13.sp) },
-                        onClick = { fromAccountId = acc.id; showFromAccountDropdown = false }
+                        text = { Text("Banks", color = AccentTeal, fontWeight = FontWeight.Bold, fontSize = 11.sp) },
+                        onClick = {},
+                        enabled = false
                     )
+                    filteredBanks.forEach { acc ->
+                        DropdownMenuItem(
+                            text = { Text(acc.name, color = TextPrimary, fontSize = 13.sp) },
+                            onClick = {
+                                fromAccountId = acc.id
+                                fromAccountSearchText = acc.name
+                                showFromAccountDropdown = false
+                            }
+                        )
+                    }
+                }
+
+                if (filteredMfs.isNotEmpty()) {
+                    if (filteredBanks.isNotEmpty()) {
+                        androidx.compose.material3.HorizontalDivider(color = DividerColor.copy(alpha = 0.5f))
+                    }
+                    DropdownMenuItem(
+                        text = { Text("Mobile Financial Services (MFS)", color = AccentTeal, fontWeight = FontWeight.Bold, fontSize = 11.sp) },
+                        onClick = {},
+                        enabled = false
+                    )
+                    filteredMfs.forEach { acc ->
+                        DropdownMenuItem(
+                            text = { Text(acc.name, color = TextPrimary, fontSize = 13.sp) },
+                            onClick = {
+                                fromAccountId = acc.id
+                                fromAccountSearchText = acc.name
+                                showFromAccountDropdown = false
+                            }
+                        )
+                    }
                 }
             }
         }
@@ -780,29 +832,75 @@ private fun EditPendingSheet(
             SheetLabel("To Account")
             ExposedDropdownMenuBox(
                 expanded = showToAccountDropdown,
-                onExpandedChange = { showToAccountDropdown = it }
+                onExpandedChange = {
+                    showToAccountDropdown = it
+                    if (it) {
+                        toAccountSearchText = ""
+                    }
+                }
             ) {
                 OutlinedTextField(
-                    value = accounts.firstOrNull { it.id == toAccountId }?.name ?: "Select destination",
-                    onValueChange = {},
-                    readOnly = true,
+                    value = toAccountSearchText,
+                    onValueChange = {
+                        toAccountSearchText = it
+                        showToAccountDropdown = true
+                    },
                     modifier = Modifier
                         .fillMaxWidth()
-                        .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable),
+                        .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryEditable),
                     trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = showToAccountDropdown) },
                     shape = RoundedCornerShape(14.dp),
                     colors = outlinedTextFieldColors()
                 )
                 ExposedDropdownMenu(
                     expanded = showToAccountDropdown,
-                    onDismissRequest = { showToAccountDropdown = false },
+                    onDismissRequest = {
+                        showToAccountDropdown = false
+                        toAccountSearchText = accounts.find { it.id == toAccountId }?.name ?: ""
+                    },
                     modifier = Modifier.background(CardDarker)
                 ) {
-                    accounts.filter { it.id != fromAccountId }.forEach { acc ->
+                    val destAccounts = accounts.filter { it.id != fromAccountId }
+                    val filteredBanks = destAccounts.filter { it.type == "BANK" && it.name.contains(toAccountSearchText, ignoreCase = true) }
+                    val filteredMfs = destAccounts.filter { it.type == "MFS" && it.name.contains(toAccountSearchText, ignoreCase = true) }
+
+                    if (filteredBanks.isNotEmpty()) {
                         DropdownMenuItem(
-                            text = { Text(acc.name, color = TextPrimary, fontSize = 13.sp) },
-                            onClick = { toAccountId = acc.id; showToAccountDropdown = false }
+                            text = { Text("Banks", color = AccentTeal, fontWeight = FontWeight.Bold, fontSize = 11.sp) },
+                            onClick = {},
+                            enabled = false
                         )
+                        filteredBanks.forEach { acc ->
+                            DropdownMenuItem(
+                                text = { Text(acc.name, color = TextPrimary, fontSize = 13.sp) },
+                                onClick = {
+                                    toAccountId = acc.id
+                                    toAccountSearchText = acc.name
+                                    showToAccountDropdown = false
+                                }
+                            )
+                        }
+                    }
+
+                    if (filteredMfs.isNotEmpty()) {
+                        if (filteredBanks.isNotEmpty()) {
+                            androidx.compose.material3.HorizontalDivider(color = DividerColor.copy(alpha = 0.5f))
+                        }
+                        DropdownMenuItem(
+                            text = { Text("Mobile Financial Services (MFS)", color = AccentTeal, fontWeight = FontWeight.Bold, fontSize = 11.sp) },
+                            onClick = {},
+                            enabled = false
+                        )
+                        filteredMfs.forEach { acc ->
+                            DropdownMenuItem(
+                                text = { Text(acc.name, color = TextPrimary, fontSize = 13.sp) },
+                                onClick = {
+                                    toAccountId = acc.id
+                                    toAccountSearchText = acc.name
+                                    showToAccountDropdown = false
+                                }
+                            )
+                        }
                     }
                 }
             }

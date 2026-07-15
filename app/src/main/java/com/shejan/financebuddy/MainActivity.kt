@@ -69,6 +69,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.shape.CircleShape
@@ -96,6 +97,7 @@ import com.shejan.financebuddy.ui.theme.CardDarker
 import com.shejan.financebuddy.ui.theme.DividerColor
 import com.shejan.financebuddy.ui.theme.ExpenseRed
 import com.shejan.financebuddy.ui.theme.FinanceBuddyTheme
+import com.shejan.financebuddy.ui.theme.SurfaceDark
 import com.shejan.financebuddy.ui.theme.TextMuted
 import com.shejan.financebuddy.ui.theme.TextPrimary
 import com.shejan.financebuddy.ui.theme.TextSecondary
@@ -288,7 +290,10 @@ fun MainDashboardContainer(
         )
     }
 
-    val smsSyncChoice by preferencesManager.smsSyncChoice.collectAsState(initial = "PENDING")
+    // Use null as the initial sentinel value so we never render the SMS dialog
+    // during the brief DataStore loading window. The dialog only appears once
+    // DataStore has confirmed the stored value is "PENDING" (i.e., first-run).
+    val smsSyncChoice by preferencesManager.smsSyncChoice.collectAsState(initial = null)
     if (smsSyncChoice == "PENDING") {
         SmsPermissionHandler(
             preferencesManager = preferencesManager,
@@ -327,8 +332,8 @@ fun MainDashboardContainer(
         gesturesEnabled = false,
         drawerContent = {
             ModalDrawerSheet(
-                modifier             = Modifier.fillMaxWidth(0.70f), // slightly wider for better readability
-                drawerContainerColor = CardDarker,
+                modifier             = Modifier.fillMaxWidth(0.70f),
+                drawerContainerColor = SurfaceDark, // white in light mode, deep navy in dark
                 drawerShape          = RoundedCornerShape(topEnd = 24.dp, bottomEnd = 24.dp)
             ) {
                 // Header Box (App Logo + App Name + Close Button in corner)
@@ -364,15 +369,21 @@ fun MainDashboardContainer(
                         )
                     }
 
-                    IconButton(
-                        onClick = { scope.launch { drawerState.close() } },
-                        modifier = Modifier.align(Alignment.CenterEnd)
+                    Box(
+                        modifier = Modifier
+                            .size(34.dp)
+                            .align(Alignment.CenterEnd)
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(CardDarker) // off-white in light, darker card in dark
+                            .border(1.dp, DividerColor, RoundedCornerShape(8.dp))
+                            .clickable { scope.launch { drawerState.close() } },
+                        contentAlignment = Alignment.Center
                     ) {
                         Icon(
                             imageVector        = Icons.Default.Close,
                             contentDescription = "Close Drawer",
-                            tint               = TextSecondary,
-                            modifier           = Modifier.size(20.dp)
+                            tint               = TextPrimary,
+                            modifier           = Modifier.size(18.dp)
                         )
                     }
                 }
@@ -385,7 +396,7 @@ fun MainDashboardContainer(
                         .fillMaxWidth()
                         .padding(horizontal = 20.dp, vertical = 16.dp)
                         .clip(RoundedCornerShape(16.dp))
-                        .background(CardDark)
+                        .background(CardDarker) // off-white in light, deeper card in dark
                         .clickable { showEditProfileDialog = true }
                         .padding(12.dp),
                     verticalAlignment = Alignment.CenterVertically

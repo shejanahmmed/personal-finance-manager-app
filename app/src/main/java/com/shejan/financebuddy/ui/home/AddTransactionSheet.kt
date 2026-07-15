@@ -33,6 +33,9 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
+import androidx.compose.material3.ExposedDropdownMenuAnchorType
 import androidx.compose.material3.Icon
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
@@ -88,12 +91,15 @@ fun AddTransactionSheet(
     var amount by remember { mutableStateOf("") }
     var selectedType by remember { mutableStateOf("EXPENSE") } // "INCOME", "EXPENSE", "TRANSFER"
     var selectedCategory by remember { mutableStateOf("") }
-    var selectedFromAccount by remember { mutableStateOf(accounts.first()) }
+    var selectedFromAccount by remember { mutableStateOf<AccountEntity?>(null) }
     var selectedToAccount by remember { mutableStateOf<AccountEntity?>(null) }
     var note by remember { mutableStateOf("") }
 
     var fromAccountExpanded by remember { mutableStateOf(false) }
     var toAccountExpanded by remember { mutableStateOf(false) }
+
+    var fromAccountSearchText by remember(selectedFromAccount) { mutableStateOf(selectedFromAccount?.name ?: "") }
+    var toAccountSearchText by remember(selectedToAccount) { mutableStateOf(selectedToAccount?.name ?: "") }
 
     val context = LocalContext.current
     val sharedPreferences = remember { context.getSharedPreferences("finance_buddy_prefs", Context.MODE_PRIVATE) }
@@ -141,7 +147,7 @@ fun AddTransactionSheet(
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState       = sheetState,
-        containerColor   = SurfaceDarkColor,
+        containerColor   = CardDarker,
         shape            = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp)
     ) {
         Column(
@@ -172,7 +178,7 @@ fun AddTransactionSheet(
 
             TabRow(
                 selectedTabIndex = selectedTabIndex,
-                containerColor   = CardDarker,
+                containerColor   = CardDark,
                 modifier         = Modifier
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(12.dp)),
@@ -223,93 +229,162 @@ fun AddTransactionSheet(
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 // Source / From Account
-                Box(
-                    modifier = Modifier
-                        .weight(1f)
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(CardDark)
-                        .clickable { fromAccountExpanded = true }
-                        .padding(horizontal = 16.dp, vertical = 14.dp)
-                ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Column {
-                            Text(
-                                text  = if (selectedType == "TRANSFER") "From Account" else "Account",
-                                style = androidx.compose.material3.MaterialTheme.typography.labelMedium,
-                                color = TextMuted
-                            )
-                            Spacer(modifier = Modifier.height(2.dp))
-                            Text(text = selectedFromAccount.name, color = TextPrimary, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+                ExposedDropdownMenuBox(
+                    expanded = fromAccountExpanded,
+                    onExpandedChange = {
+                        fromAccountExpanded = it
+                        if (it) {
+                            fromAccountSearchText = ""
                         }
-                        Icon(imageVector = Icons.Default.ArrowDropDown, contentDescription = null, tint = TextSecondary)
-                    }
+                    },
+                    modifier = Modifier.weight(1f)
+                ) {
+                    OutlinedTextField(
+                        value = fromAccountSearchText,
+                        onValueChange = {
+                            fromAccountSearchText = it
+                            fromAccountExpanded = true
+                        },
+                        label = { Text(if (selectedType == "TRANSFER") "From Account" else "Account", color = TextSecondary) },
+                        placeholder = { Text("Select account", color = TextMuted) },
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = fromAccountExpanded) },
+                        shape = RoundedCornerShape(12.dp),
+                        colors = TextFieldColors(),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryEditable)
+                    )
 
-                    DropdownMenu(
+                    ExposedDropdownMenu(
                         expanded = fromAccountExpanded,
-                        onDismissRequest = { fromAccountExpanded = false },
-                        modifier = Modifier.background(CardDark)
+                        onDismissRequest = {
+                            fromAccountExpanded = false
+                            fromAccountSearchText = selectedFromAccount?.name ?: ""
+                        },
+                        modifier = Modifier.background(CardDarker)
                     ) {
-                        accounts.forEach { account ->
+                        val filteredBanks = accounts.filter { it.type == "BANK" && it.name.contains(fromAccountSearchText, ignoreCase = true) }
+                        val filteredMfs = accounts.filter { it.type == "MFS" && it.name.contains(fromAccountSearchText, ignoreCase = true) }
+
+                        if (filteredBanks.isNotEmpty()) {
                             DropdownMenuItem(
-                                text = { Text(account.name, color = TextPrimary) },
-                                onClick = {
-                                    selectedFromAccount = account
-                                    fromAccountExpanded = false
-                                }
+                                text = { Text("Banks", color = AccentTeal, fontWeight = FontWeight.Bold, fontSize = 11.sp) },
+                                onClick = {},
+                                enabled = false
                             )
+                            filteredBanks.forEach { account ->
+                                DropdownMenuItem(
+                                    text = { Text(account.name, color = TextPrimary) },
+                                    onClick = {
+                                        selectedFromAccount = account
+                                        fromAccountSearchText = account.name
+                                        fromAccountExpanded = false
+                                    }
+                                )
+                            }
+                        }
+
+                        if (filteredMfs.isNotEmpty()) {
+                            if (filteredBanks.isNotEmpty()) {
+                                androidx.compose.material3.HorizontalDivider(color = DividerColor.copy(alpha = 0.5f))
+                            }
+                            DropdownMenuItem(
+                                text = { Text("Mobile Financial Services (MFS)", color = AccentTeal, fontWeight = FontWeight.Bold, fontSize = 11.sp) },
+                                onClick = {},
+                                enabled = false
+                            )
+                            filteredMfs.forEach { account ->
+                                DropdownMenuItem(
+                                    text = { Text(account.name, color = TextPrimary) },
+                                    onClick = {
+                                        selectedFromAccount = account
+                                        fromAccountSearchText = account.name
+                                        fromAccountExpanded = false
+                                    }
+                                )
+                            }
                         }
                     }
                 }
 
                 // Destination / To Account (Visible only for TRANSFER)
                 if (selectedType == "TRANSFER") {
-                    val destAccounts = accounts.filter { it.id != selectedFromAccount.id }
-                    if (selectedToAccount == null && destAccounts.isNotEmpty()) {
-                        selectedToAccount = destAccounts.first()
-                    }
+                    val destAccounts = accounts.filter { it.id != (selectedFromAccount?.id ?: -1) }
 
-                    Box(
-                        modifier = Modifier
-                            .weight(1f)
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(CardDark)
-                            .clickable { toAccountExpanded = true }
-                            .padding(horizontal = 16.dp, vertical = 14.dp)
-                    ) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.SpaceBetween
-                        ) {
-                            Column {
-                                Text(
-                                    text  = "To Account",
-                                    style = androidx.compose.material3.MaterialTheme.typography.labelMedium,
-                                    color = TextMuted
-                                )
-                                Spacer(modifier = Modifier.height(2.dp))
-                                Text(text = selectedToAccount?.name ?: "Select", color = TextPrimary, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+                    ExposedDropdownMenuBox(
+                        expanded = toAccountExpanded,
+                        onExpandedChange = {
+                            toAccountExpanded = it
+                            if (it) {
+                                toAccountSearchText = ""
                             }
-                            Icon(imageVector = Icons.Default.ArrowDropDown, contentDescription = null, tint = TextSecondary)
-                        }
+                        },
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        OutlinedTextField(
+                            value = toAccountSearchText,
+                            onValueChange = {
+                                toAccountSearchText = it
+                                toAccountExpanded = true
+                            },
+                            label = { Text("To Account", color = TextSecondary) },
+                            placeholder = { Text("Select destination", color = TextMuted) },
+                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = toAccountExpanded) },
+                            shape = RoundedCornerShape(12.dp),
+                            colors = TextFieldColors(),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryEditable)
+                        )
 
-                        DropdownMenu(
+                        ExposedDropdownMenu(
                             expanded = toAccountExpanded,
-                            onDismissRequest = { toAccountExpanded = false },
-                            modifier = Modifier.background(CardDark)
+                            onDismissRequest = {
+                                toAccountExpanded = false
+                                toAccountSearchText = selectedToAccount?.name ?: ""
+                            },
+                            modifier = Modifier.background(CardDarker)
                         ) {
-                            destAccounts.forEach { account ->
+                            val filteredBanks = destAccounts.filter { it.type == "BANK" && it.name.contains(toAccountSearchText, ignoreCase = true) }
+                            val filteredMfs = destAccounts.filter { it.type == "MFS" && it.name.contains(toAccountSearchText, ignoreCase = true) }
+
+                            if (filteredBanks.isNotEmpty()) {
                                 DropdownMenuItem(
-                                    text = { Text(account.name, color = TextPrimary) },
-                                    onClick = {
-                                        selectedToAccount = account
-                                        toAccountExpanded = false
-                                    }
+                                    text = { Text("Banks", color = AccentTeal, fontWeight = FontWeight.Bold, fontSize = 11.sp) },
+                                    onClick = {},
+                                    enabled = false
                                 )
+                                filteredBanks.forEach { account ->
+                                    DropdownMenuItem(
+                                        text = { Text(account.name, color = TextPrimary) },
+                                        onClick = {
+                                            selectedToAccount = account
+                                            toAccountSearchText = account.name
+                                            toAccountExpanded = false
+                                        }
+                                    )
+                                }
+                            }
+
+                            if (filteredMfs.isNotEmpty()) {
+                                if (filteredBanks.isNotEmpty()) {
+                                    androidx.compose.material3.HorizontalDivider(color = DividerColor.copy(alpha = 0.5f))
+                                }
+                                DropdownMenuItem(
+                                    text = { Text("Mobile Financial Services (MFS)", color = AccentTeal, fontWeight = FontWeight.Bold, fontSize = 11.sp) },
+                                    onClick = {},
+                                    enabled = false
+                                )
+                                filteredMfs.forEach { account ->
+                                    DropdownMenuItem(
+                                        text = { Text(account.name, color = TextPrimary) },
+                                        onClick = {
+                                            selectedToAccount = account
+                                            toAccountSearchText = account.name
+                                            toAccountExpanded = false
+                                        }
+                                    )
+                                }
                             }
                         }
                     }
@@ -400,7 +475,8 @@ fun AddTransactionSheet(
 
             // ── Save Button ────────────────────────────────────
             val isValid = amount.isNotEmpty() && amount.toDoubleOrNull() != null && amount.toDouble() > 0 &&
-                    (selectedType != "TRANSFER" || (selectedToAccount != null && selectedToAccount?.id != selectedFromAccount.id))
+                    selectedFromAccount != null &&
+                    (selectedType != "TRANSFER" || (selectedToAccount != null && selectedToAccount?.id != selectedFromAccount?.id))
 
             Button(
                 onClick = {
@@ -411,7 +487,7 @@ fun AddTransactionSheet(
                                 type          = selectedType,
                                 category      = if (selectedType == "TRANSFER") "Transfer" else selectedCategory,
                                 timestamp     = System.currentTimeMillis(),
-                                fromAccountId = selectedFromAccount.id,
+                                fromAccountId = selectedFromAccount!!.id,
                                 toAccountId   = if (selectedType == "TRANSFER") selectedToAccount?.id else null,
                                 note          = note
                             )
@@ -594,8 +670,6 @@ fun AddTransactionSheet(
 // Styles Helpers
 // ─────────────────────────────────────────────────────────────
 
-private val SurfaceDarkColor = Color(0xFF0F1221)
-
 @Composable
 private fun TextStyleForAmount(color: Color) = androidx.compose.ui.text.TextStyle(
     color      = color,
@@ -609,8 +683,8 @@ private fun TextFieldColors() = OutlinedTextFieldDefaults.colors(
     unfocusedTextColor     = TextPrimary,
     focusedBorderColor     = AccentTeal,
     unfocusedBorderColor   = DividerColor,
-    focusedContainerColor  = CardDarker,
-    unfocusedContainerColor = CardDarker,
+    focusedContainerColor  = CardDark,
+    unfocusedContainerColor = CardDark,
     focusedLabelColor      = AccentTeal,
     unfocusedLabelColor    = TextSecondary
 )

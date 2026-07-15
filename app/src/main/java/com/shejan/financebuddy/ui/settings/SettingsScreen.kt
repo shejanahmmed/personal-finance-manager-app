@@ -43,7 +43,7 @@ fun SettingsScreen(
 
     val scope = rememberCoroutineScope()
     val themeMode by preferencesManager.themeMode.collectAsState(initial = "SYSTEM")
-    val smsSyncChoice by preferencesManager.smsSyncChoice.collectAsState(initial = "PENDING")
+    val smsSyncChoice by preferencesManager.smsSyncChoice.collectAsState(initial = null)
 
     Box(
         modifier = Modifier
