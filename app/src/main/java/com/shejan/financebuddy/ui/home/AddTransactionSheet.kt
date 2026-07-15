@@ -41,6 +41,8 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.SheetState
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
 import androidx.compose.material3.TabRowDefaults
@@ -63,6 +65,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.shejan.financebuddy.data.db.AccountEntity
 import com.shejan.financebuddy.data.db.TransactionEntity
+import com.shejan.financebuddy.data.db.PayeeEntity
+import com.shejan.financebuddy.data.db.PayeeAccountEntity
 import com.shejan.financebuddy.ui.theme.AccentBlue
 import com.shejan.financebuddy.ui.theme.AccentTeal
 import com.shejan.financebuddy.ui.theme.BackgroundDark
@@ -84,7 +88,10 @@ fun AddTransactionSheet(
     accounts: List<AccountEntity>,
     sheetState: SheetState,
     onDismiss: () -> Unit,
-    onSaveTransaction: (TransactionEntity) -> Unit
+    onSaveTransaction: (TransactionEntity) -> Unit,
+    payees: List<PayeeEntity> = emptyList(),
+    payeeAccounts: List<PayeeAccountEntity> = emptyList(),
+    onSavePayee: (String, String, String, String) -> Unit = { _, _, _, _ -> }
 ) {
     if (accounts.isEmpty()) return
 
@@ -103,6 +110,14 @@ fun AddTransactionSheet(
 
     var isOwnAccount by remember { mutableStateOf(true) }
     var recipientName by remember { mutableStateOf("") }
+    var recipientAccountNumber by remember { mutableStateOf("") }
+    var saveToPayees by remember { mutableStateOf(false) }
+
+    var selectedPayee by remember { mutableStateOf<PayeeEntity?>(null) }
+    var selectedPayeeAccount by remember { mutableStateOf<PayeeAccountEntity?>(null) }
+
+    var payeeExpanded by remember { mutableStateOf(false) }
+    var payeeAccountExpanded by remember { mutableStateOf(false) }
 
     val selectedBalance = selectedFromAccount?.balance ?: 0.0
     val parsedAmount = amount.toDoubleOrNull() ?: 0.0
@@ -449,16 +464,175 @@ fun AddTransactionSheet(
 
             if (selectedType == "TRANSFER" && !isOwnAccount) {
                 Spacer(modifier = Modifier.height(14.dp))
+                
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    // Profile / Payee Select dropdown
+                    ExposedDropdownMenuBox(
+                        expanded = payeeExpanded,
+                        onExpandedChange = { payeeExpanded = it },
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        OutlinedTextField(
+                            value = selectedPayee?.name ?: "",
+                            onValueChange = {},
+                            readOnly = true,
+                            label = { Text("Select Contact", color = TextSecondary) },
+                            placeholder = { Text("Choose contact...", color = TextMuted) },
+                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = payeeExpanded) },
+                            shape = RoundedCornerShape(12.dp),
+                            colors = TextFieldColors(),
+                            modifier = Modifier.fillMaxWidth().menuAnchor(ExposedDropdownMenuAnchorType.PrimaryEditable)
+                        )
+                        ExposedDropdownMenu(
+                            expanded = payeeExpanded,
+                            onDismissRequest = { payeeExpanded = false },
+                            modifier = Modifier.background(CardDarker)
+                        ) {
+                            DropdownMenuItem(
+                                text = { Text("New Recipient", color = AccentBlue, fontWeight = FontWeight.Bold) },
+                                onClick = {
+                                    selectedPayee = null
+                                    selectedPayeeAccount = null
+                                    recipientName = ""
+                                    recipientAccountNumber = ""
+                                    payeeExpanded = false
+                                }
+                            )
+                            payees.forEach { payee ->
+                                DropdownMenuItem(
+                                    text = { Text(payee.name, color = TextPrimary) },
+                                    onClick = {
+                                        selectedPayee = payee
+                                        recipientName = payee.name
+                                        selectedPayeeAccount = null
+                                        recipientAccountNumber = ""
+                                        val payeeAccs = payeeAccounts.filter { it.payeeId == payee.id }
+                                        if (payeeAccs.size == 1) {
+                                            val first = payeeAccs.first()
+                                            selectedPayeeAccount = first
+                                            toAccountSearchText = first.bankName
+                                            recipientAccountNumber = first.accountNumber
+                                            selectedToAccount = accounts.firstOrNull { it.name == first.bankName }
+                                        }
+                                        payeeExpanded = false
+                                    }
+                                )
+                            }
+                        }
+                    }
+
+                    // Payee Account Select dropdown (only if a payee is selected and has accounts)
+                    val currentPayeeAccounts = remember(selectedPayee, payeeAccounts) {
+                        selectedPayee?.let { p -> payeeAccounts.filter { it.payeeId == p.id } } ?: emptyList()
+                    }
+                    if (selectedPayee != null && currentPayeeAccounts.isNotEmpty()) {
+                        ExposedDropdownMenuBox(
+                            expanded = payeeAccountExpanded,
+                            onExpandedChange = { payeeAccountExpanded = it },
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            OutlinedTextField(
+                                value = selectedPayeeAccount?.let { "${it.bankName} (${it.accountNumber.takeLast(4)})" } ?: "",
+                                onValueChange = {},
+                                readOnly = true,
+                                label = { Text("Select Account", color = TextSecondary) },
+                                placeholder = { Text("Choose account...", color = TextMuted) },
+                                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = payeeAccountExpanded) },
+                                shape = RoundedCornerShape(12.dp),
+                                colors = TextFieldColors(),
+                                modifier = Modifier.fillMaxWidth().menuAnchor(ExposedDropdownMenuAnchorType.PrimaryEditable)
+                            )
+                            ExposedDropdownMenu(
+                                expanded = payeeAccountExpanded,
+                                onDismissRequest = { payeeAccountExpanded = false },
+                                modifier = Modifier.background(CardDarker)
+                            ) {
+                                currentPayeeAccounts.forEach { acc ->
+                                    DropdownMenuItem(
+                                        text = { Text("${acc.bankName} (${acc.accountNumber})", color = TextPrimary) },
+                                        onClick = {
+                                            selectedPayeeAccount = acc
+                                            toAccountSearchText = acc.bankName
+                                            recipientAccountNumber = acc.accountNumber
+                                            selectedToAccount = accounts.firstOrNull { it.name == acc.bankName }
+                                            payeeAccountExpanded = false
+                                        }
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                // Editable Recipient Name Field
                 OutlinedTextField(
                     value = recipientName,
-                    onValueChange = { recipientName = it },
-                    label = { Text("Recipient Name", color = TextSecondary) },
-                    placeholder = { Text("Enter name", color = TextMuted) },
+                    onValueChange = {
+                        recipientName = it
+                        if (it != (selectedPayee?.name ?: "")) {
+                            selectedPayee = null
+                            selectedPayeeAccount = null
+                        }
+                    },
+                    label = { Text("Recipient Name *", color = TextSecondary) },
+                    placeholder = { Text("Enter recipient name", color = TextMuted) },
                     shape = RoundedCornerShape(12.dp),
                     colors = TextFieldColors(),
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                // Editable Recipient Account Number Field
+                OutlinedTextField(
+                    value = recipientAccountNumber,
+                    onValueChange = {
+                        recipientAccountNumber = it
+                        if (it != (selectedPayeeAccount?.accountNumber ?: "")) {
+                            selectedPayeeAccount = null
+                        }
+                    },
+                    label = { Text("Recipient Account/Mobile Number *", color = TextSecondary) },
+                    placeholder = { Text("Enter account or phone number", color = TextMuted) },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = TextFieldColors(),
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                Spacer(modifier = Modifier.height(14.dp))
+
+                // Save to Payees Toggle
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(14.dp))
+                        .background(CardDark)
+                        .border(1.dp, if (saveToPayees) AccentBlue.copy(alpha = 0.4f) else DividerColor, RoundedCornerShape(14.dp))
+                        .padding(horizontal = 16.dp, vertical = 10.dp)
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text("Save to Recipient Profiles?", color = TextPrimary, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                            Text("Add this contact & account details to Payees", color = TextMuted, fontSize = 11.sp)
+                        }
+                        Switch(
+                            checked = saveToPayees,
+                            onCheckedChange = { saveToPayees = it },
+                            colors = SwitchDefaults.colors(
+                                checkedThumbColor = BackgroundDark,
+                                checkedTrackColor = AccentBlue
+                            )
+                        )
+                    }
+                }
             }
 
             Spacer(modifier = Modifier.height(18.dp))
@@ -549,15 +723,23 @@ fun AddTransactionSheet(
                     (selectedType != "TRANSFER" || 
                         (selectedToAccount != null && 
                             ((isOwnAccount && selectedToAccount?.id != selectedFromAccount?.id) ||
-                             (!isOwnAccount && recipientName.trim().isNotEmpty()))))
+                             (!isOwnAccount && recipientName.trim().isNotEmpty() && recipientAccountNumber.trim().isNotEmpty()))))
 
             Button(
                 onClick = {
                     if (isValid) {
                         val finalNote = if (selectedType == "TRANSFER" && !isOwnAccount) {
-                            "To: ${recipientName.trim()} (${selectedToAccount?.name ?: ""})" + (if (note.trim().isNotEmpty()) " - ${note.trim()}" else "")
+                            "To: ${recipientName.trim()} (${selectedToAccount?.name ?: ""} - ${recipientAccountNumber.trim()})" + (if (note.trim().isNotEmpty()) " - ${note.trim()}" else "")
                         } else {
                             note
+                        }
+                        if (selectedType == "TRANSFER" && !isOwnAccount && saveToPayees) {
+                            onSavePayee(
+                                recipientName.trim(),
+                                selectedToAccount?.name ?: "",
+                                recipientAccountNumber.trim(),
+                                selectedToAccount?.type ?: "BANK"
+                            )
                         }
                         onSaveTransaction(
                             TransactionEntity(

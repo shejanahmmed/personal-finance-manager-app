@@ -33,6 +33,8 @@ import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Inbox
 import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.AccountBalance
+import androidx.compose.material.icons.filled.People
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.DrawerValue
@@ -102,6 +104,11 @@ import com.shejan.financebuddy.ui.theme.TextMuted
 import com.shejan.financebuddy.ui.theme.TextPrimary
 import com.shejan.financebuddy.ui.theme.TextSecondary
 import com.shejan.financebuddy.ui.settings.SettingsScreen
+import com.shejan.financebuddy.ui.accounts.BankAccountsScreen
+import com.shejan.financebuddy.ui.payees.PayeesScreen
+import com.shejan.financebuddy.ui.payees.PayeeDetailScreen
+import com.shejan.financebuddy.data.db.PayeeEntity
+import com.shejan.financebuddy.data.db.PayeeAccountEntity
 import com.shejan.financebuddy.sms.SmsPermissionHandler
 import com.shejan.financebuddy.ui.profile.EditProfileDialog
 import androidx.compose.ui.layout.ContentScale
@@ -158,6 +165,8 @@ fun AppNavigation(
     // Lift database flows to parent level to prevent reload screen flashing on transitions
     val accounts by database.accountDao().getAllAccounts().collectAsState(initial = emptyList())
     val allTransactions by database.transactionDao().getAllTransactions().collectAsState(initial = emptyList())
+    val payees by database.payeeDao().getAllPayees().collectAsState(initial = emptyList())
+    val payeeAccounts by database.payeeDao().getAllPayeeAccounts().collectAsState(initial = emptyList())
 
     if (onboardingCompleted == null) {
         // Render a dark screen matching the splash screen while loading preference state
@@ -198,10 +207,75 @@ fun AppNavigation(
                     database      = database,
                     accounts      = accounts,
                     allTransactions = allTransactions,
+                    payees        = payees,
+                    payeeAccounts = payeeAccounts,
                     onNavigateToPending = { navController.navigate("pending_transactions") },
                     onNavigateToIncome = { navController.navigate("income_list") },
                     onNavigateToExpenses = { navController.navigate("expense_list") },
-                    onNavigateToSettings = { navController.navigate("settings") }
+                    onNavigateToSettings = { navController.navigate("settings") },
+                    onNavigateToBankAccounts = { navController.navigate("bank_accounts") },
+                    onNavigateToPayees = { navController.navigate("payees") }
+                )
+            }
+
+            composable("bank_accounts") {
+                val accountDao = remember { database.accountDao() }
+                val scope = rememberCoroutineScope()
+                BankAccountsScreen(
+                    accounts = accounts,
+                    onBack = { navController.popBackStack() },
+                    onAddAccount = { acc ->
+                        scope.launch(kotlinx.coroutines.Dispatchers.IO) { accountDao.insertAccount(acc) }
+                    },
+                    onUpdateAccount = { acc ->
+                        scope.launch(kotlinx.coroutines.Dispatchers.IO) { accountDao.updateAccount(acc) }
+                    },
+                    onDeleteAccount = { acc ->
+                        scope.launch(kotlinx.coroutines.Dispatchers.IO) { accountDao.deleteAccount(acc) }
+                    }
+                )
+            }
+
+            composable("payees") {
+                val scope = rememberCoroutineScope()
+                val payeeDao = remember { database.payeeDao() }
+                PayeesScreen(
+                    payees = payees,
+                    payeeAccounts = payeeAccounts,
+                    onBack = { navController.popBackStack() },
+                    onPayeeClick = { payee -> navController.navigate("payee_detail/${payee.id}") },
+                    onAddPayee = { payee ->
+                        scope.launch(kotlinx.coroutines.Dispatchers.IO) { payeeDao.insertPayee(payee) }
+                    }
+                )
+            }
+
+            composable("payee_detail/{payeeId}") { backStackEntry ->
+                val payeeId = backStackEntry.arguments?.getString("payeeId")?.toIntOrNull() ?: -1
+                val payee = remember(payees, payeeId) { payees.firstOrNull { it.id == payeeId } }
+                val currentAccounts = remember(payeeAccounts, payeeId) { payeeAccounts.filter { it.payeeId == payeeId } }
+                val scope = rememberCoroutineScope()
+                val payeeDao = remember { database.payeeDao() }
+
+                PayeeDetailScreen(
+                    payee = payee,
+                    accounts = currentAccounts,
+                    onBack = { navController.popBackStack() },
+                    onDeletePayee = {
+                        scope.launch(kotlinx.coroutines.Dispatchers.IO) {
+                            payee?.let { payeeDao.deletePayee(it) }
+                        }
+                        navController.popBackStack()
+                    },
+                    onAddAccount = { acc ->
+                        scope.launch(kotlinx.coroutines.Dispatchers.IO) { payeeDao.insertPayeeAccount(acc.copy(payeeId = payeeId)) }
+                    },
+                    onUpdateAccount = { acc ->
+                        scope.launch(kotlinx.coroutines.Dispatchers.IO) { payeeDao.updatePayeeAccount(acc.copy(payeeId = payeeId)) }
+                    },
+                    onDeleteAccount = { acc ->
+                        scope.launch(kotlinx.coroutines.Dispatchers.IO) { payeeDao.deletePayeeAccount(acc) }
+                    }
                 )
             }
 
@@ -262,10 +336,14 @@ fun MainDashboardContainer(
     database: FinanceDatabase,
     accounts: List<AccountEntity>,
     allTransactions: List<TransactionEntity>,
+    payees: List<PayeeEntity> = emptyList(),
+    payeeAccounts: List<PayeeAccountEntity> = emptyList(),
     onNavigateToPending: () -> Unit,
     onNavigateToIncome: () -> Unit,
     onNavigateToExpenses: () -> Unit,
-    onNavigateToSettings: () -> Unit
+    onNavigateToSettings: () -> Unit,
+    onNavigateToBankAccounts: () -> Unit = {},
+    onNavigateToPayees: () -> Unit = {}
 ) {
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val scope       = rememberCoroutineScope()
@@ -455,7 +533,6 @@ fun MainDashboardContainer(
 
                 Spacer(modifier = Modifier.height(8.dp))
 
-                // Menu items with custom styling
                 DrawerMenuItem(
                     icon = Icons.Default.Settings,
                     label = "Settings",
@@ -464,6 +541,22 @@ fun MainDashboardContainer(
                             drawerState.close()
                             onNavigateToSettings()
                         }
+                    }
+                )
+                DrawerMenuItem(
+                    icon = Icons.Default.AccountBalance,
+                    label = "Bank Accounts",
+                    onClick = {
+                        scope.launch { drawerState.close() }
+                        onNavigateToBankAccounts()
+                    }
+                )
+                DrawerMenuItem(
+                    icon = Icons.Default.People,
+                    label = "Recipient Profiles",
+                    onClick = {
+                        scope.launch { drawerState.close() }
+                        onNavigateToPayees()
                     }
                 )
                 DrawerMenuItem(
@@ -588,7 +681,35 @@ fun MainDashboardContainer(
                         },
                         onOpenDrawer       = { scope.launch { drawerState.open() } },
                         onIncomeClick      = onNavigateToIncome,
-                        onExpenseClick     = onNavigateToExpenses
+                        onExpenseClick     = onNavigateToExpenses,
+                        payees             = payees,
+                        payeeAccounts      = payeeAccounts,
+                        onSavePayee        = { name, bankName, accountNumber, type ->
+                            scope.launch(Dispatchers.IO) {
+                                val payeeDao = database.payeeDao()
+                                val existingPayees = payeeDao.getAllPayeesOnce()
+                                var payee = existingPayees.firstOrNull { it.name.equals(name, ignoreCase = true) }
+                                val payeeId = if (payee == null) {
+                                    val uniqueId = "PAY-" + java.util.UUID.randomUUID().toString().take(4).uppercase(java.util.Locale.ROOT)
+                                    payeeDao.insertPayee(PayeeEntity(name = name, uniqueId = uniqueId)).toInt()
+                                } else {
+                                    payee.id
+                                }
+                                val existingAccs = payeeDao.getAccountsForPayeeOnce(payeeId)
+                                val hasAccount = existingAccs.any { it.accountNumber == accountNumber && it.bankName == bankName }
+                                if (!hasAccount) {
+                                    payeeDao.insertPayeeAccount(
+                                        PayeeAccountEntity(
+                                            payeeId = payeeId,
+                                            bankName = bankName,
+                                            accountNumber = accountNumber,
+                                            recipientName = name,
+                                            type = type
+                                        )
+                                    )
+                                }
+                            }
+                        }
                     )
                     "budget" -> BudgetScreen(
                         budgets           = budgets,

@@ -124,6 +124,55 @@ object DatabaseMigrations {
         }
     }
 
+    // ─────────────────────────────────────────────────────────
+    // v5 → v6 : Add extra account profile fields
+    // ─────────────────────────────────────────────────────────
+    val MIGRATION_5_6 = object : Migration(5, 6) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("ALTER TABLE `accounts` ADD COLUMN `accountSubtype` TEXT NOT NULL DEFAULT ''")
+            db.execSQL("ALTER TABLE `accounts` ADD COLUMN `isManaged`      INTEGER NOT NULL DEFAULT 0")
+            db.execSQL("ALTER TABLE `accounts` ADD COLUMN `holderName`     TEXT NOT NULL DEFAULT ''")
+            db.execSQL("ALTER TABLE `accounts` ADD COLUMN `accountNumber`  TEXT NOT NULL DEFAULT ''")
+        }
+    }
+
+    // ─────────────────────────────────────────────────────────
+    // v6 → v7 : Add payees & payee_accounts tables
+    // ─────────────────────────────────────────────────────────
+    val MIGRATION_6_7 = object : Migration(6, 7) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL(
+                """
+                CREATE TABLE IF NOT EXISTS `payees` (
+                    `id`        INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                    `name`      TEXT    NOT NULL,
+                    `uniqueId`  TEXT    NOT NULL,
+                    `createdAt` INTEGER NOT NULL
+                )
+                """.trimIndent()
+            )
+            db.execSQL(
+                """
+                CREATE TABLE IF NOT EXISTS `payee_accounts` (
+                    `id`            INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                    `payeeId`       INTEGER NOT NULL,
+                    `bankName`      TEXT    NOT NULL,
+                    `accountNumber` TEXT    NOT NULL,
+                    `recipientName` TEXT    NOT NULL,
+                    `type`          TEXT    NOT NULL,
+                    FOREIGN KEY(`payeeId`) REFERENCES `payees`(`id`)
+                        ON UPDATE NO ACTION ON DELETE CASCADE
+                )
+                """.trimIndent()
+            )
+            db.execSQL(
+                "CREATE INDEX IF NOT EXISTS `index_payee_accounts_payeeId` ON `payee_accounts` (`payeeId`)"
+            )
+        }
+    }
+
     /** Convenience list — pass this to addMigrations() */
-    val ALL = arrayOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
+    val ALL = arrayOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7)
 }
+
+

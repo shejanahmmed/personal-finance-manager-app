@@ -62,6 +62,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.shejan.financebuddy.data.db.AccountEntity
 import com.shejan.financebuddy.data.db.TransactionEntity
+import com.shejan.financebuddy.data.db.PayeeEntity
+import com.shejan.financebuddy.data.db.PayeeAccountEntity
 import com.shejan.financebuddy.ui.home.components.BalanceTrendLineChart
 import com.shejan.financebuddy.ui.home.components.ExpenseBarChart
 import com.shejan.financebuddy.ui.theme.AccentBlue
@@ -92,7 +94,10 @@ fun HomeScreen(
     onSaveTransaction: (TransactionEntity) -> Unit,
     onOpenDrawer: () -> Unit,
     onIncomeClick: () -> Unit,
-    onExpenseClick: () -> Unit
+    onExpenseClick: () -> Unit,
+    payees: List<PayeeEntity> = emptyList(),
+    payeeAccounts: List<PayeeAccountEntity> = emptyList(),
+    onSavePayee: (String, String, String, String) -> Unit = { _, _, _, _ -> }
 ) {
     var showAddSheet by remember { mutableStateOf(false) }
     val sheetState   = rememberModalBottomSheetState(skipPartiallyExpanded = true)
@@ -196,15 +201,35 @@ fun HomeScreen(
                     )
                 }
 
-                // Swipeable Account Chips
-                LazyRow(
-                    contentPadding        = PaddingValues(horizontal = 20.dp, vertical = 12.dp),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    items(sortedAccounts) { account ->
-                        AccountCardChip(account = account, currencyFormat = currencyFormat)
+                // Swipeable Account Chips (only show accounts with a non-zero balance)
+                val activeAccounts = remember(sortedAccounts) { sortedAccounts.filter { it.balance > 0 } }
+                if (activeAccounts.isNotEmpty()) {
+                    LazyRow(
+                        contentPadding        = PaddingValues(horizontal = 20.dp, vertical = 12.dp),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        items(activeAccounts) { account ->
+                            AccountCardChip(account = account, currencyFormat = currencyFormat)
+                        }
+                    }
+                } else {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 20.dp, vertical = 12.dp)
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(CardDark)
+                            .padding(vertical = 14.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "No active accounts — add funds via Bank Accounts",
+                            color = TextMuted,
+                            fontSize = 12.sp
+                        )
                     }
                 }
+
 
                 Spacer(modifier = Modifier.height(12.dp))
 
@@ -376,7 +401,10 @@ fun HomeScreen(
                 accounts          = accounts,
                 sheetState        = sheetState,
                 onDismiss         = { showAddSheet = false },
-                onSaveTransaction = onSaveTransaction
+                onSaveTransaction = onSaveTransaction,
+                payees            = payees,
+                payeeAccounts     = payeeAccounts,
+                onSavePayee       = onSavePayee
             )
         }
     }
