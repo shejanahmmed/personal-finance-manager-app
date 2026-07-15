@@ -622,13 +622,35 @@ private fun EditPendingSheet(
     var category      by remember { mutableStateOf(pending.category) }
     var note          by remember { mutableStateOf(pending.note) }
     var fromAccountId by remember { mutableStateOf(pending.fromAccountId) }
-    var toAccountId   by remember { mutableStateOf(pending.toAccountId) }
+    var toAccountId by remember(pending) {
+        mutableStateOf(
+            if (pending.toAccountId != null) {
+                pending.toAccountId
+            } else if (pending.note.startsWith("To: ")) {
+                val bankName = pending.note.substringAfter("(").substringBeforeLast(")")
+                accounts.find { it.name == bankName }?.id
+            } else {
+                null
+            }
+        )
+    }
 
     var fromAccountSearchText by remember(fromAccountId) {
         mutableStateOf(accounts.find { it.id == fromAccountId }?.name ?: "")
     }
     var toAccountSearchText by remember(toAccountId) {
         mutableStateOf(accounts.find { it.id == toAccountId }?.name ?: "")
+    }
+
+    var isOwnAccount by remember(pending) {
+        mutableStateOf(pending.toAccountId != null || !pending.note.startsWith("To: "))
+    }
+    var recipientName by remember(pending) {
+        mutableStateOf(
+            if (pending.note.startsWith("To: ")) {
+                pending.note.removePrefix("To: ").substringBefore(" (").trim()
+            } else ""
+        )
     }
 
     var showCategoryDropdown    by remember { mutableStateOf(false) }
@@ -829,7 +851,39 @@ private fun EditPendingSheet(
         // ── Destination Account Dropdown (TRANSFER only) ──────────────────────
         if (type == "TRANSFER") {
             Spacer(modifier = Modifier.height(14.dp))
-            SheetLabel("To Account")
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween,
+                modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)
+            ) {
+                Text(text = "Transfer to", style = androidx.compose.material3.MaterialTheme.typography.labelMedium, color = TextSecondary)
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    listOf("Own Account", "Other Person").forEach { opt ->
+                        val selected = (opt == "Own Account" && isOwnAccount) || (opt == "Other Person" && !isOwnAccount)
+                        val color = TransferYellow
+                        androidx.compose.material3.FilterChip(
+                            selected = selected,
+                            onClick  = { isOwnAccount = (opt == "Own Account") },
+                            label    = { Text(opt, fontSize = 10.sp, fontWeight = FontWeight.Bold) },
+                            colors   = androidx.compose.material3.FilterChipDefaults.filterChipColors(
+                                selectedContainerColor = color.copy(alpha = 0.15f),
+                                selectedLabelColor     = color,
+                                labelColor             = TextSecondary,
+                                containerColor         = CardDark
+                            ),
+                            border = androidx.compose.material3.FilterChipDefaults.filterChipBorder(
+                                enabled = true, selected = selected,
+                                selectedBorderColor = color, borderColor = DividerColor
+                            ),
+                            shape = RoundedCornerShape(8.dp),
+                            modifier = Modifier.height(28.dp)
+                        )
+                    }
+                }
+            }
+
+            val destAccounts = if (isOwnAccount) accounts.filter { it.id != fromAccountId } else accounts
+
             ExposedDropdownMenuBox(
                 expanded = showToAccountDropdown,
                 onExpandedChange = {
@@ -848,6 +902,8 @@ private fun EditPendingSheet(
                     modifier = Modifier
                         .fillMaxWidth()
                         .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryEditable),
+                    label = { Text(if (isOwnAccount) "To Account" else "To Bank/MFS", color = TextSecondary) },
+                    placeholder = { Text(if (isOwnAccount) "Select destination" else "Select bank", color = TextMuted) },
                     trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = showToAccountDropdown) },
                     shape = RoundedCornerShape(14.dp),
                     colors = outlinedTextFieldColors()
@@ -860,7 +916,6 @@ private fun EditPendingSheet(
                     },
                     modifier = Modifier.background(CardDarker)
                 ) {
-                    val destAccounts = accounts.filter { it.id != fromAccountId }
                     val filteredBanks = destAccounts.filter { it.type == "BANK" && it.name.contains(toAccountSearchText, ignoreCase = true) }
                     val filteredMfs = destAccounts.filter { it.type == "MFS" && it.name.contains(toAccountSearchText, ignoreCase = true) }
 
@@ -904,34 +959,68 @@ private fun EditPendingSheet(
                     }
                 }
             }
+
+            if (!isOwnAccount) {
+                Spacer(modifier = Modifier.height(14.dp))
+                OutlinedTextField(
+                    value = recipientName,
+                    onValueChange = { recipientName = it },
+                    label = { Text("Recipient Name", color = TextSecondary) },
+                    placeholder = { Text("Enter recipient name", color = TextMuted) },
+                    shape = RoundedCornerShape(14.dp),
+                    colors = outlinedTextFieldColors(),
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
         }
 
         Spacer(modifier = Modifier.height(28.dp))
 
+        val isValid = fromAccountId != -1 &&
+                (type != "TRANSFER" || 
+                    (toAccountId != null && 
+                        ((isOwnAccount && toAccountId != fromAccountId) ||
+                         (!isOwnAccount && recipientName.trim().isNotEmpty()))))
+
         // ── Save and Cancel Buttons ──────────────────────────────────────────
         Button(
             onClick = {
-                val parsedAmount = amount.toDoubleOrNull() ?: pending.amount
-                onSave(
-                    pending.copy(
-                        amount        = parsedAmount,
-                        type          = type,
-                        category      = category,
-                        note          = note,
-                        fromAccountId = fromAccountId,
-                        toAccountId   = if (type == "TRANSFER") toAccountId else null
+                if (isValid) {
+                    val parsedAmount = amount.toDoubleOrNull() ?: pending.amount
+                    val finalNote = if (type == "TRANSFER" && !isOwnAccount) {
+                        val selectedBankName = accounts.find { it.id == toAccountId }?.name ?: ""
+                        val rawNote = note.removePrefix("To: ").substringAfter(" - ", "")
+                        val cleanedNote = if (rawNote.contains(" (")) "" else rawNote
+                        "To: ${recipientName.trim()} ($selectedBankName)" + (if (cleanedNote.trim().isNotEmpty()) " - ${cleanedNote.trim()}" else "")
+                    } else {
+                        note
+                    }
+                    onSave(
+                        pending.copy(
+                            amount        = parsedAmount,
+                            type          = type,
+                            category      = category,
+                            note          = finalNote,
+                            fromAccountId = fromAccountId,
+                            toAccountId   = if (type == "TRANSFER" && isOwnAccount) toAccountId else null
+                        )
                     )
-                )
+                }
             },
+            enabled = isValid,
             modifier = Modifier
                 .fillMaxWidth()
                 .height(52.dp),
             shape = RoundedCornerShape(14.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = AccentTeal)
+            colors = ButtonDefaults.buttonColors(
+                containerColor = AccentTeal,
+                disabledContainerColor = CardDarker
+            )
         ) {
             Icon(Icons.Default.Check, contentDescription = null, tint = BackgroundDark)
             Spacer(modifier = Modifier.width(8.dp))
-            Text("Update & Save Details", color = BackgroundDark, fontWeight = FontWeight.Bold)
+            Text("Update & Save Details", color = if (isValid) BackgroundDark else TextMuted, fontWeight = FontWeight.Bold)
         }
 
         Spacer(modifier = Modifier.height(10.dp))

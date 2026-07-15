@@ -101,6 +101,9 @@ fun AddTransactionSheet(
     var fromAccountSearchText by remember(selectedFromAccount) { mutableStateOf(selectedFromAccount?.name ?: "") }
     var toAccountSearchText by remember(selectedToAccount) { mutableStateOf(selectedToAccount?.name ?: "") }
 
+    var isOwnAccount by remember { mutableStateOf(true) }
+    var recipientName by remember { mutableStateOf("") }
+
     val context = LocalContext.current
     val sharedPreferences = remember { context.getSharedPreferences("finance_buddy_prefs", Context.MODE_PRIVATE) }
 
@@ -224,6 +227,39 @@ fun AddTransactionSheet(
             Spacer(modifier = Modifier.height(18.dp))
 
             // ── Account Selector(s) ──────────────────────────────
+            if (selectedType == "TRANSFER") {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)
+                ) {
+                    Text(text = "Transfer to", style = androidx.compose.material3.MaterialTheme.typography.labelMedium, color = TextSecondary)
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        listOf("Own Account", "Other Person").forEach { opt ->
+                            val selected = (opt == "Own Account" && isOwnAccount) || (opt == "Other Person" && !isOwnAccount)
+                            val color = TransferYellow
+                            androidx.compose.material3.FilterChip(
+                                selected = selected,
+                                onClick  = { isOwnAccount = (opt == "Own Account") },
+                                label    = { Text(opt, fontSize = 10.sp, fontWeight = FontWeight.Bold) },
+                                colors   = androidx.compose.material3.FilterChipDefaults.filterChipColors(
+                                    selectedContainerColor = color.copy(alpha = 0.15f),
+                                    selectedLabelColor     = color,
+                                    labelColor             = TextSecondary,
+                                    containerColor         = CardDark
+                                ),
+                                border = androidx.compose.material3.FilterChipDefaults.filterChipBorder(
+                                    enabled = true, selected = selected,
+                                    selectedBorderColor = color, borderColor = DividerColor
+                                ),
+                                shape = RoundedCornerShape(8.dp),
+                                modifier = Modifier.height(28.dp)
+                            )
+                        }
+                    }
+                }
+            }
+
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
@@ -309,7 +345,11 @@ fun AddTransactionSheet(
 
                 // Destination / To Account (Visible only for TRANSFER)
                 if (selectedType == "TRANSFER") {
-                    val destAccounts = accounts.filter { it.id != (selectedFromAccount?.id ?: -1) }
+                    val destAccounts = if (isOwnAccount) {
+                        accounts.filter { it.id != (selectedFromAccount?.id ?: -1) }
+                    } else {
+                        accounts
+                    }
 
                     ExposedDropdownMenuBox(
                         expanded = toAccountExpanded,
@@ -327,8 +367,8 @@ fun AddTransactionSheet(
                                 toAccountSearchText = it
                                 toAccountExpanded = true
                             },
-                            label = { Text("To Account", color = TextSecondary) },
-                            placeholder = { Text("Select destination", color = TextMuted) },
+                            label = { Text(if (isOwnAccount) "To Account" else "To Bank/MFS", color = TextSecondary) },
+                            placeholder = { Text(if (isOwnAccount) "Select destination" else "Select bank", color = TextMuted) },
                             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = toAccountExpanded) },
                             shape = RoundedCornerShape(12.dp),
                             colors = TextFieldColors(),
@@ -389,6 +429,20 @@ fun AddTransactionSheet(
                         }
                     }
                 }
+            }
+
+            if (selectedType == "TRANSFER" && !isOwnAccount) {
+                Spacer(modifier = Modifier.height(14.dp))
+                OutlinedTextField(
+                    value = recipientName,
+                    onValueChange = { recipientName = it },
+                    label = { Text("Recipient Name", color = TextSecondary) },
+                    placeholder = { Text("Enter name", color = TextMuted) },
+                    shape = RoundedCornerShape(12.dp),
+                    colors = TextFieldColors(),
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
             }
 
             Spacer(modifier = Modifier.height(18.dp))
@@ -476,11 +530,19 @@ fun AddTransactionSheet(
             // ── Save Button ────────────────────────────────────
             val isValid = amount.isNotEmpty() && amount.toDoubleOrNull() != null && amount.toDouble() > 0 &&
                     selectedFromAccount != null &&
-                    (selectedType != "TRANSFER" || (selectedToAccount != null && selectedToAccount?.id != selectedFromAccount?.id))
+                    (selectedType != "TRANSFER" || 
+                        (selectedToAccount != null && 
+                            ((isOwnAccount && selectedToAccount?.id != selectedFromAccount?.id) ||
+                             (!isOwnAccount && recipientName.trim().isNotEmpty()))))
 
             Button(
                 onClick = {
                     if (isValid) {
+                        val finalNote = if (selectedType == "TRANSFER" && !isOwnAccount) {
+                            "To: ${recipientName.trim()} (${selectedToAccount?.name ?: ""})" + (if (note.trim().isNotEmpty()) " - ${note.trim()}" else "")
+                        } else {
+                            note
+                        }
                         onSaveTransaction(
                             TransactionEntity(
                                 amount        = amount.toDouble(),
@@ -488,8 +550,8 @@ fun AddTransactionSheet(
                                 category      = if (selectedType == "TRANSFER") "Transfer" else selectedCategory,
                                 timestamp     = System.currentTimeMillis(),
                                 fromAccountId = selectedFromAccount!!.id,
-                                toAccountId   = if (selectedType == "TRANSFER") selectedToAccount?.id else null,
-                                note          = note
+                                toAccountId   = if (selectedType == "TRANSFER" && isOwnAccount) selectedToAccount?.id else null,
+                                note          = finalNote
                             )
                         )
                         onDismiss()

@@ -500,8 +500,16 @@ fun TransactionRowItem(
     val sourceAccount = remember(tx.fromAccountId) {
         accounts.find { it.id == tx.fromAccountId }?.name ?: "Unknown"
     }
-    val destAccount = remember(tx.toAccountId) {
-        accounts.find { it.id == tx.toAccountId }?.name ?: "Unknown"
+    val destAccount = remember(tx.toAccountId, tx.note) {
+        if (tx.toAccountId != null) {
+            accounts.find { it.id == tx.toAccountId }?.name ?: "Unknown"
+        } else {
+            if (tx.note.startsWith("To: ")) {
+                tx.note.removePrefix("To: ").substringBefore(" - ").ifBlank { "Other Person" }
+            } else {
+                "Other Person"
+            }
+        }
     }
 
     Row(
