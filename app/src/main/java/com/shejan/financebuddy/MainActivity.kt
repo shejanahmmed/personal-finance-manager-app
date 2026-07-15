@@ -75,6 +75,8 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.Brush
@@ -414,192 +416,198 @@ fun MainDashboardContainer(
                 drawerContainerColor = SurfaceDark, // white in light mode, deep navy in dark
                 drawerShape          = RoundedCornerShape(topEnd = 24.dp, bottomEnd = 24.dp)
             ) {
-                // Header Box (App Logo + App Name + Close Button in corner)
-                Box(
+                Column(
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 28.dp, start = 20.dp, end = 12.dp, bottom = 12.dp)
+                        .fillMaxSize()
+                        .verticalScroll(rememberScrollState())
                 ) {
+                    // Header Box (App Logo + App Name + Close Button in corner)
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 28.dp, start = 20.dp, end = 12.dp, bottom = 12.dp)
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.padding(end = 40.dp) // buffer for close icon
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(38.dp)
+                                    .clip(CircleShape)
+                                    .background(Color.White)
+                                    .padding(4.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Image(
+                                    painter = painterResource(id = R.drawable.financebuddy),
+                                    contentDescription = "App Logo",
+                                    modifier = Modifier.fillMaxSize()
+                                )
+                            }
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Text(
+                                text       = "FinanceBuddy",
+                                fontSize   = 16.sp,
+                                fontWeight = FontWeight.Bold,
+                                color      = TextPrimary
+                            )
+                        }
+
+                        Box(
+                            modifier = Modifier
+                                .size(34.dp)
+                                .align(Alignment.CenterEnd)
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(CardDarker) // off-white in light, darker card in dark
+                                .border(1.dp, DividerColor, RoundedCornerShape(8.dp))
+                                .clickable { scope.launch { drawerState.close() } },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector        = Icons.Default.Close,
+                                contentDescription = "Close Drawer",
+                                tint               = TextPrimary,
+                                modifier           = Modifier.size(18.dp)
+                            )
+                        }
+                    }
+
+                    HorizontalDivider(color = DividerColor, modifier = Modifier.padding(horizontal = 20.dp))
+                    
+                    // User Profile Info Card
                     Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.padding(end = 40.dp) // buffer for close icon
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 20.dp, vertical = 16.dp)
+                            .clip(RoundedCornerShape(16.dp))
+                            .background(CardDarker) // off-white in light, deeper card in dark
+                            .clickable { showEditProfileDialog = true }
+                            .padding(12.dp),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
                         Box(
                             modifier = Modifier
                                 .size(38.dp)
                                 .clip(CircleShape)
-                                .background(Color.White)
-                                .padding(4.dp),
+                                .background(Brush.linearGradient(colors = listOf(AccentTeal.copy(alpha = 0.15f), AccentBlue.copy(alpha = 0.15f)))),
                             contentAlignment = Alignment.Center
                         ) {
-                            Image(
-                                painter = painterResource(id = R.drawable.financebuddy),
-                                contentDescription = "App Logo",
-                                modifier = Modifier.fillMaxSize()
-                            )
+                            val profileBitmap = remember(profileImagePath) {
+                                if (profileImagePath.isNotEmpty()) {
+                                    try {
+                                        val file = java.io.File(profileImagePath)
+                                        if (file.exists()) {
+                                            android.graphics.BitmapFactory.decodeFile(file.absolutePath)
+                                        } else null
+                                    } catch (e: Exception) {
+                                        null
+                                    }
+                                } else null
+                            }
+
+                            if (profileBitmap != null) {
+                                Image(
+                                    bitmap = profileBitmap.asImageBitmap(),
+                                    contentDescription = "Profile Photo",
+                                    modifier = Modifier.fillMaxSize(),
+                                    contentScale = ContentScale.Crop
+                                )
+                            } else {
+                                Icon(
+                                    imageVector = Icons.Default.Person,
+                                    contentDescription = "Default Profile Photo",
+                                    tint = AccentTeal,
+                                    modifier = Modifier.fillMaxSize(0.6f)
+                                )
+                            }
                         }
                         Spacer(modifier = Modifier.width(12.dp))
-                        Text(
-                            text       = "FinanceBuddy",
-                            fontSize   = 16.sp,
-                            fontWeight = FontWeight.Bold,
-                            color      = TextPrimary
-                        )
-                    }
-
-                    Box(
-                        modifier = Modifier
-                            .size(34.dp)
-                            .align(Alignment.CenterEnd)
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(CardDarker) // off-white in light, darker card in dark
-                            .border(1.dp, DividerColor, RoundedCornerShape(8.dp))
-                            .clickable { scope.launch { drawerState.close() } },
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector        = Icons.Default.Close,
-                            contentDescription = "Close Drawer",
-                            tint               = TextPrimary,
-                            modifier           = Modifier.size(18.dp)
-                        )
-                    }
-                }
-
-                HorizontalDivider(color = DividerColor, modifier = Modifier.padding(horizontal = 20.dp))
-                
-                // User Profile Info Card
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 20.dp, vertical = 16.dp)
-                        .clip(RoundedCornerShape(16.dp))
-                        .background(CardDarker) // off-white in light, deeper card in dark
-                        .clickable { showEditProfileDialog = true }
-                        .padding(12.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(38.dp)
-                            .clip(CircleShape)
-                            .background(Brush.linearGradient(colors = listOf(AccentTeal.copy(alpha = 0.15f), AccentBlue.copy(alpha = 0.15f)))),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        val profileBitmap = remember(profileImagePath) {
-                            if (profileImagePath.isNotEmpty()) {
-                                try {
-                                    val file = java.io.File(profileImagePath)
-                                    if (file.exists()) {
-                                        android.graphics.BitmapFactory.decodeFile(file.absolutePath)
-                                    } else null
-                                } catch (e: Exception) {
-                                    null
-                                }
-                            } else null
-                        }
-
-                        if (profileBitmap != null) {
-                            Image(
-                                bitmap = profileBitmap.asImageBitmap(),
-                                contentDescription = "Profile Photo",
-                                modifier = Modifier.fillMaxSize(),
-                                contentScale = ContentScale.Crop
+                        Column {
+                            Text(
+                                text = profileName,
+                                color = TextPrimary,
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.SemiBold
                             )
-                        } else {
-                            Icon(
-                                imageVector = Icons.Default.Person,
-                                contentDescription = "Default Profile Photo",
-                                tint = AccentTeal,
-                                modifier = Modifier.fillMaxSize(0.6f)
+                            Text(
+                                text = "Tap to edit profile",
+                                color = TextMuted,
+                                fontSize = 11.sp
                             )
                         }
                     }
-                    Spacer(modifier = Modifier.width(12.dp))
-                    Column {
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    DrawerMenuItem(
+                        icon = Icons.Default.Settings,
+                        label = "Settings",
+                        onClick = {
+                            scope.launch {
+                                drawerState.close()
+                                onNavigateToSettings()
+                            }
+                        }
+                    )
+                    DrawerMenuItem(
+                        icon = Icons.Default.AccountBalance,
+                        label = "Bank Accounts",
+                        onClick = {
+                            scope.launch { drawerState.close() }
+                            onNavigateToBankAccounts()
+                        }
+                    )
+                    DrawerMenuItem(
+                        icon = Icons.Default.People,
+                        label = "Recipient Profiles",
+                        onClick = {
+                            scope.launch { drawerState.close() }
+                            onNavigateToPayees()
+                        }
+                    )
+                    DrawerMenuItem(
+                        icon = Icons.Default.DateRange,
+                        label = "Statistics",
+                        onClick = { scope.launch { drawerState.close() } }
+                    )
+                    DrawerMenuItem(
+                        icon = Icons.Default.Info,
+                        label = "Investment Tracker",
+                        onClick = { scope.launch { drawerState.close() } }
+                    )
+                    DrawerMenuItem(
+                        icon = Icons.Default.Inbox,
+                        label = "Transaction Inbox",
+                        badgeText = if (pendingCount > 0) pendingCount.toString() else null,
+                        onClick = {
+                            scope.launch { drawerState.close() }
+                            onNavigateToPending()
+                        }
+                    )
+
+                    Spacer(modifier = Modifier.height(32.dp))
+
+                    // Footer section
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 20.dp, vertical = 24.dp),
+                        horizontalAlignment = Alignment.Start
+                    ) {
                         Text(
-                            text = profileName,
-                            color = TextPrimary,
-                            fontSize = 13.sp,
+                            text = "Local Storage Secured",
+                            color = AccentTeal,
+                            fontSize = 11.sp,
                             fontWeight = FontWeight.SemiBold
                         )
+                        Spacer(modifier = Modifier.height(4.dp))
                         Text(
-                            text = "Tap to edit profile",
+                            text = "v1.0.0 (AES-256 Encrypted)",
                             color = TextMuted,
-                            fontSize = 11.sp
+                            fontSize = 10.sp
                         )
                     }
-                }
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                DrawerMenuItem(
-                    icon = Icons.Default.Settings,
-                    label = "Settings",
-                    onClick = {
-                        scope.launch {
-                            drawerState.close()
-                            onNavigateToSettings()
-                        }
-                    }
-                )
-                DrawerMenuItem(
-                    icon = Icons.Default.AccountBalance,
-                    label = "Bank Accounts",
-                    onClick = {
-                        scope.launch { drawerState.close() }
-                        onNavigateToBankAccounts()
-                    }
-                )
-                DrawerMenuItem(
-                    icon = Icons.Default.People,
-                    label = "Recipient Profiles",
-                    onClick = {
-                        scope.launch { drawerState.close() }
-                        onNavigateToPayees()
-                    }
-                )
-                DrawerMenuItem(
-                    icon = Icons.Default.DateRange,
-                    label = "Statistics",
-                    onClick = { scope.launch { drawerState.close() } }
-                )
-                DrawerMenuItem(
-                    icon = Icons.Default.Info,
-                    label = "Investment Tracker",
-                    onClick = { scope.launch { drawerState.close() } }
-                )
-                DrawerMenuItem(
-                    icon = Icons.Default.Inbox,
-                    label = "Transaction Inbox",
-                    badgeText = if (pendingCount > 0) pendingCount.toString() else null,
-                    onClick = {
-                        scope.launch { drawerState.close() }
-                        onNavigateToPending()
-                    }
-                )
-
-                Spacer(modifier = Modifier.weight(1f))
-
-                // Footer section
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 20.dp, vertical = 24.dp),
-                    horizontalAlignment = Alignment.Start
-                ) {
-                    Text(
-                        text = "Local Storage Secured",
-                        color = AccentTeal,
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.SemiBold
-                    )
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        text = "v1.0.0 (AES-256 Encrypted)",
-                        color = TextMuted,
-                        fontSize = 10.sp
-                    )
                 }
             }
         }

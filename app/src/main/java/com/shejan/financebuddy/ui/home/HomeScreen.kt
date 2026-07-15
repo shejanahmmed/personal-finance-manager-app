@@ -454,7 +454,12 @@ fun AccountCardChip(
                         .background(cardColor.copy(alpha = 0.25f))
                         .padding(horizontal = 6.dp, vertical = 2.dp)
                 ) {
-                    Text(text = account.type, fontSize = 9.sp, fontWeight = FontWeight.Bold, color = cardColor)
+                    Text(
+                        text = if (account.accountSubtype.isNotBlank()) account.accountSubtype else account.type,
+                        fontSize = 9.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = cardColor
+                    )
                 }
             }
 

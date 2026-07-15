@@ -47,7 +47,7 @@ private val PRESET_BANKS = listOf(
 private val PRESET_MFS = listOf(
     "bKash", "Nagad", "Rocket", "Upay", "CellFin (IBBL)", "Ok Wallet", "MyCash"
 )
-private val ACCOUNT_SUBTYPES = listOf("Savings", "Current", "Salary", "Student", "Business", "Islamic", "Other")
+private val ACCOUNT_SUBTYPES = listOf("Savings", "Current", "Salary", "Student", "Business", "Islamic", "Personal", "Merchant", "Agent", "Other")
 
 private val BANK_COLOR_MAP = mapOf(
     "BRAC Bank PLC" to "#0096FF",
@@ -78,8 +78,8 @@ fun BankAccountsScreen(
     onDeleteAccount: (AccountEntity) -> Unit
 ) {
     val currencyFormat = remember { DecimalFormat("##,##,##0.00") }
-    val banks = remember(accounts) { accounts.filter { it.type == "BANK" } }
-    val mfs   = remember(accounts) { accounts.filter { it.type == "MFS"  } }
+    val banks = remember(accounts) { accounts.filter { it.type == "BANK" && it.accountSubtype.isNotBlank() } }
+    val mfs   = remember(accounts) { accounts.filter { it.type == "MFS"  && it.accountSubtype.isNotBlank() } }
 
     var showAddSheet by remember { mutableStateOf(false) }
     var editingAccount by remember { mutableStateOf<AccountEntity?>(null) }
@@ -297,7 +297,7 @@ private fun AccountFormSheet(
     val isEditing = existingAccount != null
     var accountName    by remember(existingAccount) { mutableStateOf(existingAccount?.name ?: "") }
     var accountType    by remember(existingAccount) { mutableStateOf(existingAccount?.type ?: "BANK") }
-    var accountSubtype by remember(existingAccount) { mutableStateOf(existingAccount?.accountSubtype ?: "") }
+    var accountSubtype by remember(existingAccount) { mutableStateOf(existingAccount?.accountSubtype ?: "Savings") }
     var initialBalance by remember(existingAccount) { mutableStateOf(if (isEditing) existingAccount!!.balance.toString() else "") }
     var isManaged      by remember(existingAccount) { mutableStateOf(existingAccount?.isManaged ?: false) }
     var holderName     by remember(existingAccount) { mutableStateOf(existingAccount?.holderName ?: "") }
@@ -309,7 +309,7 @@ private fun AccountFormSheet(
     val presetList = if (accountType == "BANK") PRESET_BANKS else PRESET_MFS
     val filteredPresets = if (accountName.isBlank()) presetList else presetList.filter { it.contains(accountName, ignoreCase = true) }
 
-    val isValid = accountName.trim().isNotBlank() && (!isManaged || holderName.trim().isNotBlank())
+    val isValid = accountName.trim().isNotBlank() && accountSubtype.isNotBlank() && (!isManaged || holderName.trim().isNotBlank())
 
     ModalBottomSheet(
         onDismissRequest = onDismiss, sheetState = sheetState,
