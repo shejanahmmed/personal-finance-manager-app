@@ -269,13 +269,28 @@ fun HomeScreen(
                         .padding(horizontal = 20.dp, vertical = 8.dp)
                         .height(200.dp)
                 ) {
-                    ExpenseBarChart(
-                        days     = getLast7DayNames(),
-                        amounts  = getActualWeeklyExpenses(allTransactions),
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(16.dp)
-                    )
+                    val weeklyExpenses = remember(allTransactions) { getActualWeeklyExpenses(allTransactions) }
+                    val hasWeeklyExpenses = remember(weeklyExpenses) { weeklyExpenses.any { it > 0.0 } }
+                    if (hasWeeklyExpenses) {
+                        ExpenseBarChart(
+                            days     = getLast7DayNames(),
+                            amounts  = weeklyExpenses,
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(16.dp)
+                        )
+                    } else {
+                        Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text     = "No spending data for this week.",
+                                color    = TextMuted,
+                                fontSize = 14.sp
+                            )
+                        }
+                    }
                 }
 
                 Spacer(modifier = Modifier.height(18.dp))
@@ -331,12 +346,26 @@ fun HomeScreen(
                         .padding(horizontal = 20.dp, vertical = 8.dp)
                         .height(180.dp)
                 ) {
-                    BalanceTrendLineChart(
-                        balances = getActualBalanceTrend(totalBalance, allTransactions),
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(top = 16.dp, bottom = 8.dp)
-                    )
+                    val hasTrendData = remember(allTransactions) { allTransactions.isNotEmpty() }
+                    if (hasTrendData) {
+                        BalanceTrendLineChart(
+                            balances = getActualBalanceTrend(totalBalance, allTransactions),
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(top = 16.dp, bottom = 8.dp)
+                        )
+                    } else {
+                        Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text     = "No balance trend data available.",
+                                color    = TextMuted,
+                                fontSize = 14.sp
+                            )
+                        }
+                    }
                 }
 
                 Spacer(modifier = Modifier.height(18.dp))
