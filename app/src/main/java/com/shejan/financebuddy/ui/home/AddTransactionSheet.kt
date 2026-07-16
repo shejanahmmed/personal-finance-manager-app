@@ -90,12 +90,11 @@ fun AddTransactionSheet(
     accounts: List<AccountEntity>,
     sheetState: SheetState,
     onDismiss: () -> Unit,
-    onSaveTransaction: (TransactionEntity) -> Unit,
+    onSaveTransaction: (TransactionEntity, AccountEntity?, AccountEntity?) -> Unit,
     payees: List<PayeeEntity> = emptyList(),
     payeeAccounts: List<PayeeAccountEntity> = emptyList(),
     onSavePayee: (String, String, String, String) -> Unit = { _, _, _, _ -> }
 ) {
-    if (accounts.isEmpty()) return
 
     var amount by remember { mutableStateOf("") }
     var selectedType by remember { mutableStateOf("EXPENSE") } // "INCOME", "EXPENSE", "TRANSFER"
@@ -121,10 +120,19 @@ fun AddTransactionSheet(
     var payeeExpanded by remember { mutableStateOf(false) }
     var payeeAccountExpanded by remember { mutableStateOf(false) }
 
+    val isFromAccountNew = remember(selectedFromAccount, fromAccountSearchText, accounts) {
+        selectedFromAccount == null && fromAccountSearchText.trim().isNotEmpty() &&
+                accounts.none { it.name.equals(fromAccountSearchText.trim(), ignoreCase = true) }
+    }
+    val isToAccountNew = remember(selectedToAccount, toAccountSearchText, accounts) {
+        selectedToAccount == null && toAccountSearchText.trim().isNotEmpty() &&
+                accounts.none { it.name.equals(toAccountSearchText.trim(), ignoreCase = true) }
+    }
+
     val selectedBalance = selectedFromAccount?.balance ?: 0.0
     val parsedAmount = amount.toDoubleOrNull() ?: 0.0
     val isInsufficient = (selectedType == "EXPENSE" || selectedType == "TRANSFER") &&
-            selectedFromAccount != null && parsedAmount > selectedBalance
+            ((selectedFromAccount != null && parsedAmount > selectedBalance) || (isFromAccountNew && parsedAmount > 0.0))
 
     val context = LocalContext.current
     val sharedPreferences = remember { context.getSharedPreferences("finance_buddy_prefs", Context.MODE_PRIVATE) }
@@ -250,7 +258,7 @@ fun AddTransactionSheet(
             if (isInsufficient) {
                 Spacer(modifier = Modifier.height(6.dp))
                 Text(
-                    text = "Warning: Insufficient balance in ${selectedFromAccount?.name} (Available: ৳${String.format("%,.2f", selectedBalance)})",
+                    text = "Warning: Insufficient balance in ${selectedFromAccount?.name ?: fromAccountSearchText} (Available: ৳${String.format("%,.2f", selectedBalance)})",
                     color = ExpenseRed,
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Medium,
@@ -333,47 +341,20 @@ fun AddTransactionSheet(
                         },
                         modifier = Modifier.background(CardDarker)
                     ) {
-                        val filteredBanks = accounts.filter { it.type == "BANK" && it.name.contains(fromAccountSearchText, ignoreCase = true) }
-                        val filteredMfs = accounts.filter { it.type == "MFS" && it.name.contains(fromAccountSearchText, ignoreCase = true) }
-
-                        if (filteredBanks.isNotEmpty()) {
-                            DropdownMenuItem(
-                                text = { Text("Banks", color = AccentTeal, fontWeight = FontWeight.Bold, fontSize = 11.sp) },
-                                onClick = {},
-                                enabled = false
-                            )
-                            filteredBanks.forEach { account ->
-                                DropdownMenuItem(
-                                    text = { Text(account.name, color = TextPrimary) },
-                                    onClick = {
-                                        selectedFromAccount = account
-                                        fromAccountSearchText = account.name
-                                        fromAccountExpanded = false
-                                    }
-                                )
+                        AccountDropdownItems(
+                            searchText = fromAccountSearchText,
+                            accountsList = accounts,
+                            onSelectExisting = { account ->
+                                selectedFromAccount = account
+                                fromAccountSearchText = account.name
+                                fromAccountExpanded = false
+                            },
+                            onSelectNew = { name ->
+                                selectedFromAccount = null
+                                fromAccountSearchText = name
+                                fromAccountExpanded = false
                             }
-                        }
-
-                        if (filteredMfs.isNotEmpty()) {
-                            if (filteredBanks.isNotEmpty()) {
-                                androidx.compose.material3.HorizontalDivider(color = DividerColor.copy(alpha = 0.5f))
-                            }
-                            DropdownMenuItem(
-                                text = { Text("Mobile Financial Services (MFS)", color = AccentTeal, fontWeight = FontWeight.Bold, fontSize = 11.sp) },
-                                onClick = {},
-                                enabled = false
-                            )
-                            filteredMfs.forEach { account ->
-                                DropdownMenuItem(
-                                    text = { Text(account.name, color = TextPrimary) },
-                                    onClick = {
-                                        selectedFromAccount = account
-                                        fromAccountSearchText = account.name
-                                        fromAccountExpanded = false
-                                    }
-                                )
-                            }
-                        }
+                        )
                     }
                 }
 
@@ -419,47 +400,20 @@ fun AddTransactionSheet(
                             },
                             modifier = Modifier.background(CardDarker)
                         ) {
-                            val filteredBanks = destAccounts.filter { it.type == "BANK" && it.name.contains(toAccountSearchText, ignoreCase = true) }
-                            val filteredMfs = destAccounts.filter { it.type == "MFS" && it.name.contains(toAccountSearchText, ignoreCase = true) }
-
-                            if (filteredBanks.isNotEmpty()) {
-                                DropdownMenuItem(
-                                    text = { Text("Banks", color = AccentTeal, fontWeight = FontWeight.Bold, fontSize = 11.sp) },
-                                    onClick = {},
-                                    enabled = false
-                                )
-                                filteredBanks.forEach { account ->
-                                    DropdownMenuItem(
-                                        text = { Text(account.name, color = TextPrimary) },
-                                        onClick = {
-                                            selectedToAccount = account
-                                            toAccountSearchText = account.name
-                                            toAccountExpanded = false
-                                        }
-                                    )
+                            AccountDropdownItems(
+                                searchText = toAccountSearchText,
+                                accountsList = destAccounts,
+                                onSelectExisting = { account ->
+                                    selectedToAccount = account
+                                    toAccountSearchText = account.name
+                                    toAccountExpanded = false
+                                },
+                                onSelectNew = { name ->
+                                    selectedToAccount = null
+                                    toAccountSearchText = name
+                                    toAccountExpanded = false
                                 }
-                            }
-
-                            if (filteredMfs.isNotEmpty()) {
-                                if (filteredBanks.isNotEmpty()) {
-                                    androidx.compose.material3.HorizontalDivider(color = DividerColor.copy(alpha = 0.5f))
-                                }
-                                DropdownMenuItem(
-                                    text = { Text("Mobile Financial Services (MFS)", color = AccentTeal, fontWeight = FontWeight.Bold, fontSize = 11.sp) },
-                                    onClick = {},
-                                    enabled = false
-                                )
-                                filteredMfs.forEach { account ->
-                                    DropdownMenuItem(
-                                        text = { Text(account.name, color = TextPrimary) },
-                                        onClick = {
-                                            selectedToAccount = account
-                                            toAccountSearchText = account.name
-                                            toAccountExpanded = false
-                                        }
-                                    )
-                                }
-                            }
+                            )
                         }
                     }
                 }
@@ -722,11 +676,11 @@ fun AddTransactionSheet(
 
             // ── Save Button ────────────────────────────────────
             val isValid = amount.isNotEmpty() && amount.toDoubleOrNull() != null && amount.toDouble() > 0 &&
-                    selectedFromAccount != null && !isInsufficient &&
+                    (selectedFromAccount != null || isFromAccountNew) && !isInsufficient &&
                     (selectedType != "TRANSFER" || 
-                        (selectedToAccount != null && 
-                            ((isOwnAccount && selectedToAccount?.id != selectedFromAccount?.id) ||
-                             (!isOwnAccount && recipientName.trim().isNotEmpty() && recipientAccountNumber.trim().isNotEmpty()))))
+                        ((isOwnAccount && (selectedToAccount != null || isToAccountNew) && 
+                          (selectedFromAccount?.id != selectedToAccount?.id || fromAccountSearchText.trim().lowercase() != toAccountSearchText.trim().lowercase())) ||
+                         (!isOwnAccount && recipientName.trim().isNotEmpty() && recipientAccountNumber.trim().isNotEmpty())))
 
             Button(
                 onClick = {
@@ -744,16 +698,24 @@ fun AddTransactionSheet(
                                 selectedToAccount?.type ?: "BANK"
                             )
                         }
+                        
+                        val newFromAcc = if (isFromAccountNew) createNewAccountEntity(fromAccountSearchText.trim()) else null
+                        val newToAcc = if (selectedType == "TRANSFER" && isOwnAccount && isToAccountNew) {
+                            createNewAccountEntity(toAccountSearchText.trim())
+                        } else null
+
                         onSaveTransaction(
                             TransactionEntity(
                                 amount        = amount.toDouble(),
                                 type          = selectedType,
                                 category      = if (selectedType == "TRANSFER") "Transfer" else selectedCategory,
                                 timestamp     = System.currentTimeMillis(),
-                                fromAccountId = selectedFromAccount!!.id,
-                                toAccountId   = if (selectedType == "TRANSFER" && isOwnAccount) selectedToAccount?.id else null,
+                                fromAccountId = selectedFromAccount?.id ?: 0,
+                                toAccountId   = if (selectedType == "TRANSFER" && isOwnAccount) (selectedToAccount?.id ?: 0) else null,
                                 note          = finalNote
-                            )
+                            ),
+                            newFromAcc,
+                            newToAcc
                         )
                         onDismiss()
                     }
@@ -956,5 +918,138 @@ private fun TextFieldColors() = OutlinedTextFieldDefaults.colors(
 fun LaunchedEffectForType(type: String, block: suspend () -> Unit) {
     androidx.compose.runtime.LaunchedEffect(key1 = type) {
         block()
+    }
+}
+
+private val PRESET_BANKS = listOf(
+    "BRAC Bank PLC", "The City Bank PLC", "Eastern Bank PLC (EBL)",
+    "Dutch-Bangla Bank PLC (DBBL)", "Prime Bank PLC", "Mutual Trust Bank PLC",
+    "Islami Bank Bangladesh PLC (IBBL)", "Al-Arafah Islami Bank PLC", "Shahjalal Islami Bank PLC"
+)
+private val PRESET_MFS = listOf(
+    "bKash", "Nagad", "Rocket", "Upay", "CellFin (IBBL)", "Ok Wallet", "MyCash"
+)
+
+private fun createNewAccountEntity(name: String): AccountEntity {
+    val presetMfs = listOf("bKash", "Nagad", "Rocket", "Upay", "CellFin (IBBL)", "Ok Wallet", "MyCash")
+    val isMfs = presetMfs.any { name.contains(it, ignoreCase = true) }
+    val type = if (isMfs) "MFS" else "BANK"
+    val subtype = if (isMfs) "Personal" else "Savings"
+    val colorHex = when {
+        name.contains("BRAC", ignoreCase = true) -> "#0096FF"
+        name.contains("City", ignoreCase = true) -> "#1A365D"
+        name.contains("Eastern", ignoreCase = true) -> "#004B87"
+        name.contains("Dutch-Bangla", ignoreCase = true) || name.contains("DBBL", ignoreCase = true) -> "#00875A"
+        name.contains("Prime", ignoreCase = true) -> "#1E3A8A"
+        name.contains("Mutual Trust", ignoreCase = true) || name.contains("MTB", ignoreCase = true) -> "#A21CAF"
+        name.contains("Islami", ignoreCase = true) || name.contains("IBBL", ignoreCase = true) -> "#15803D"
+        name.contains("Al-Arafah", ignoreCase = true) -> "#0F766E"
+        name.contains("Shahjalal", ignoreCase = true) -> "#0369A1"
+        name.contains("bKash", ignoreCase = true) -> "#E2136E"
+        name.contains("Nagad", ignoreCase = true) -> "#F04A24"
+        name.contains("Rocket", ignoreCase = true) -> "#8C2D19"
+        name.contains("Upay", ignoreCase = true) -> "#0052CC"
+        name.contains("CellFin", ignoreCase = true) -> "#15803D"
+        isMfs -> "#FF5C7C"
+        else -> "#0096FF"
+    }
+    return AccountEntity(
+        name = name,
+        type = type,
+        balance = 0.0,
+        colorHex = colorHex,
+        accountSubtype = subtype
+    )
+}
+
+@Composable
+private fun androidx.compose.foundation.layout.ColumnScope.AccountDropdownItems(
+    searchText: String,
+    accountsList: List<AccountEntity>,
+    onSelectExisting: (AccountEntity) -> Unit,
+    onSelectNew: (String) -> Unit
+) {
+    val matchingExistingBanks = accountsList.filter { it.type == "BANK" && it.name.contains(searchText, ignoreCase = true) }
+    val matchingExistingMfs = accountsList.filter { it.type == "MFS" && it.name.contains(searchText, ignoreCase = true) }
+    val existingNames = accountsList.map { it.name.lowercase() }
+    val matchingPresetBanks = PRESET_BANKS.filter {
+        !existingNames.contains(it.lowercase()) && it.contains(searchText, ignoreCase = true)
+    }
+    val matchingPresetMfs = PRESET_MFS.filter {
+        !existingNames.contains(it.lowercase()) && it.contains(searchText, ignoreCase = true)
+    }
+
+    if (matchingExistingBanks.isNotEmpty()) {
+        DropdownMenuItem(
+            text = { Text("Your Banks", color = AccentTeal, fontWeight = FontWeight.Bold, fontSize = 11.sp) },
+            onClick = {},
+            enabled = false
+        )
+        matchingExistingBanks.forEach { account ->
+            DropdownMenuItem(
+                text = { Text(account.name, color = TextPrimary) },
+                onClick = { onSelectExisting(account) }
+            )
+        }
+    }
+
+    if (matchingPresetBanks.isNotEmpty()) {
+        DropdownMenuItem(
+            text = { Text("Link Bank Account", color = AccentTeal, fontWeight = FontWeight.Bold, fontSize = 11.sp) },
+            onClick = {},
+            enabled = false
+        )
+        matchingPresetBanks.forEach { preset ->
+            DropdownMenuItem(
+                text = { Text("+ Link $preset", color = TextPrimary) },
+                onClick = { onSelectNew(preset) }
+            )
+        }
+    }
+
+    if (matchingExistingMfs.isNotEmpty()) {
+        if (matchingExistingBanks.isNotEmpty() || matchingPresetBanks.isNotEmpty()) {
+            androidx.compose.material3.HorizontalDivider(color = DividerColor.copy(alpha = 0.5f))
+        }
+        DropdownMenuItem(
+            text = { Text("Your Mobile Wallets", color = AccentTeal, fontWeight = FontWeight.Bold, fontSize = 11.sp) },
+            onClick = {},
+            enabled = false
+        )
+        matchingExistingMfs.forEach { account ->
+            DropdownMenuItem(
+                text = { Text(account.name, color = TextPrimary) },
+                onClick = { onSelectExisting(account) }
+            )
+        }
+    }
+
+    if (matchingPresetMfs.isNotEmpty()) {
+        if (matchingExistingBanks.isNotEmpty() || matchingPresetBanks.isNotEmpty() || matchingExistingMfs.isNotEmpty()) {
+            androidx.compose.material3.HorizontalDivider(color = DividerColor.copy(alpha = 0.5f))
+        }
+        DropdownMenuItem(
+            text = { Text("Link Mobile Wallet", color = AccentTeal, fontWeight = FontWeight.Bold, fontSize = 11.sp) },
+            onClick = {},
+            enabled = false
+        )
+        matchingPresetMfs.forEach { preset ->
+            DropdownMenuItem(
+                text = { Text("+ Link $preset", color = TextPrimary) },
+                onClick = { onSelectNew(preset) }
+            )
+        }
+    }
+
+    val typedTrimmed = searchText.trim()
+    if (typedTrimmed.isNotEmpty() &&
+        !accountsList.any { it.name.equals(typedTrimmed, ignoreCase = true) } &&
+        !PRESET_BANKS.any { it.equals(typedTrimmed, ignoreCase = true) } &&
+        !PRESET_MFS.any { it.equals(typedTrimmed, ignoreCase = true) }
+    ) {
+        DropdownMenuItem(
+            text = { Text("+ Create custom account: \"$typedTrimmed\"", color = TextPrimary) },
+            onClick = { onSelectNew(typedTrimmed) }
+        )
     }
 }

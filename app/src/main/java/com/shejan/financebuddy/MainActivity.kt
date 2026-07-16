@@ -682,9 +682,17 @@ fun MainDashboardContainer(
                         allTransactions    = allTransactions,
                         monthlyIncome      = monthlyIncome ?: 0.0,
                         monthlyExpenses    = monthlyExpenses ?: 0.0,
-                        onSaveTransaction  = { tx ->
+                        onSaveTransaction  = { tx, newFromAcc, newToAcc ->
                             scope.launch(Dispatchers.IO) {
-                                transactionDao.insertTransaction(tx)
+                                var fromId = tx.fromAccountId
+                                var toId = tx.toAccountId
+                                if (newFromAcc != null) {
+                                    fromId = database.accountDao().insertAccount(newFromAcc).toInt()
+                                }
+                                if (newToAcc != null) {
+                                    toId = database.accountDao().insertAccount(newToAcc).toInt()
+                                }
+                                transactionDao.insertTransaction(tx.copy(fromAccountId = fromId, toAccountId = toId))
                             }
                         },
                         onOpenDrawer       = { scope.launch { drawerState.open() } },

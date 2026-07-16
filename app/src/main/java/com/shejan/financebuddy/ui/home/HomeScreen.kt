@@ -1,6 +1,8 @@
 package com.shejan.financebuddy.ui.home
 
 import androidx.compose.foundation.background
+import android.widget.Toast
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -91,7 +93,7 @@ fun HomeScreen(
     allTransactions: List<TransactionEntity>,
     monthlyIncome: Double,
     monthlyExpenses: Double,
-    onSaveTransaction: (TransactionEntity) -> Unit,
+    onSaveTransaction: (TransactionEntity, AccountEntity?, AccountEntity?) -> Unit,
     onOpenDrawer: () -> Unit,
     onIncomeClick: () -> Unit,
     onExpenseClick: () -> Unit,
