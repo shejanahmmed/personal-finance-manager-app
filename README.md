@@ -90,6 +90,9 @@ erDiagram
         string type "BANK | MFS"
         double balance "Current Available Balance"
         string colorHex "Theme Color Indicator"
+        string accountSubtype "Savings | Current | Student"
+        string accountNumber "Optional reference number"
+        string showAs "Custom display alias (Show As)"
     }
     TRANSACTIONS {
         int id PK "Auto-Increment"
@@ -225,6 +228,16 @@ Bespoke charts designed with native Compose Canvas drawing APIs:
 - **Secure Deposits**: Add manual savings increments directly to goals (contributions are tracked in-app).
 - **Goal Personalization**: Complete custom emoji grid picker and dynamic color-coding.
 - **Deadline Metrics**: Automatically computes and highlights remaining days/months before targets.
+
+### 6. Polish Dashboard & Account Cards
+- **Compact & Modern Design**: Sleek accounts cards are reduced to `100.dp` height with an elegant border stroke (`alpha = 0.4f`) to match high-fidelity visuals.
+- **Proportional Formatting**: Resized bank titles (`11.sp` bold, single-line) and balances (`15.sp` bold) to prevent text overflow.
+- **Structured Info Alignment**: Renders `Acc: •••• [Last 4]` and the custom `Show As` nickname side-by-side in the bottom row (e.g. `Acc: •••• 1234  •  Shejan`), with `"unknown"` fallback.
+
+### 7. Streamlined Transfer Sheet & Autocomplete
+- **Vertical Input Flow**: Stacked *From* and *To* account selectors vertically in the `Own Account` transfer view for clean, professional styling.
+- **Payee-Free Other Transfers**: Removed payee profile dropdown overlays when transferring to `Other's Account`, opting for direct inputs for Recipient Name and Recipient Account/Mobile Number.
+- **Intelligent Autocomplete & Auto-Fill**: Integrates an autocomplete popup for the recipient name field. When selected, it automatically populates both the recipient's name and account number. If a contact has multiple accounts, they are listed separately to let the user select the exact account they want.
 
 ---
 
