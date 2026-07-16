@@ -62,6 +62,8 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.TextFieldValue
+import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -106,8 +108,22 @@ fun AddTransactionSheet(
     var fromAccountExpanded by remember { mutableStateOf(false) }
     var toAccountExpanded by remember { mutableStateOf(false) }
 
-    var fromAccountSearchText by remember(selectedFromAccount) { mutableStateOf(selectedFromAccount?.name ?: "") }
-    var toAccountSearchText by remember(selectedToAccount) { mutableStateOf(selectedToAccount?.name ?: "") }
+    var fromAccountSearchText by remember(selectedFromAccount) {
+        mutableStateOf(
+            TextFieldValue(
+                text = selectedFromAccount?.name ?: "",
+                selection = TextRange((selectedFromAccount?.name ?: "").length)
+            )
+        )
+    }
+    var toAccountSearchText by remember(selectedToAccount) {
+        mutableStateOf(
+            TextFieldValue(
+                text = selectedToAccount?.name ?: "",
+                selection = TextRange((selectedToAccount?.name ?: "").length)
+            )
+        )
+    }
 
     var isOwnAccount by remember { mutableStateOf(true) }
     var recipientName by remember { mutableStateOf("") }
@@ -121,12 +137,12 @@ fun AddTransactionSheet(
     var payeeAccountExpanded by remember { mutableStateOf(false) }
 
     val isFromAccountNew = remember(selectedFromAccount, fromAccountSearchText, accounts) {
-        selectedFromAccount == null && fromAccountSearchText.trim().isNotEmpty() &&
-                accounts.none { it.name.equals(fromAccountSearchText.trim(), ignoreCase = true) }
+        selectedFromAccount == null && fromAccountSearchText.text.trim().isNotEmpty() &&
+                accounts.none { it.name.equals(fromAccountSearchText.text.trim(), ignoreCase = true) }
     }
     val isToAccountNew = remember(selectedToAccount, toAccountSearchText, accounts) {
-        selectedToAccount == null && toAccountSearchText.trim().isNotEmpty() &&
-                accounts.none { it.name.equals(toAccountSearchText.trim(), ignoreCase = true) }
+        selectedToAccount == null && toAccountSearchText.text.trim().isNotEmpty() &&
+                accounts.none { it.name.equals(toAccountSearchText.text.trim(), ignoreCase = true) }
     }
 
     val selectedBalance = selectedFromAccount?.balance ?: 0.0
@@ -277,8 +293,8 @@ fun AddTransactionSheet(
                 ) {
                     Text(text = "Transfer to", style = androidx.compose.material3.MaterialTheme.typography.labelMedium, color = TextSecondary)
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        listOf("Own Account", "Other Person").forEach { opt ->
-                            val selected = (opt == "Own Account" && isOwnAccount) || (opt == "Other Person" && !isOwnAccount)
+                        listOf("Own Account", "Other's Account").forEach { opt ->
+                            val selected = (opt == "Own Account" && isOwnAccount) || (opt == "Other's Account" && !isOwnAccount)
                             val color = TransferYellow
                             androidx.compose.material3.FilterChip(
                                 selected = selected,
@@ -302,30 +318,95 @@ fun AddTransactionSheet(
                 }
             }
 
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            // Source / From Account
+            ExposedDropdownMenuBox(
+                expanded = fromAccountExpanded,
+                onExpandedChange = {
+                    fromAccountExpanded = it
+                    if (it) {
+                        fromAccountSearchText = TextFieldValue("")
+                    }
+                },
+                modifier = Modifier.fillMaxWidth()
             ) {
-                // Source / From Account
-                ExposedDropdownMenuBox(
+                OutlinedTextField(
+                    value = fromAccountSearchText,
+                    onValueChange = {
+                        fromAccountSearchText = it
+                        fromAccountExpanded = true
+                    },
+                    label = { Text(if (selectedType == "TRANSFER") "From Account" else "Account", color = TextSecondary) },
+                    placeholder = { Text("Select account", color = TextMuted) },
+                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = fromAccountExpanded) },
+                    shape = RoundedCornerShape(12.dp),
+                    colors = TextFieldColors(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryEditable)
+                )
+
+                ExposedDropdownMenu(
                     expanded = fromAccountExpanded,
+                    onDismissRequest = {
+                        fromAccountExpanded = false
+                        fromAccountSearchText = TextFieldValue(
+                            text = selectedFromAccount?.name ?: "",
+                            selection = TextRange((selectedFromAccount?.name ?: "").length)
+                        )
+                    },
+                    modifier = Modifier.background(CardDarker)
+                ) {
+                    AccountDropdownItems(
+                        searchText = fromAccountSearchText.text,
+                        accountsList = accounts,
+                        onSelectExisting = { account ->
+                            selectedFromAccount = account
+                            fromAccountSearchText = TextFieldValue(
+                                text = account.name,
+                                selection = TextRange(account.name.length)
+                            )
+                            fromAccountExpanded = false
+                        },
+                        onSelectNew = { name ->
+                            selectedFromAccount = null
+                            fromAccountSearchText = TextFieldValue(
+                                text = name,
+                                selection = TextRange(name.length)
+                            )
+                            fromAccountExpanded = false
+                        }
+                    )
+                }
+            }
+
+            // Destination / To Account (Visible only for TRANSFER and isOwnAccount)
+            if (selectedType == "TRANSFER" && isOwnAccount) {
+                Spacer(modifier = Modifier.height(12.dp))
+                val destAccounts = if (isOwnAccount) {
+                    accounts.filter { it.id != (selectedFromAccount?.id ?: -1) }
+                } else {
+                    accounts
+                }
+
+                ExposedDropdownMenuBox(
+                    expanded = toAccountExpanded,
                     onExpandedChange = {
-                        fromAccountExpanded = it
+                        toAccountExpanded = it
                         if (it) {
-                            fromAccountSearchText = ""
+                            toAccountSearchText = TextFieldValue("")
                         }
                     },
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier.fillMaxWidth()
                 ) {
                     OutlinedTextField(
-                        value = fromAccountSearchText,
+                        value = toAccountSearchText,
                         onValueChange = {
-                            fromAccountSearchText = it
-                            fromAccountExpanded = true
+                            toAccountSearchText = it
+                            toAccountExpanded = true
                         },
-                        label = { Text(if (selectedType == "TRANSFER") "From Account" else "Account", color = TextSecondary) },
-                        placeholder = { Text("Select account", color = TextMuted) },
-                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = fromAccountExpanded) },
+                        label = { Text(if (isOwnAccount) "To Account" else "To Bank/MFS", color = TextSecondary) },
+                        placeholder = { Text(if (isOwnAccount) "Select destination" else "Select bank", color = TextMuted) },
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = toAccountExpanded) },
                         shape = RoundedCornerShape(12.dp),
                         colors = TextFieldColors(),
                         modifier = Modifier
@@ -334,207 +415,48 @@ fun AddTransactionSheet(
                     )
 
                     ExposedDropdownMenu(
-                        expanded = fromAccountExpanded,
+                        expanded = toAccountExpanded,
                         onDismissRequest = {
-                            fromAccountExpanded = false
-                            fromAccountSearchText = selectedFromAccount?.name ?: ""
+                            toAccountExpanded = false
+                            toAccountSearchText = TextFieldValue(
+                                text = selectedToAccount?.name ?: "",
+                                selection = TextRange((selectedToAccount?.name ?: "").length)
+                            )
                         },
                         modifier = Modifier.background(CardDarker)
                     ) {
                         AccountDropdownItems(
-                            searchText = fromAccountSearchText,
-                            accountsList = accounts,
+                            searchText = toAccountSearchText.text,
+                            accountsList = destAccounts,
                             onSelectExisting = { account ->
-                                selectedFromAccount = account
-                                fromAccountSearchText = account.name
-                                fromAccountExpanded = false
+                                selectedToAccount = account
+                                toAccountSearchText = TextFieldValue(
+                                    text = account.name,
+                                    selection = TextRange(account.name.length)
+                                )
+                                toAccountExpanded = false
                             },
                             onSelectNew = { name ->
-                                selectedFromAccount = null
-                                fromAccountSearchText = name
-                                fromAccountExpanded = false
-                            }
-                        )
-                    }
-                }
-
-                // Destination / To Account (Visible only for TRANSFER)
-                if (selectedType == "TRANSFER") {
-                    val destAccounts = if (isOwnAccount) {
-                        accounts.filter { it.id != (selectedFromAccount?.id ?: -1) }
-                    } else {
-                        accounts
-                    }
-
-                    ExposedDropdownMenuBox(
-                        expanded = toAccountExpanded,
-                        onExpandedChange = {
-                            toAccountExpanded = it
-                            if (it) {
-                                toAccountSearchText = ""
-                            }
-                        },
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        OutlinedTextField(
-                            value = toAccountSearchText,
-                            onValueChange = {
-                                toAccountSearchText = it
-                                toAccountExpanded = true
-                            },
-                            label = { Text(if (isOwnAccount) "To Account" else "To Bank/MFS", color = TextSecondary) },
-                            placeholder = { Text(if (isOwnAccount) "Select destination" else "Select bank", color = TextMuted) },
-                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = toAccountExpanded) },
-                            shape = RoundedCornerShape(12.dp),
-                            colors = TextFieldColors(),
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryEditable)
-                        )
-
-                        ExposedDropdownMenu(
-                            expanded = toAccountExpanded,
-                            onDismissRequest = {
+                                selectedToAccount = null
+                                toAccountSearchText = TextFieldValue(
+                                    text = name,
+                                    selection = TextRange(name.length)
+                                )
                                 toAccountExpanded = false
-                                toAccountSearchText = selectedToAccount?.name ?: ""
-                            },
-                            modifier = Modifier.background(CardDarker)
-                        ) {
-                            AccountDropdownItems(
-                                searchText = toAccountSearchText,
-                                accountsList = destAccounts,
-                                onSelectExisting = { account ->
-                                    selectedToAccount = account
-                                    toAccountSearchText = account.name
-                                    toAccountExpanded = false
-                                },
-                                onSelectNew = { name ->
-                                    selectedToAccount = null
-                                    toAccountSearchText = name
-                                    toAccountExpanded = false
-                                }
-                            )
-                        }
+                            }
+                        )
                     }
                 }
             }
 
             if (selectedType == "TRANSFER" && !isOwnAccount) {
                 Spacer(modifier = Modifier.height(14.dp))
-                
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    // Profile / Payee Select dropdown
-                    ExposedDropdownMenuBox(
-                        expanded = payeeExpanded,
-                        onExpandedChange = { payeeExpanded = it },
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        OutlinedTextField(
-                            value = selectedPayee?.name ?: "",
-                            onValueChange = {},
-                            readOnly = true,
-                            label = { Text("Select Contact", color = TextSecondary) },
-                            placeholder = { Text("Choose contact...", color = TextMuted) },
-                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = payeeExpanded) },
-                            shape = RoundedCornerShape(12.dp),
-                            colors = TextFieldColors(),
-                            modifier = Modifier.fillMaxWidth().menuAnchor(ExposedDropdownMenuAnchorType.PrimaryEditable)
-                        )
-                        ExposedDropdownMenu(
-                            expanded = payeeExpanded,
-                            onDismissRequest = { payeeExpanded = false },
-                            modifier = Modifier.background(CardDarker)
-                        ) {
-                            DropdownMenuItem(
-                                text = { Text("New Recipient", color = AccentBlue, fontWeight = FontWeight.Bold) },
-                                onClick = {
-                                    selectedPayee = null
-                                    selectedPayeeAccount = null
-                                    recipientName = ""
-                                    recipientAccountNumber = ""
-                                    payeeExpanded = false
-                                }
-                            )
-                            payees.forEach { payee ->
-                                DropdownMenuItem(
-                                    text = { Text(payee.name, color = TextPrimary) },
-                                    onClick = {
-                                        selectedPayee = payee
-                                        recipientName = payee.name
-                                        selectedPayeeAccount = null
-                                        recipientAccountNumber = ""
-                                        val payeeAccs = payeeAccounts.filter { it.payeeId == payee.id }
-                                        if (payeeAccs.size == 1) {
-                                            val first = payeeAccs.first()
-                                            selectedPayeeAccount = first
-                                            toAccountSearchText = first.bankName
-                                            recipientAccountNumber = first.accountNumber
-                                            selectedToAccount = accounts.firstOrNull { it.name == first.bankName }
-                                        }
-                                        payeeExpanded = false
-                                    }
-                                )
-                            }
-                        }
-                    }
-
-                    // Payee Account Select dropdown (only if a payee is selected and has accounts)
-                    val currentPayeeAccounts = remember(selectedPayee, payeeAccounts) {
-                        selectedPayee?.let { p -> payeeAccounts.filter { it.payeeId == p.id } } ?: emptyList()
-                    }
-                    if (selectedPayee != null && currentPayeeAccounts.isNotEmpty()) {
-                        ExposedDropdownMenuBox(
-                            expanded = payeeAccountExpanded,
-                            onExpandedChange = { payeeAccountExpanded = it },
-                            modifier = Modifier.weight(1f)
-                        ) {
-                            OutlinedTextField(
-                                value = selectedPayeeAccount?.let { "${it.bankName} (${it.accountNumber.takeLast(4)})" } ?: "",
-                                onValueChange = {},
-                                readOnly = true,
-                                label = { Text("Select Account", color = TextSecondary) },
-                                placeholder = { Text("Choose account...", color = TextMuted) },
-                                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = payeeAccountExpanded) },
-                                shape = RoundedCornerShape(12.dp),
-                                colors = TextFieldColors(),
-                                modifier = Modifier.fillMaxWidth().menuAnchor(ExposedDropdownMenuAnchorType.PrimaryEditable)
-                            )
-                            ExposedDropdownMenu(
-                                expanded = payeeAccountExpanded,
-                                onDismissRequest = { payeeAccountExpanded = false },
-                                modifier = Modifier.background(CardDarker)
-                            ) {
-                                currentPayeeAccounts.forEach { acc ->
-                                    DropdownMenuItem(
-                                        text = { Text("${acc.bankName} (${acc.accountNumber})", color = TextPrimary) },
-                                        onClick = {
-                                            selectedPayeeAccount = acc
-                                            toAccountSearchText = acc.bankName
-                                            recipientAccountNumber = acc.accountNumber
-                                            selectedToAccount = accounts.firstOrNull { it.name == acc.bankName }
-                                            payeeAccountExpanded = false
-                                        }
-                                    )
-                                }
-                            }
-                        }
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(12.dp))
 
                 // Editable Recipient Name Field
                 OutlinedTextField(
                     value = recipientName,
                     onValueChange = {
                         recipientName = it
-                        if (it != (selectedPayee?.name ?: "")) {
-                            selectedPayee = null
-                            selectedPayeeAccount = null
-                        }
                     },
                     label = { Text("Recipient Name *", color = TextSecondary) },
                     placeholder = { Text("Enter recipient name", color = TextMuted) },
@@ -551,9 +473,6 @@ fun AddTransactionSheet(
                     value = recipientAccountNumber,
                     onValueChange = {
                         recipientAccountNumber = it
-                        if (it != (selectedPayeeAccount?.accountNumber ?: "")) {
-                            selectedPayeeAccount = null
-                        }
                     },
                     label = { Text("Recipient Account/Mobile Number *", color = TextSecondary) },
                     placeholder = { Text("Enter account or phone number", color = TextMuted) },
@@ -563,33 +482,6 @@ fun AddTransactionSheet(
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
-
-                Spacer(modifier = Modifier.height(14.dp))
-
-                // Save to Payees Toggle
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(14.dp))
-                        .background(CardDark)
-                        .border(1.dp, if (saveToPayees) AccentBlue.copy(alpha = 0.4f) else DividerColor, RoundedCornerShape(14.dp))
-                        .padding(horizontal = 16.dp, vertical = 10.dp)
-                ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text("Save to Recipient Profiles?", color = TextPrimary, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
-                            Text("Add this contact & account details to Payees", color = TextMuted, fontSize = 11.sp)
-                        }
-                        Switch(
-                            checked = saveToPayees,
-                            onCheckedChange = { saveToPayees = it },
-                            colors = SwitchDefaults.colors(
-                                checkedThumbColor = BackgroundDark,
-                                checkedTrackColor = AccentBlue
-                            )
-                        )
-                    }
-                }
             }
 
             Spacer(modifier = Modifier.height(18.dp))
@@ -679,29 +571,29 @@ fun AddTransactionSheet(
                     (selectedFromAccount != null || isFromAccountNew) && !isInsufficient &&
                     (selectedType != "TRANSFER" || 
                         ((isOwnAccount && (selectedToAccount != null || isToAccountNew) && 
-                          (selectedFromAccount?.id != selectedToAccount?.id || fromAccountSearchText.trim().lowercase() != toAccountSearchText.trim().lowercase())) ||
+                          (selectedFromAccount?.id != selectedToAccount?.id || fromAccountSearchText.text.trim().lowercase() != toAccountSearchText.text.trim().lowercase())) ||
                          (!isOwnAccount && recipientName.trim().isNotEmpty() && recipientAccountNumber.trim().isNotEmpty())))
 
             Button(
                 onClick = {
                     if (isValid) {
                         val finalNote = if (selectedType == "TRANSFER" && !isOwnAccount) {
-                            "To: ${recipientName.trim()} (${selectedToAccount?.name ?: ""} - ${recipientAccountNumber.trim()})" + (if (note.trim().isNotEmpty()) " - ${note.trim()}" else "")
+                            "To: ${recipientName.trim()} (${recipientAccountNumber.trim()})" + (if (note.trim().isNotEmpty()) " - ${note.trim()}" else "")
                         } else {
                             note
                         }
                         if (selectedType == "TRANSFER" && !isOwnAccount && saveToPayees) {
                             onSavePayee(
                                 recipientName.trim(),
-                                selectedToAccount?.name ?: "",
+                                "",
                                 recipientAccountNumber.trim(),
-                                selectedToAccount?.type ?: "BANK"
+                                "BANK"
                             )
                         }
                         
-                        val newFromAcc = if (isFromAccountNew) createNewAccountEntity(fromAccountSearchText.trim()) else null
+                        val newFromAcc = if (isFromAccountNew) createNewAccountEntity(fromAccountSearchText.text.trim()) else null
                         val newToAcc = if (selectedType == "TRANSFER" && isOwnAccount && isToAccountNew) {
-                            createNewAccountEntity(toAccountSearchText.trim())
+                            createNewAccountEntity(toAccountSearchText.text.trim())
                         } else null
 
                         onSaveTransaction(
@@ -987,7 +879,52 @@ private fun androidx.compose.foundation.layout.ColumnScope.AccountDropdownItems(
         )
         matchingExistingBanks.forEach { account ->
             DropdownMenuItem(
-                text = { Text(account.name, color = TextPrimary) },
+                text = {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Text(account.name, color = TextPrimary, fontWeight = FontWeight.Medium)
+                        
+                        if (account.accountNumber.isNotBlank()) {
+                            val accLast4 = account.accountNumber.takeLast(4)
+                            Box(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(6.dp))
+                                    .background(DividerColor.copy(alpha = 0.3f))
+                                    .border(1.dp, DividerColor.copy(alpha = 0.5f), RoundedCornerShape(6.dp))
+                                    .padding(horizontal = 6.dp, vertical = 2.dp)
+                            ) {
+                                Text(
+                                    text = "*******$accLast4",
+                                    color = TextSecondary,
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                        }
+                        
+                        if (account.showAs.isNotBlank()) {
+                            val tagColor = remember(account.colorHex) {
+                                try { Color(android.graphics.Color.parseColor(account.colorHex)) } catch (e: Exception) { AccentTeal }
+                            }
+                            Box(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(6.dp))
+                                    .background(tagColor.copy(alpha = 0.12f))
+                                    .border(1.dp, tagColor.copy(alpha = 0.25f), RoundedCornerShape(6.dp))
+                                    .padding(horizontal = 6.dp, vertical = 2.dp)
+                            ) {
+                                Text(
+                                    text = account.showAs,
+                                    color = tagColor,
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                        }
+                    }
+                },
                 onClick = { onSelectExisting(account) }
             )
         }
@@ -1018,7 +955,52 @@ private fun androidx.compose.foundation.layout.ColumnScope.AccountDropdownItems(
         )
         matchingExistingMfs.forEach { account ->
             DropdownMenuItem(
-                text = { Text(account.name, color = TextPrimary) },
+                text = {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Text(account.name, color = TextPrimary, fontWeight = FontWeight.Medium)
+                        
+                        if (account.accountNumber.isNotBlank()) {
+                            val accLast4 = account.accountNumber.takeLast(4)
+                            Box(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(6.dp))
+                                    .background(DividerColor.copy(alpha = 0.3f))
+                                    .border(1.dp, DividerColor.copy(alpha = 0.5f), RoundedCornerShape(6.dp))
+                                    .padding(horizontal = 6.dp, vertical = 2.dp)
+                            ) {
+                                Text(
+                                    text = "*******$accLast4",
+                                    color = TextSecondary,
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                        }
+                        
+                        if (account.showAs.isNotBlank()) {
+                            val tagColor = remember(account.colorHex) {
+                                try { Color(android.graphics.Color.parseColor(account.colorHex)) } catch (e: Exception) { AccentTeal }
+                            }
+                            Box(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(6.dp))
+                                    .background(tagColor.copy(alpha = 0.12f))
+                                    .border(1.dp, tagColor.copy(alpha = 0.25f), RoundedCornerShape(6.dp))
+                                    .padding(horizontal = 6.dp, vertical = 2.dp)
+                            ) {
+                                Text(
+                                    text = account.showAs,
+                                    color = tagColor,
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                        }
+                    }
+                },
                 onClick = { onSelectExisting(account) }
             )
         }

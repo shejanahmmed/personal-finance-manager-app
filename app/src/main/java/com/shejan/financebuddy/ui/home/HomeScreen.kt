@@ -453,18 +453,19 @@ fun AccountCardChip(
     val cardColor = remember { Color(android.graphics.Color.parseColor(account.colorHex)) }
     Card(
         shape   = RoundedCornerShape(16.dp),
-        colors  = CardDefaults.cardColors(containerColor = cardColor.copy(alpha = 0.15f)),
-        border  = androidx.compose.foundation.BorderStroke(1.dp, cardColor.copy(alpha = 0.5f)),
+        colors  = CardDefaults.cardColors(containerColor = cardColor.copy(alpha = 0.12f)),
+        border  = androidx.compose.foundation.BorderStroke(1.dp, cardColor.copy(alpha = 0.4f)),
         modifier = Modifier
             .width(180.dp)
-            .height(115.dp)
+            .height(100.dp)
     ) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(16.dp),
+                .padding(horizontal = 12.dp, vertical = 10.dp),
             verticalArrangement = Arrangement.SpaceBetween
         ) {
+            // Top Row: Bank name & Subtype/Type tag
             Row(
                 modifier              = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -472,34 +473,64 @@ fun AccountCardChip(
             ) {
                 Text(
                     text = account.name,
-                    fontWeight = FontWeight.SemiBold,
-                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 11.sp,
                     color = TextPrimary,
-                    modifier = Modifier.weight(1f).padding(end = 8.dp),
-                    maxLines = 2,
+                    modifier = Modifier.weight(1f).padding(end = 4.dp),
+                    maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
                 Box(
                     modifier = Modifier
                         .clip(RoundedCornerShape(4.dp))
-                        .background(cardColor.copy(alpha = 0.25f))
-                        .padding(horizontal = 6.dp, vertical = 2.dp)
+                        .background(cardColor.copy(alpha = 0.2f))
+                        .padding(horizontal = 5.dp, vertical = 1.5.dp)
                 ) {
                     Text(
                         text = if (account.accountSubtype.isNotBlank()) account.accountSubtype else account.type,
-                        fontSize = 9.sp,
+                        fontSize = 8.sp,
                         fontWeight = FontWeight.Bold,
                         color = cardColor
                     )
                 }
             }
 
+            // Middle Text: Amount
             Text(
                 text  = "৳${currencyFormat.format(account.balance)}",
-                fontSize = 18.sp,
+                fontSize = 15.sp,
                 fontWeight = FontWeight.Bold,
-                color = TextPrimary
+                color = TextPrimary,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
             )
+
+            // Bottom Row: Account Number and Show As
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Start
+            ) {
+                val displayAcc = if (account.accountNumber.isNotBlank()) {
+                    val last4 = account.accountNumber.takeLast(4)
+                    "•••• $last4"
+                } else {
+                    "unknown"
+                }
+                val displayShowAs = if (account.showAs.isNotBlank()) {
+                    account.showAs
+                } else {
+                    "unknown"
+                }
+
+                Text(
+                    text = "Acc: $displayAcc  •  $displayShowAs",
+                    fontSize = 9.sp,
+                    color = TextSecondary,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
         }
     }
 }

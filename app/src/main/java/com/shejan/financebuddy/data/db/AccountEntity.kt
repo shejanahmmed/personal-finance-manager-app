@@ -13,6 +13,7 @@ data class AccountEntity(
     val accountSubtype: String = "",  // e.g. "Savings", "Current", "Salary", "Student"
     val isManaged: Boolean = false,   // true if user manages this for someone else
     val holderName: String = "",      // account holder name (for managed accounts)
-    val accountNumber: String = ""    // optional account number for reference
+    val accountNumber: String = "",   // optional account number for reference
+    val showAs: String = ""           // custom display name alias
 )
 
