@@ -541,16 +541,6 @@ fun MainDashboardContainer(
                     Spacer(modifier = Modifier.height(8.dp))
 
                     DrawerMenuItem(
-                        icon = Icons.Default.Settings,
-                        label = "Settings",
-                        onClick = {
-                            scope.launch {
-                                drawerState.close()
-                                onNavigateToSettings()
-                            }
-                        }
-                    )
-                    DrawerMenuItem(
                         icon = Icons.Default.AccountBalance,
                         label = "Bank Accounts",
                         onClick = {
@@ -583,6 +573,16 @@ fun MainDashboardContainer(
                         onClick = {
                             scope.launch { drawerState.close() }
                             onNavigateToPending()
+                        }
+                    )
+                    DrawerMenuItem(
+                        icon = Icons.Default.Settings,
+                        label = "Settings",
+                        onClick = {
+                            scope.launch {
+                                drawerState.close()
+                                onNavigateToSettings()
+                            }
                         }
                     )
 
@@ -624,21 +624,21 @@ fun MainDashboardContainer(
                         selected = currentTab == "home",
                         onClick  = { currentTab = "home" },
                         icon     = { Icon(imageVector = Icons.Default.Home, contentDescription = "Home") },
-                        label    = { Text("Home") },
+                        label    = { Text("\nHome") },
                         colors   = NavigationBarItemColors()
                     )
                     NavigationBarItem(
                         selected = currentTab == "budget",
                         onClick  = { currentTab = "budget" },
                         icon     = { Icon(imageVector = Icons.Default.List, contentDescription = "Budget") },
-                        label    = { Text("Budget") },
+                        label    = { Text("\nBudget") },
                         colors   = NavigationBarItemColors()
                     )
                     NavigationBarItem(
                         selected = currentTab == "goals",
                         onClick  = { currentTab = "goals" },
                         icon     = { Icon(imageVector = Icons.Default.Star, contentDescription = "Goals") },
-                        label    = { Text("Goals") },
+                        label    = { Text("\nGoals") },
                         colors   = NavigationBarItemColors()
                     )
                     // Pending SMS/Inbox tab with live badge
@@ -665,7 +665,7 @@ fun MainDashboardContainer(
                                 )
                             }
                         },
-                        label    = { Text("Inbox") },
+                        label    = { Text("\nInbox") },
                         colors   = NavigationBarItemColors()
                     )
                 }

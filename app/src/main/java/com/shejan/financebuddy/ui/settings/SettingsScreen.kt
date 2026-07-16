@@ -239,7 +239,7 @@ fun SettingsScreen(
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        text = "FinanceBuddy BD",
+                        text = "FinanceBuddy",
                         color = TextPrimary,
                         fontSize = 16.sp,
                         fontWeight = FontWeight.Bold
@@ -253,7 +253,7 @@ fun SettingsScreen(
                         modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp)
                     )
                     Text(
-                        text = "Made with ❤️ in Bangladesh 🇧🇩",
+                        text = "Made in Bangladesh 🇧🇩",
                         color = AccentBlue,
                         fontSize = 11.sp,
                         fontWeight = FontWeight.SemiBold
