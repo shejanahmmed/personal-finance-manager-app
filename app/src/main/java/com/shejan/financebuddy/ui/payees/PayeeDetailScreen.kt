@@ -17,6 +17,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -155,16 +156,16 @@ fun PayeeDetailScreen(
                     .padding(horizontal = 8.dp, vertical = 8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Box(
-                    modifier = Modifier
-                        .size(40.dp)
-                        .clip(RoundedCornerShape(10.dp))
-                        .background(CardDarker)
-                        .border(1.dp, DividerColor, RoundedCornerShape(10.dp))
-                        .clickable { onBack() },
-                    contentAlignment = Alignment.Center
+                IconButton(
+                    onClick = { onBack() },
+                    modifier = Modifier.size(36.dp)
                 ) {
-                    Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back", tint = TextPrimary, modifier = Modifier.size(20.dp))
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.KeyboardArrowLeft,
+                        contentDescription = "Back",
+                        tint = TextPrimary,
+                        modifier = Modifier.size(22.dp)
+                    )
                 }
                 Spacer(modifier = Modifier.weight(1f))
                 IconButton(onClick = { showDeleteConfirm = true }) {
@@ -309,6 +310,11 @@ private fun PayeeAccountCard(
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     Text(account.bankName, color = TextPrimary, fontSize = 14.sp, fontWeight = FontWeight.SemiBold,
                         maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    if (account.nickname.isNotBlank()) {
+                        Box(modifier = Modifier.clip(RoundedCornerShape(5.dp)).background(AccentTeal.copy(alpha = 0.15f)).padding(horizontal = 5.dp, vertical = 2.dp)) {
+                            Text(account.nickname, color = AccentTeal, fontSize = 8.sp, fontWeight = FontWeight.Bold)
+                        }
+                    }
                     Box(modifier = Modifier.clip(RoundedCornerShape(5.dp)).background(cardColor.copy(alpha = 0.15f)).padding(horizontal = 5.dp, vertical = 2.dp)) {
                         Text(account.type, color = cardColor, fontSize = 8.sp, fontWeight = FontWeight.Bold)
                     }
@@ -348,6 +354,7 @@ private fun PayeeAccountFormSheet(
     var bankName by remember(existingAccount) { mutableStateOf(existingAccount?.bankName ?: "") }
     var accountNumber by remember(existingAccount) { mutableStateOf(existingAccount?.accountNumber ?: "") }
     var recipientName by remember(existingAccount) { mutableStateOf(existingAccount?.recipientName ?: payeeName) }
+    var nickname by remember(existingAccount) { mutableStateOf(existingAccount?.nickname ?: "") }
 
     var nameExpanded by remember { mutableStateOf(false) }
 
@@ -434,6 +441,17 @@ private fun PayeeAccountFormSheet(
                 shape = RoundedCornerShape(12.dp), colors = formTextFieldColors(), modifier = Modifier.fillMaxWidth()
             )
 
+            Spacer(Modifier.height(12.dp))
+
+            // Nickname / Alias
+            OutlinedTextField(
+                value = nickname, onValueChange = { if (it.length <= 20) nickname = it },
+                label = { Text("Nickname (Optional)", color = TextSecondary) },
+                placeholder = { Text("e.g. Personal, Business (max 20 letters)", color = TextMuted) },
+                singleLine = true,
+                shape = RoundedCornerShape(12.dp), colors = formTextFieldColors(), modifier = Modifier.fillMaxWidth()
+            )
+
             Spacer(Modifier.height(24.dp))
 
             Button(
@@ -444,7 +462,8 @@ private fun PayeeAccountFormSheet(
                             bankName = bankName.trim(),
                             accountNumber = accountNumber.trim(),
                             recipientName = recipientName.trim(),
-                            type = type
+                            type = type,
+                            nickname = nickname.trim()
                         )
                     )
                 },

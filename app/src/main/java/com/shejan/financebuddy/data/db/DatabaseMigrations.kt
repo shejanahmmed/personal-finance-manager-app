@@ -180,8 +180,17 @@ object DatabaseMigrations {
         }
     }
 
+    // ─────────────────────────────────────────────────────────
+    // v8 → v9 : Add nickname column to payee_accounts table
+    // ─────────────────────────────────────────────────────────
+    val MIGRATION_8_9 = object : Migration(8, 9) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("ALTER TABLE `payee_accounts` ADD COLUMN `nickname` TEXT NOT NULL DEFAULT ''")
+        }
+    }
+
     /** Convenience list — pass this to addMigrations() */
-    val ALL = arrayOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8)
+    val ALL = arrayOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9)
 }
 
 

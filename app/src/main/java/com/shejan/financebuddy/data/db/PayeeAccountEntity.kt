@@ -23,5 +23,6 @@ data class PayeeAccountEntity(
     val bankName: String,
     val accountNumber: String,
     val recipientName: String,
-    val type: String // "BANK" or "MFS"
+    val type: String, // "BANK" or "MFS"
+    val nickname: String = ""
 )

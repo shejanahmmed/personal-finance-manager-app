@@ -642,7 +642,7 @@ private fun AccountFormSheet(
 
             Spacer(Modifier.height(12.dp))
 
-            // Show as (max 20 chars)
+            // Nickname (max 20 chars)
             OutlinedTextField(
                 value = showAs,
                 onValueChange = { input ->
@@ -650,8 +650,8 @@ private fun AccountFormSheet(
                         showAs = input
                     }
                 },
-                label = { Text("Show as") },
-                placeholder = { Text("Custom name (max 20 letters)", color = TextMuted) },
+                label = { Text("Nickname") },
+                placeholder = { Text("Nickname (max 20 letters)", color = TextMuted) },
                 singleLine = true,
                 shape = RoundedCornerShape(12.dp),
                 colors = formTextFieldColors(showAs.isEmpty()),

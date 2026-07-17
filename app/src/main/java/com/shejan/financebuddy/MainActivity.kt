@@ -246,8 +246,13 @@ fun AppNavigation(
                     payeeAccounts = payeeAccounts,
                     onBack = { navController.popBackStack() },
                     onPayeeClick = { payee -> navController.navigate("payee_detail/${payee.id}") },
-                    onAddPayee = { payee ->
-                        scope.launch(kotlinx.coroutines.Dispatchers.IO) { payeeDao.insertPayee(payee) }
+                    onAddPayee = { payee, accountsList ->
+                        scope.launch(kotlinx.coroutines.Dispatchers.IO) {
+                            val payeeId = payeeDao.insertPayee(payee)
+                            accountsList.forEach { acc ->
+                                payeeDao.insertPayeeAccount(acc.copy(payeeId = payeeId.toInt()))
+                            }
+                        }
                     }
                 )
             }

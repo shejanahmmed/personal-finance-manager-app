@@ -10,12 +10,18 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.People
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.ui.text.input.KeyboardCapitalization
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -41,7 +47,7 @@ fun PayeesScreen(
     payeeAccounts: List<PayeeAccountEntity>,
     onBack: () -> Unit,
     onPayeeClick: (PayeeEntity) -> Unit,
-    onAddPayee: (PayeeEntity) -> Unit
+    onAddPayee: (PayeeEntity, List<PayeeAccountEntity>) -> Unit
 ) {
     var searchQuery by remember { mutableStateOf("") }
     var showAddSheet by remember { mutableStateOf(false) }
@@ -78,18 +84,18 @@ fun PayeesScreen(
                     .padding(horizontal = 8.dp, vertical = 8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Box(
-                    modifier = Modifier
-                        .size(40.dp)
-                        .clip(RoundedCornerShape(10.dp))
-                        .background(CardDarker)
-                        .border(1.dp, DividerColor, RoundedCornerShape(10.dp))
-                        .clickable { onBack() },
-                    contentAlignment = Alignment.Center
+                IconButton(
+                    onClick = { onBack() },
+                    modifier = Modifier.size(36.dp)
                 ) {
-                    Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back", tint = TextPrimary, modifier = Modifier.size(20.dp))
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.KeyboardArrowLeft,
+                        contentDescription = "Back",
+                        tint = TextPrimary,
+                        modifier = Modifier.size(22.dp)
+                    )
                 }
-                Spacer(modifier = Modifier.width(12.dp))
+                Spacer(modifier = Modifier.width(8.dp))
                 Column(modifier = Modifier.weight(1f)) {
                     Text("Recipient Profiles", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = TextPrimary)
                     Text("Manage contacts and payment accounts", fontSize = 12.sp, color = TextMuted)
@@ -172,9 +178,9 @@ fun PayeesScreen(
         AddPayeeSheet(
             sheetState = sheetState,
             onDismiss = { scope.launch { sheetState.hide() }.invokeOnCompletion { showAddSheet = false } },
-            onSave = { name ->
+            onSave = { name, accountsList ->
                 val uniqueId = "PAY-" + UUID.randomUUID().toString().take(4).uppercase(Locale.ROOT)
-                onAddPayee(PayeeEntity(name = name.trim(), uniqueId = uniqueId))
+                onAddPayee(PayeeEntity(name = name.trim(), uniqueId = uniqueId), accountsList)
                 scope.launch { sheetState.hide() }.invokeOnCompletion { showAddSheet = false }
             }
         )
@@ -268,10 +274,14 @@ private fun PayeeCard(
 private fun AddPayeeSheet(
     sheetState: SheetState,
     onDismiss: () -> Unit,
-    onSave: (String) -> Unit
+    onSave: (String, List<PayeeAccountEntity>) -> Unit
 ) {
     var name by remember { mutableStateOf("") }
-    val isValid = name.trim().isNotBlank()
+    var accountsList by remember { mutableStateOf(listOf<PayeeAccountDraft>()) }
+
+    val isMainNameValid = name.trim().isNotBlank()
+    val areAccountsValid = accountsList.all { it.bankName.trim().isNotBlank() && it.accountNumber.trim().isNotBlank() }
+    val isValid = isMainNameValid && areAccountsValid
 
     ModalBottomSheet(
         onDismissRequest = onDismiss, sheetState = sheetState,
@@ -294,7 +304,7 @@ private fun AddPayeeSheet(
             OutlinedTextField(
                 value = name,
                 onValueChange = { name = it },
-                label = { Text("Recipient Name", color = TextSecondary) },
+                label = { Text("Recipient Name *", color = TextSecondary) },
                 placeholder = { Text("e.g. Shejan Ahmmed", color = TextMuted) },
                 singleLine = true,
                 shape = RoundedCornerShape(12.dp),
@@ -302,10 +312,211 @@ private fun AddPayeeSheet(
                 modifier = Modifier.fillMaxWidth()
             )
 
+            // List of associated accounts
+            accountsList.forEachIndexed { index, account ->
+                Spacer(Modifier.height(16.dp))
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(CardDarker)
+                        .border(1.dp, DividerColor, RoundedCornerShape(16.dp))
+                        .padding(14.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text("Account #${index + 1}", color = AccentBlue, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                        IconButton(
+                            onClick = {
+                                accountsList = accountsList.toMutableList().apply { removeAt(index) }
+                            },
+                            modifier = Modifier.size(24.dp)
+                        ) {
+                            Icon(Icons.Default.Delete, "Remove Account", tint = ExpenseRed, modifier = Modifier.size(16.dp))
+                        }
+                    }
+
+                    Spacer(Modifier.height(10.dp))
+
+                    // Type Toggle (Bank / MFS)
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(CardDark)
+                            .padding(3.dp),
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        listOf("BANK", "MFS").forEach { t ->
+                            val selected = account.type == t
+                            Box(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .background(if (selected) AccentBlue else Color.Transparent)
+                                    .clickable {
+                                        accountsList = accountsList.toMutableList().apply {
+                                            this[index] = account.copy(type = t, bankName = "")
+                                        }
+                                    }
+                                    .padding(vertical = 8.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = if (t == "BANK") "🏦  Bank" else "📱  MFS",
+                                    color = if (selected) BackgroundDark else TextSecondary,
+                                    fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
+                                    fontSize = 12.sp
+                                )
+                            }
+                        }
+                    }
+
+                    Spacer(Modifier.height(12.dp))
+
+                    // Bank Name Autocomplete
+                    var nameExpanded by remember { mutableStateOf(false) }
+                    val presetList = if (account.type == "BANK") PRESET_BANKS else PRESET_MFS
+                    val filteredPresets = if (account.bankName.isBlank()) presetList else presetList.filter { it.contains(account.bankName, ignoreCase = true) }
+
+                    ExposedDropdownMenuBox(
+                        expanded = nameExpanded,
+                        onExpandedChange = { nameExpanded = it }
+                    ) {
+                        OutlinedTextField(
+                            value = account.bankName,
+                            onValueChange = { valText ->
+                                accountsList = accountsList.toMutableList().apply {
+                                    this[index] = account.copy(bankName = valText)
+                                }
+                                nameExpanded = true
+                            },
+                            label = { Text(if (account.type == "BANK") "Bank Name *" else "MFS Name *", color = TextSecondary) },
+                            placeholder = { Text("Type or select…", color = TextMuted) },
+                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = nameExpanded) },
+                            singleLine = true,
+                            shape = RoundedCornerShape(10.dp),
+                            colors = formTextFieldColors(),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryEditable)
+                        )
+                        if (filteredPresets.isNotEmpty()) {
+                            ExposedDropdownMenu(
+                                expanded = nameExpanded,
+                                onDismissRequest = { nameExpanded = false },
+                                modifier = Modifier.background(CardDarker)
+                            ) {
+                                filteredPresets.forEach { preset ->
+                                    DropdownMenuItem(
+                                        text = { Text(preset, color = TextPrimary, fontSize = 13.sp) },
+                                        onClick = {
+                                            accountsList = accountsList.toMutableList().apply {
+                                                this[index] = account.copy(bankName = preset)
+                                            }
+                                            nameExpanded = false
+                                        }
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    Spacer(Modifier.height(10.dp))
+
+                    // Account Number / Wallet Number
+                    OutlinedTextField(
+                        value = account.accountNumber,
+                        onValueChange = { valText ->
+                            accountsList = accountsList.toMutableList().apply {
+                                this[index] = account.copy(accountNumber = valText)
+                            }
+                        },
+                        label = { Text(if (account.type == "BANK") "Account Number *" else "Mobile Number *", color = TextSecondary) },
+                        placeholder = { Text(if (account.type == "BANK") "e.g. 120409..." else "e.g. 017...", color = TextMuted) },
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        shape = RoundedCornerShape(10.dp),
+                        colors = formTextFieldColors(),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+
+                    Spacer(Modifier.height(10.dp))
+
+                    // Nickname / Alias
+                    OutlinedTextField(
+                        value = account.nickname,
+                        onValueChange = { valText ->
+                            if (valText.length <= 20) {
+                                accountsList = accountsList.toMutableList().apply {
+                                    this[index] = account.copy(nickname = valText)
+                                }
+                            }
+                        },
+                        label = { Text("Nickname (Optional)", color = TextSecondary) },
+                        placeholder = { Text("e.g. Personal, Salary", color = TextMuted) },
+                        singleLine = true,
+                        shape = RoundedCornerShape(10.dp),
+                        colors = formTextFieldColors(),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+
+                    Spacer(Modifier.height(10.dp))
+
+                    // Account Holder Name (Defaults to main name)
+                    OutlinedTextField(
+                        value = if (account.recipientName.isBlank()) name else account.recipientName,
+                        onValueChange = { valText ->
+                            accountsList = accountsList.toMutableList().apply {
+                                this[index] = account.copy(recipientName = valText)
+                            }
+                        },
+                        label = { Text("Account Holder Name", color = TextSecondary) },
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Words),
+                        shape = RoundedCornerShape(10.dp),
+                        colors = formTextFieldColors(),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+            }
+
+            Spacer(Modifier.height(16.dp))
+
+            // Add Account Button
+            OutlinedButton(
+                onClick = {
+                    accountsList = accountsList + PayeeAccountDraft()
+                },
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(12.dp),
+                border = BorderStroke(1.dp, AccentBlue.copy(alpha = 0.5f)),
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = AccentBlue)
+            ) {
+                Icon(Icons.Default.Add, null, modifier = Modifier.size(16.dp))
+                Spacer(Modifier.width(8.dp))
+                Text("Add Bank/MFS Account", fontWeight = FontWeight.Bold)
+            }
+
             Spacer(Modifier.height(24.dp))
 
             Button(
-                onClick = { onSave(name) },
+                onClick = {
+                    val accountsToSave = accountsList.map { draft ->
+                        PayeeAccountEntity(
+                            payeeId = 0, // Assigned in parent
+                            bankName = draft.bankName.trim(),
+                            accountNumber = draft.accountNumber.trim(),
+                            recipientName = if (draft.recipientName.isBlank()) name.trim() else draft.recipientName.trim(),
+                            type = draft.type,
+                            nickname = draft.nickname.trim()
+                        )
+                    }
+                    onSave(name, accountsToSave)
+                },
                 enabled = isValid, modifier = Modifier.fillMaxWidth().height(52.dp),
                 shape = RoundedCornerShape(14.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = AccentBlue, disabledContainerColor = CardDarker)
@@ -338,4 +549,24 @@ private fun formTextFieldColors() = OutlinedTextFieldDefaults.colors(
     focusedLabelColor = AccentBlue, unfocusedLabelColor = TextSecondary,
     cursorColor = AccentBlue, focusedTextColor = TextPrimary, unfocusedTextColor = TextPrimary,
     focusedContainerColor = CardDarker, unfocusedContainerColor = CardDarker
+)
+
+private data class PayeeAccountDraft(
+    val type: String = "BANK",
+    val bankName: String = "",
+    val accountNumber: String = "",
+    val nickname: String = "",
+    val recipientName: String = ""
+)
+
+private val PRESET_BANKS = listOf(
+    "BRAC Bank PLC", "The City Bank PLC", "Eastern Bank PLC (EBL)",
+    "Dutch-Bangla Bank PLC (DBBL)", "Prime Bank PLC", "Mutual Trust Bank PLC",
+    "Islami Bank Bangladesh PLC (IBBL)", "Al-Arafah Islami Bank PLC",
+    "Shahjalal Islami Bank PLC", "Sonali Bank PLC", "Janata Bank PLC",
+    "Agrani Bank PLC", "Rupali Bank PLC", "Trust Bank PLC"
+)
+
+private val PRESET_MFS = listOf(
+    "bKash", "Nagad", "Rocket", "Upay", "CellFin (IBBL)", "Ok Wallet", "MyCash"
 )
