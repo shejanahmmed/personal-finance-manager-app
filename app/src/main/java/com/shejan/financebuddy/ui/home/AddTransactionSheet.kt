@@ -126,8 +126,8 @@ fun AddTransactionSheet(
     }
 
     var isOwnAccount by remember { mutableStateOf(true) }
-    var recipientName by remember { mutableStateOf("") }
-    var recipientAccountNumber by remember { mutableStateOf("") }
+    var recipientName by remember { mutableStateOf(TextFieldValue("")) }
+    var recipientAccountNumber by remember { mutableStateOf(TextFieldValue("")) }
     var saveToPayees by remember { mutableStateOf(false) }
 
     var selectedPayee by remember { mutableStateOf<PayeeEntity?>(null) }
@@ -452,27 +452,121 @@ fun AddTransactionSheet(
             if (selectedType == "TRANSFER" && !isOwnAccount) {
                 Spacer(modifier = Modifier.height(14.dp))
 
-                // Editable Recipient Name Field
-                OutlinedTextField(
-                    value = recipientName,
-                    onValueChange = {
-                        recipientName = it
-                    },
-                    label = { Text("Recipient Name *", color = TextSecondary) },
-                    placeholder = { Text("Enter recipient name", color = TextMuted) },
-                    shape = RoundedCornerShape(12.dp),
-                    colors = TextFieldColors(),
-                    singleLine = true,
+                val filteredPayeeAccounts = remember(recipientName.text, payees, payeeAccounts) {
+                    val nameText = recipientName.text
+                    if (nameText.trim().isEmpty()) {
+                        payeeAccounts
+                    } else {
+                        val matchingPayeeIds = payees
+                            .filter { it.name.contains(nameText, ignoreCase = true) }
+                            .map { it.id }
+                            .toSet()
+                        payeeAccounts.filter {
+                            it.payeeId in matchingPayeeIds ||
+                            it.recipientName.contains(nameText, ignoreCase = true) ||
+                            it.accountNumber.contains(nameText) ||
+                            it.bankName.contains(nameText, ignoreCase = true)
+                        }
+                    }
+                }
+
+                // ExposedDropdownMenuBox for Recipient Name Autocomplete
+                ExposedDropdownMenuBox(
+                    expanded = payeeExpanded,
+                    onExpandedChange = { payeeExpanded = it },
                     modifier = Modifier.fillMaxWidth()
-                )
+                ) {
+                    OutlinedTextField(
+                        value = recipientName,
+                        onValueChange = {
+                            recipientName = it
+                            payeeExpanded = true
+                        },
+                        label = { Text("Recipient Name *", color = TextSecondary) },
+                        placeholder = { Text("Enter or select recipient name", color = TextMuted) },
+                        shape = RoundedCornerShape(12.dp),
+                        colors = TextFieldColors(),
+                        singleLine = true,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryEditable)
+                    )
+
+                    if (filteredPayeeAccounts.isNotEmpty()) {
+                        ExposedDropdownMenu(
+                            expanded = payeeExpanded,
+                            onDismissRequest = { payeeExpanded = false },
+                            modifier = Modifier.background(CardDarker)
+                        ) {
+                            filteredPayeeAccounts.forEach { acc ->
+                                val parentPayee = payees.firstOrNull { it.id == acc.payeeId }
+                                val nameToShow = parentPayee?.name ?: acc.recipientName
+                                DropdownMenuItem(
+                                    text = {
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                        ) {
+                                            Column(modifier = Modifier.weight(1f)) {
+                                                Text(nameToShow, color = TextPrimary, fontWeight = FontWeight.Medium, fontSize = 14.sp)
+                                                Text(
+                                                    text = "${acc.bankName} • ${acc.accountNumber}",
+                                                    color = TextSecondary,
+                                                    fontSize = 12.sp
+                                                )
+                                            }
+                                            if (acc.nickname.isNotBlank()) {
+                                                Box(
+                                                    modifier = Modifier
+                                                        .clip(RoundedCornerShape(6.dp))
+                                                        .background(AccentTeal.copy(alpha = 0.12f))
+                                                        .border(1.dp, AccentTeal.copy(alpha = 0.35f), RoundedCornerShape(6.dp))
+                                                        .padding(horizontal = 6.dp, vertical = 2.dp)
+                                                ) {
+                                                    Text(
+                                                        text = acc.nickname,
+                                                        color = AccentTeal,
+                                                        fontSize = 10.sp,
+                                                        fontWeight = FontWeight.Bold
+                                                    )
+                                                }
+                                            }
+                                        }
+                                    },
+                                    onClick = {
+                                        recipientName = TextFieldValue(
+                                            text = nameToShow,
+                                            selection = TextRange(nameToShow.length)
+                                        )
+                                        recipientAccountNumber = TextFieldValue(
+                                            text = acc.accountNumber,
+                                            selection = TextRange(acc.accountNumber.length)
+                                        )
+                                        saveToPayees = false
+                                        payeeExpanded = false
+                                    }
+                                )
+                            }
+                        }
+                    }
+                }
 
                 Spacer(modifier = Modifier.height(12.dp))
+
+                val isAccountAlreadySaved = remember(recipientAccountNumber.text, payeeAccounts) {
+                    val cleanNum = recipientAccountNumber.text.trim()
+                    cleanNum.isNotEmpty() && payeeAccounts.any { it.accountNumber.trim() == cleanNum }
+                }
 
                 // Editable Recipient Account Number Field
                 OutlinedTextField(
                     value = recipientAccountNumber,
                     onValueChange = {
                         recipientAccountNumber = it
+                        val cleanNum = it.text.trim()
+                        if (cleanNum.isNotEmpty() && payeeAccounts.any { acc -> acc.accountNumber.trim() == cleanNum }) {
+                            saveToPayees = false
+                        }
                     },
                     label = { Text("Recipient Account/Mobile Number *", color = TextSecondary) },
                     placeholder = { Text("Enter account or phone number", color = TextMuted) },
@@ -482,6 +576,37 @@ fun AddTransactionSheet(
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                // Switch to toggle saving to profiles
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(8.dp))
+                        .clickable(enabled = !isAccountAlreadySaved) { saveToPayees = !saveToPayees }
+                        .padding(vertical = 4.dp)
+                ) {
+                    Switch(
+                        checked = saveToPayees,
+                        onCheckedChange = { saveToPayees = it },
+                        enabled = !isAccountAlreadySaved,
+                        colors = SwitchDefaults.colors(
+                            checkedThumbColor = AccentTeal,
+                            checkedTrackColor = AccentTeal.copy(alpha = 0.5f),
+                            uncheckedThumbColor = TextMuted,
+                            uncheckedTrackColor = CardDark
+                        )
+                    )
+                    Spacer(modifier = Modifier.width(10.dp))
+                    Text(
+                        text = if (isAccountAlreadySaved) "Save to Recipient Profiles (Already Saved)" else "Save to Recipient Profiles",
+                        color = if (isAccountAlreadySaved) TextMuted else TextSecondary,
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Medium
+                    )
+                }
             }
 
             Spacer(modifier = Modifier.height(18.dp))
@@ -572,22 +697,25 @@ fun AddTransactionSheet(
                     (selectedType != "TRANSFER" || 
                         ((isOwnAccount && (selectedToAccount != null || isToAccountNew) && 
                           (selectedFromAccount?.id != selectedToAccount?.id || fromAccountSearchText.text.trim().lowercase() != toAccountSearchText.text.trim().lowercase())) ||
-                         (!isOwnAccount && recipientName.trim().isNotEmpty() && recipientAccountNumber.trim().isNotEmpty())))
+                          (!isOwnAccount && recipientName.text.trim().isNotEmpty() && recipientAccountNumber.text.trim().isNotEmpty())))
 
             Button(
                 onClick = {
                     if (isValid) {
                         val finalNote = if (selectedType == "TRANSFER" && !isOwnAccount) {
-                            "To: ${recipientName.trim()} (${recipientAccountNumber.trim()})" + (if (note.trim().isNotEmpty()) " - ${note.trim()}" else "")
+                            "To: ${recipientName.text.trim()} (${recipientAccountNumber.text.trim()})" + (if (note.trim().isNotEmpty()) " - ${note.trim()}" else "")
                         } else {
                             note
                         }
                         if (selectedType == "TRANSFER" && !isOwnAccount && saveToPayees) {
+                            val cleanNumber = recipientAccountNumber.text.trim()
+                            val guessedType = if (cleanNumber.length == 11 && cleanNumber.startsWith("01")) "MFS" else "BANK"
+                            val guessedBank = if (guessedType == "MFS") "Mobile Wallet" else "Bank Account"
                             onSavePayee(
-                                recipientName.trim(),
-                                "",
-                                recipientAccountNumber.trim(),
-                                "BANK"
+                                recipientName.text.trim(),
+                                guessedBank,
+                                cleanNumber,
+                                guessedType
                             )
                         }
                         
