@@ -136,6 +136,16 @@ erDiagram
         long deadline "Optional Deadline Epoch Millis"
         long createdAt "Creation Epoch Millis"
     }
+    LOANS {
+        int id PK "Auto-Increment"
+        string bankName "Linked Account name or other bank name"
+        double loanAmount "Principal Loan Amount"
+        int durationMonths "Repayment Period in Months"
+        double interestRate "Annual Interest Rate (APR)"
+        double repaidAmount "Total Amount Repaid So Far"
+        int accountId "Links to ACCOUNTS.id (Nullable)"
+        long createdAt "Creation Timestamp"
+    }
     PAYEES {
         int id PK "Auto-Increment"
         string name "Profile Name"
@@ -157,6 +167,7 @@ erDiagram
         int accountId "Mapped Local Account ID"
     }
     ACCOUNTS ||--o{ TRANSACTIONS : "fromAccountId / toAccountId"
+    ACCOUNTS ||--o{ LOANS : "accountId"
     PAYEES ||--o{ PAYEE_ACCOUNTS : "payeeId"
 ```
 
@@ -179,6 +190,7 @@ app/src/main/java/com/shejan/financebuddy/
 │   │   ├── TransactionEntity.kt          # Transaction database model
 │   │   ├── BudgetEntity.kt               # Budget limit database model
 │   │   ├── GoalEntity.kt                 # Savings Goal database model
+│   │   ├── LoanEntity.kt                 # Bank Loan database model
 │   │   ├── PendingSmsTransactionEntity.kt# Temporary SMS transaction model
 │   │   ├── PayeeEntity.kt                # Recipient Profile model
 │   │   ├── PayeeAccountEntity.kt         # Recipient Bank Account model
@@ -187,10 +199,11 @@ app/src/main/java/com/shejan/financebuddy/
 │   │   ├── TransactionDao.kt             # Atomic balance-adjusting transaction queries
 │   │   ├── BudgetDao.kt                  # Category-based budget constraint queries
 │   │   ├── GoalDao.kt                    # Savings goal deposit and CRUD queries
+│   │   ├── LoanDao.kt                    # Bank loan database query constraints
 │   │   ├── PendingSmsDao.kt              # CRUD operations for Transaction Inbox
 │   │   ├── PayeeDao.kt                   # CRUD operations for Recipient Profiles
 │   │   ├── SmsSenderMappingDao.kt        # CRUD operations for custom sender mappings
-│   │   ├── DatabaseMigrations.kt         # Version-controlled schema migrations (1→2 to 9→10)
+│   │   ├── DatabaseMigrations.kt         # Version-controlled schema migrations (1→2 to 11→12)
 │   │   ├── DatabaseKeyManager.kt         # Android Keystore-backed database encryption keys
 │   │   └── FinanceDatabase.kt            # Encrypted Room database configuration & seeding logic
 │   └── PreferencesManager.kt             # DataStore configurations (Onboarding & SMS Setup)
@@ -210,6 +223,8 @@ app/src/main/java/com/shejan/financebuddy/
 │   │   └── BudgetScreen.kt               # Budgeting interface, Canvas arc, and CRUD sheets
 │   ├── goals/
 │   │   └── GoalsScreen.kt                # Savings goal progress rings & deposit forms
+│   ├── loans/
+│   │   └── LoansScreen.kt                # Active bank loans calculations, overview, and repayments
 │   ├── pending/
 │   │   └── PendingTransactionsScreen.kt  # Transaction Inbox queue, mapping settings & manual scan
 │   ├── onboarding/
@@ -270,6 +285,12 @@ Bespoke charts designed with native Compose Canvas drawing APIs:
 - **Redesigned Inbox Actions**: Action buttons (Dismiss, Edit, Confirm) in the Transaction Inbox cards are redesigned as space-optimized, `46.dp` square boxes with `6.dp` rounded corners. They feature clear icons and small (`10.sp`) labels below, eliminating layout cut-offs.
 - **Tightened Bottom Navigation**: The spacing/gap between navigation icons and their text labels in the bottom navigation bar has been tightened to ensure a cohesive and professional visual layout.
 - **Header Uniformity**: The Transaction Inbox screen title section is redesigned to match the style and sizing of the main account title headers.
+
+### 9. Bank Loan Management & Repayments
+- **Bank Account Integration**: Seamless integration linking loans directly to active local bank accounts. Creating a loan automatically credits the linked account's balance and logs an `INCOME` transaction of category `"Loan"`.
+- **Pre-Filled EMI Repayment Modal**: Supports manual loan repayments that automatically deduct the amount from the selected bank account and log an `EXPENSE` transaction of category `"Loan Repayment"`. Repayment forms auto-fill with the Monthly EMI amount (or remaining balance if smaller) formatted to 2 decimals, and automatically place the cursor at the end.
+- **Continuous Circular Canvas Charts**: Displays active loan breakdowns (Repaid vs Principal vs Interest) using a high-performance Canvas doughnut chart with zero overlaps.
+- **Targeted Ripple Containment**: Restricts the clickable touch-ripple area exclusively to the header/metrics of the loan cards, ensuring detail inspection and button interaction do not collapse the cards or highlight them awkwardly.
 
 ---
 
