@@ -629,21 +629,21 @@ fun MainDashboardContainer(
                         selected = currentTab == "home",
                         onClick  = { currentTab = "home" },
                         icon     = { Icon(imageVector = Icons.Default.Home, contentDescription = "Home") },
-                        label    = { Text("\nHome") },
+                        label    = { Text("Home") },
                         colors   = NavigationBarItemColors()
                     )
                     NavigationBarItem(
                         selected = currentTab == "budget",
                         onClick  = { currentTab = "budget" },
                         icon     = { Icon(imageVector = Icons.Default.List, contentDescription = "Budget") },
-                        label    = { Text("\nBudget") },
+                        label    = { Text("Budget") },
                         colors   = NavigationBarItemColors()
                     )
                     NavigationBarItem(
                         selected = currentTab == "goals",
                         onClick  = { currentTab = "goals" },
                         icon     = { Icon(imageVector = Icons.Default.Star, contentDescription = "Goals") },
-                        label    = { Text("\nGoals") },
+                        label    = { Text("Goals") },
                         colors   = NavigationBarItemColors()
                     )
                     // Pending SMS/Inbox tab with live badge
@@ -670,7 +670,7 @@ fun MainDashboardContainer(
                                 )
                             }
                         },
-                        label    = { Text("\nInbox") },
+                        label    = { Text("Inbox") },
                         colors   = NavigationBarItemColors()
                     )
                 }
