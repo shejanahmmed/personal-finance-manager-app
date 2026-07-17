@@ -10,5 +10,7 @@ data class LoanEntity(
     val loanAmount: Double,
     val durationMonths: Int,
     val interestRate: Double,
+    val repaidAmount: Double = 0.0,
+    val accountId: Int = 0,
     val createdAt: Long = System.currentTimeMillis()
 )

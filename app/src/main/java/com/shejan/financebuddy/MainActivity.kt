@@ -226,16 +226,49 @@ fun AppNavigation(
 
             composable("loans") {
                 val loanDao = remember { database.loanDao() }
+                val transactionDao = remember { database.transactionDao() }
                 val loans by loanDao.getAllLoans().collectAsState(initial = emptyList())
                 val scope = rememberCoroutineScope()
                 LoansScreen(
                     loans = loans,
+                    accounts = accounts,
                     onBack = { navController.popBackStack() },
-                    onAddLoan = { loan ->
-                        scope.launch(kotlinx.coroutines.Dispatchers.IO) { loanDao.insertLoan(loan) }
+                    onAddLoan = { loan, accountId ->
+                        scope.launch(kotlinx.coroutines.Dispatchers.IO) {
+                            loanDao.insertLoan(loan)
+                            transactionDao.insertTransaction(
+                                TransactionEntity(
+                                    amount = loan.loanAmount,
+                                    type = "INCOME",
+                                    category = "Loan",
+                                    timestamp = System.currentTimeMillis(),
+                                    fromAccountId = accountId,
+                                    note = "Loan from ${loan.bankName}"
+                                )
+                            )
+                        }
                     },
                     onDeleteLoan = { loan ->
                         scope.launch(kotlinx.coroutines.Dispatchers.IO) { loanDao.deleteLoan(loan) }
+                    },
+                    onRepayLoan = { loan, repayAmount, accountId ->
+                        scope.launch(kotlinx.coroutines.Dispatchers.IO) {
+                            val updatedLoan = loan.copy(repaidAmount = loan.repaidAmount + repayAmount)
+                            loanDao.insertLoan(updatedLoan)
+                            transactionDao.insertTransaction(
+                                TransactionEntity(
+                                    amount = repayAmount,
+                                    type = "EXPENSE",
+                                    category = "Loan Repayment",
+                                    timestamp = System.currentTimeMillis(),
+                                    fromAccountId = accountId,
+                                    note = "Repayment to ${loan.bankName}"
+                                )
+                            )
+                        }
+                    },
+                    onNavigateToAccounts = {
+                        navController.navigate("bank_accounts")
                     }
                 )
             }

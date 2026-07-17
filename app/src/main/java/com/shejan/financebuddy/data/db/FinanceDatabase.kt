@@ -7,7 +7,7 @@ import androidx.room.RoomDatabase
 import net.sqlcipher.database.SQLiteDatabase
 import net.sqlcipher.database.SupportFactory
 
-@Database(entities = [AccountEntity::class, TransactionEntity::class, BudgetEntity::class, GoalEntity::class, PendingSmsTransactionEntity::class, PayeeEntity::class, PayeeAccountEntity::class, SmsSenderMappingEntity::class, LoanEntity::class], version = 11, exportSchema = false)
+@Database(entities = [AccountEntity::class, TransactionEntity::class, BudgetEntity::class, GoalEntity::class, PendingSmsTransactionEntity::class, PayeeEntity::class, PayeeAccountEntity::class, SmsSenderMappingEntity::class, LoanEntity::class], version = 12, exportSchema = false)
 abstract class FinanceDatabase : RoomDatabase() {
 
     abstract fun accountDao(): AccountDao

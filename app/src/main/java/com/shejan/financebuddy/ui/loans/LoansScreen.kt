@@ -39,11 +39,14 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.TextFieldValue
+import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.shejan.financebuddy.data.db.LoanEntity
+import com.shejan.financebuddy.data.db.AccountEntity
 import com.shejan.financebuddy.ui.theme.*
 import java.text.DecimalFormat
 import java.util.Locale
@@ -85,6 +88,18 @@ private fun getBankColor(bankName: String): Color {
     }
 }
 
+@Composable
+private fun loanTextFieldColors() = OutlinedTextFieldDefaults.colors(
+    focusedTextColor       = TextPrimary,
+    unfocusedTextColor     = TextPrimary,
+    focusedBorderColor     = AccentTeal,
+    unfocusedBorderColor   = DividerColor,
+    focusedContainerColor  = CardDarker,
+    unfocusedContainerColor = CardDarker,
+    focusedLabelColor      = AccentTeal,
+    unfocusedLabelColor    = TextSecondary
+)
+
 // ─── Helper for EMI & Repayment Calculations ───────────────
 private fun calculateEmi(principal: Double, annualRate: Double, months: Int): Double {
     if (months <= 0) return 0.0
@@ -99,24 +114,43 @@ private fun calculateEmi(principal: Double, annualRate: Double, months: Int): Do
 @Composable
 fun LoansScreen(
     loans: List<LoanEntity>,
+    accounts: List<AccountEntity>,
     onBack: () -> Unit,
-    onAddLoan: (LoanEntity) -> Unit,
-    onDeleteLoan: (LoanEntity) -> Unit
+    onAddLoan: (LoanEntity, accountId: Int) -> Unit,
+    onDeleteLoan: (LoanEntity) -> Unit,
+    onRepayLoan: (LoanEntity, Double, Int) -> Unit,
+    onNavigateToAccounts: () -> Unit
 ) {
     val currencyFormat = remember { DecimalFormat("##,##,##0.00") }
 
-    // Summary calculations
-    val totalPrincipal = remember(loans) { loans.sumOf { it.loanAmount } }
-    val totalRepayable = remember(loans) {
+    // Summary calculations (showing remaining totals for active tracking)
+    val totalRemainingPrincipal = remember(loans) {
         loans.sumOf { loan ->
             val emi = calculateEmi(loan.loanAmount, loan.interestRate, loan.durationMonths)
-            emi * loan.durationMonths
+            val originalRepayable = emi * loan.durationMonths
+            val remainingRepayable = (originalRepayable - loan.repaidAmount).coerceAtLeast(0.0)
+            val principalRatio = if (originalRepayable > 0) loan.loanAmount / originalRepayable else 1.0
+            remainingRepayable * principalRatio
         }
     }
-    val totalInterest = remember(loans, totalRepayable) { (totalRepayable - totalPrincipal).coerceAtLeast(0.0) }
+    
+    val totalRemainingRepayable = remember(loans) {
+        loans.sumOf { loan ->
+            val emi = calculateEmi(loan.loanAmount, loan.interestRate, loan.durationMonths)
+            val originalRepayable = emi * loan.durationMonths
+            (originalRepayable - loan.repaidAmount).coerceAtLeast(0.0)
+        }
+    }
+
+    val totalRemainingInterest = remember(loans, totalRemainingRepayable, totalRemainingPrincipal) {
+        (totalRemainingRepayable - totalRemainingPrincipal).coerceAtLeast(0.0)
+    }
+
+    val totalRepaid = remember(loans) { loans.sumOf { it.repaidAmount } }
 
     var showAddSheet by remember { mutableStateOf(false) }
     var deletingLoan by remember { mutableStateOf<LoanEntity?>(null) }
+    var repayingLoan by remember { mutableStateOf<LoanEntity?>(null) }
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
     // Delete confirmation dialog
@@ -228,9 +262,10 @@ fun LoansScreen(
                     // ─── Dashboard Overview Card ────────────────────────
                     item {
                         LoanSummaryOverview(
-                            totalPrincipal = totalPrincipal,
-                            totalRepayable = totalRepayable,
-                            totalInterest = totalInterest,
+                            totalPrincipal = totalRemainingPrincipal,
+                            totalRepayable = totalRemainingRepayable,
+                            totalInterest = totalRemainingInterest,
+                            totalRepaid = totalRepaid,
                             currencyFormat = currencyFormat
                         )
                     }
@@ -265,6 +300,9 @@ fun LoansScreen(
 
                     // Loan Cards
                     items(loans, key = { it.id }) { loan ->
+                        val linkedAccount = remember(accounts, loan.accountId) {
+                            accounts.find { it.id == loan.accountId }
+                        }
                         AnimatedVisibility(
                             visible = true,
                             enter = fadeIn(tween(300)) + slideInVertically(tween(300)) { it / 4 },
@@ -272,8 +310,10 @@ fun LoansScreen(
                         ) {
                             LoanCardItem(
                                 loan = loan,
+                                linkedAccount = linkedAccount,
                                 currencyFormat = currencyFormat,
-                                onDeleteClick = { deletingLoan = loan }
+                                onDeleteClick = { deletingLoan = loan },
+                                onRepayClick = { repayingLoan = loan }
                             )
                         }
                     }
@@ -291,19 +331,48 @@ fun LoansScreen(
             dragHandle = { BottomSheetDefaults.DragHandle(color = DividerColor) }
         ) {
             AddLoanFormSheet(
+                accounts = accounts,
                 onDismiss = { showAddSheet = false },
-                onAddLoan = { bank, amount, months, rate ->
+                onAddLoan = { bank, amount, months, rate, accountId ->
                     onAddLoan(
                         LoanEntity(
                             bankName = bank,
                             loanAmount = amount,
                             durationMonths = months,
-                            interestRate = rate
-                        )
+                            interestRate = rate,
+                            accountId = accountId
+                        ),
+                        accountId
                     )
                     showAddSheet = false
                 },
+                onNavigateToAccounts = onNavigateToAccounts,
                 currencyFormat = currencyFormat
+            )
+        }
+    }
+
+    // ─── Repay Loan Bottom Sheet ────────────────────────────────
+    if (repayingLoan != null) {
+        ModalBottomSheet(
+            onDismissRequest = { repayingLoan = null },
+            containerColor = SurfaceDark,
+            dragHandle = { BottomSheetDefaults.DragHandle(color = DividerColor) }
+        ) {
+            val loan = repayingLoan!!
+            val linkedAccount = remember(accounts, loan.accountId) {
+                accounts.find { it.id == loan.accountId }
+            }
+            RepayLoanFormSheet(
+                loan = loan,
+                account = linkedAccount,
+                accounts = accounts,
+                currencyFormat = currencyFormat,
+                onDismiss = { repayingLoan = null },
+                onRepay = { amount, accountId ->
+                    onRepayLoan(loan, amount, accountId)
+                    repayingLoan = null
+                }
             )
         }
     }
@@ -315,6 +384,7 @@ fun LoanSummaryOverview(
     totalPrincipal: Double,
     totalRepayable: Double,
     totalInterest: Double,
+    totalRepaid: Double,
     currencyFormat: DecimalFormat
 ) {
     Card(
@@ -332,7 +402,7 @@ fun LoanSummaryOverview(
         ) {
             Column {
                 Text(
-                    text = "Total Active Borrowed",
+                    text = "Total Remaining Borrowed (Principal)",
                     fontSize = 12.sp,
                     color = Color.White.copy(alpha = 0.75f),
                     fontWeight = FontWeight.Medium
@@ -350,31 +420,46 @@ fun LoanSummaryOverview(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    Column(modifier = Modifier.weight(1f)) {
+                    Column(modifier = Modifier.weight(1.2f)) {
                         Text(
-                            text = "Total Repayable",
+                            text = "Remaining Payable",
                             fontSize = 11.sp,
                             color = Color.White.copy(alpha = 0.7f)
                         )
                         Spacer(modifier = Modifier.height(2.dp))
                         Text(
                             text = "৳${currencyFormat.format(totalRepayable)}",
-                            fontSize = 15.sp,
+                            fontSize = 14.sp,
                             fontWeight = FontWeight.SemiBold,
                             color = Color.White
                         )
                     }
 
-                    Column(modifier = Modifier.weight(1f), horizontalAlignment = Alignment.End) {
+                    Column(modifier = Modifier.weight(1.2f), horizontalAlignment = Alignment.CenterHorizontally) {
                         Text(
-                            text = "Total Interest",
+                            text = "Remaining Interest",
                             fontSize = 11.sp,
                             color = Color.White.copy(alpha = 0.7f)
                         )
                         Spacer(modifier = Modifier.height(2.dp))
                         Text(
                             text = "৳${currencyFormat.format(totalInterest)}",
-                            fontSize = 15.sp,
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = Color.White.copy(alpha = 0.9f)
+                        )
+                    }
+
+                    Column(modifier = Modifier.weight(1f), horizontalAlignment = Alignment.End) {
+                        Text(
+                            text = "Total Repaid",
+                            fontSize = 11.sp,
+                            color = Color.White.copy(alpha = 0.7f)
+                        )
+                        Spacer(modifier = Modifier.height(2.dp))
+                        Text(
+                            text = "৳${currencyFormat.format(totalRepaid)}",
+                            fontSize = 14.sp,
                             fontWeight = FontWeight.SemiBold,
                             color = AccentTeal
                         )
@@ -437,17 +522,36 @@ fun LoansEmptyState() {
 @Composable
 fun LoanCardItem(
     loan: LoanEntity,
+    linkedAccount: AccountEntity?,
     currencyFormat: DecimalFormat,
-    onDeleteClick: () -> Unit
+    onDeleteClick: () -> Unit,
+    onRepayClick: () -> Unit
 ) {
     var expanded by remember { mutableStateOf(false) }
     val rotationState by animateFloatAsState(targetValue = if (expanded) 180f else 0f)
 
     val emi = calculateEmi(loan.loanAmount, loan.interestRate, loan.durationMonths)
-    val totalRepayable = emi * loan.durationMonths
-    val totalInterest = (totalRepayable - loan.loanAmount).coerceAtLeast(0.0)
+    val originalRepayable = emi * loan.durationMonths
+    val originalInterest = (originalRepayable - loan.loanAmount).coerceAtLeast(0.0)
 
-    val bankColor = remember(loan.bankName) { getBankColor(loan.bankName) }
+    val remainingRepayable = (originalRepayable - loan.repaidAmount).coerceAtLeast(0.0)
+    val principalRatio = if (originalRepayable > 0) loan.loanAmount / originalRepayable else 1.0
+    val remainingPrincipal = remainingRepayable * principalRatio
+    val remainingInterest = remainingRepayable * (1.0 - principalRatio)
+
+    val percentPaid = if (originalRepayable > 0) (loan.repaidAmount / originalRepayable * 100).toFloat() else 0f
+
+    val bankColor = remember(loan.bankName, linkedAccount) {
+        if (linkedAccount != null) {
+            try {
+                Color(android.graphics.Color.parseColor(linkedAccount.colorHex))
+            } catch (e: Exception) {
+                getBankColor(loan.bankName)
+            }
+        } else {
+            getBankColor(loan.bankName)
+        }
+    }
 
     Card(
         shape = RoundedCornerShape(16.dp),
@@ -510,12 +614,12 @@ fun LoanCardItem(
             ) {
                 Column {
                     Text(
-                        text = "Borrowed",
+                        text = "Remaining Principal",
                         fontSize = 10.sp,
                         color = TextMuted
                     )
                     Text(
-                        text = "৳${currencyFormat.format(loan.loanAmount)}",
+                        text = "৳${currencyFormat.format(remainingPrincipal)}",
                         fontSize = 16.sp,
                         fontWeight = FontWeight.SemiBold,
                         color = TextPrimary
@@ -535,6 +639,38 @@ fun LoanCardItem(
                         color = AccentTeal
                     )
                 }
+            }
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            // Repayment Progress Bar
+            Column(modifier = Modifier.fillMaxWidth()) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Repaid: ${String.format(Locale.US, "%.1f%%", percentPaid)}",
+                        fontSize = 10.sp,
+                        color = TextSecondary
+                    )
+                    Text(
+                        text = "৳${currencyFormat.format(loan.repaidAmount)} / ৳${currencyFormat.format(originalRepayable)}",
+                        fontSize = 10.sp,
+                        color = TextMuted
+                    )
+                }
+                Spacer(modifier = Modifier.height(4.dp))
+                LinearProgressIndicator(
+                    progress = { percentPaid / 100f },
+                    color = AccentTeal,
+                    trackColor = DividerColor.copy(alpha = 0.3f),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(6.dp)
+                        .clip(RoundedCornerShape(3.dp))
+                )
             }
 
             // Expand Arrow Row
@@ -560,25 +696,60 @@ fun LoanCardItem(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    // Doughnut Chart (Principal vs Interest)
+                    // Doughnut Chart (Repaid vs Remaining Principal vs Interest)
                     LoanDoughnutChart(
-                        principal = loan.loanAmount,
-                        interest = totalInterest,
+                        principalRemaining = remainingPrincipal,
+                        interestRemaining = remainingInterest,
+                        repaid = loan.repaidAmount,
                         modifier = Modifier
-                            .size(100.dp)
-                            .padding(end = 8.dp)
+                            .size(110.dp)
+                            .padding(end = 4.dp)
                     )
 
-                    Spacer(modifier = Modifier.width(16.dp))
+                    Spacer(modifier = Modifier.width(12.dp))
 
                     // Numbers Breakdown
                     Column(
                         modifier = Modifier.weight(1f),
                         verticalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
-                        DetailTextRow(label = "Principal", value = "৳${currencyFormat.format(loan.loanAmount)}", valueColor = AccentTeal)
-                        DetailTextRow(label = "Total Interest", value = "৳${currencyFormat.format(totalInterest)}", valueColor = ExpenseRed)
-                        DetailTextRow(label = "Total Repayable", value = "৳${currencyFormat.format(totalRepayable)}", valueColor = TextPrimary)
+                        DetailTextRow(label = "Original Principal", value = "৳${currencyFormat.format(loan.loanAmount)}", valueColor = TextPrimary)
+                        DetailTextRow(label = "Remaining Principal", value = "৳${currencyFormat.format(remainingPrincipal)}", valueColor = AccentTeal)
+                        DetailTextRow(label = "Remaining Interest", value = "৳${currencyFormat.format(remainingInterest)}", valueColor = ExpenseRed)
+                        DetailTextRow(label = "Remaining Payable", value = "৳${currencyFormat.format(remainingRepayable)}", valueColor = TextPrimary)
+                        if (linkedAccount != null) {
+                            DetailTextRow(label = "Account Linked", value = linkedAccount.name, valueColor = bankColor)
+                        }
+                    }
+                }
+
+                // Repay Loan Button or Fully Repaid Indicator
+                if (remainingRepayable <= 0.0) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 16.dp)
+                            .background(AccentTeal.copy(alpha = 0.1f), RoundedCornerShape(12.dp))
+                            .border(1.dp, AccentTeal.copy(alpha = 0.3f), RoundedCornerShape(12.dp))
+                            .padding(vertical = 12.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(imageVector = Icons.Default.CheckCircle, contentDescription = null, tint = AccentTeal, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Fully Repaid", color = AccentTeal, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                        }
+                    }
+                } else {
+                    Button(
+                        onClick = onRepayClick,
+                        colors = ButtonDefaults.buttonColors(containerColor = AccentTeal, contentColor = BackgroundDark),
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier.fillMaxWidth().padding(top = 16.dp)
+                    ) {
+                        Icon(imageVector = Icons.Default.Payment, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Repay Loan", fontWeight = FontWeight.Bold, fontSize = 13.sp)
                     }
                 }
             }
@@ -604,18 +775,20 @@ fun DetailTextRow(
 // ─── Composable: Custom Canvas Doughnut Chart ───────────────
 @Composable
 fun LoanDoughnutChart(
-    principal: Double,
-    interest: Double,
+    principalRemaining: Double,
+    interestRemaining: Double,
+    repaid: Double,
     modifier: Modifier = Modifier
 ) {
     val animProgress = remember { Animatable(0f) }
-    LaunchedEffect(principal, interest) {
+    LaunchedEffect(principalRemaining, interestRemaining, repaid) {
         animProgress.animateTo(1f, animationSpec = tween(800, easing = FastOutSlowInEasing))
     }
 
-    val total = principal + interest
-    val principalPct = if (total > 0) (principal / total).toFloat() else 0f
-    val interestPct = if (total > 0) (interest / total).toFloat() else 0f
+    val total = principalRemaining + interestRemaining + repaid
+    val repaidPct = if (total > 0) (repaid / total).toFloat() else 0f
+    val principalPct = if (total > 0) (principalRemaining / total).toFloat() else 0f
+    val interestPct = if (total > 0) (interestRemaining / total).toFloat() else 0f
 
     Box(
         modifier = modifier,
@@ -641,25 +814,45 @@ fun LoanDoughnutChart(
                 style = Stroke(width = strokeW)
             )
 
-            // Principal Sector (AccentTeal / Blue)
+            val rSweep = repaidPct * 360f * animProgress.value
             val pSweep = principalPct * 360f * animProgress.value
-            drawArc(
-                color = AccentTeal,
-                startAngle = -90f,
-                sweepAngle = pSweep,
-                useCenter = false,
-                topLeft = rectOffset,
-                size = Size(radiusSize, radiusSize),
-                style = Stroke(width = strokeW, cap = StrokeCap.Round)
-            )
-
-            // Interest Sector (ExpenseRed)
             val iSweep = interestPct * 360f * animProgress.value
-            if (iSweep > 0) {
+
+            val activeSegmentsCount = (if (rSweep > 0) 1 else 0) + (if (pSweep > 0) 1 else 0) + (if (iSweep > 0) 1 else 0)
+            val gap = if (activeSegmentsCount > 1) 6f else 0f
+
+            // Repaid Sector (AccentTeal)
+            if (rSweep > gap) {
+                drawArc(
+                    color = AccentTeal,
+                    startAngle = -90f + gap / 2f,
+                    sweepAngle = rSweep - gap,
+                    useCenter = false,
+                    topLeft = rectOffset,
+                    size = Size(radiusSize, radiusSize),
+                    style = Stroke(width = strokeW, cap = StrokeCap.Round)
+                )
+            }
+
+            // Remaining Principal Sector (AccentBlue)
+            if (pSweep > gap) {
+                drawArc(
+                    color = AccentBlue,
+                    startAngle = -90f + rSweep + gap / 2f,
+                    sweepAngle = pSweep - gap,
+                    useCenter = false,
+                    topLeft = rectOffset,
+                    size = Size(radiusSize, radiusSize),
+                    style = Stroke(width = strokeW, cap = StrokeCap.Round)
+                )
+            }
+
+            // Remaining Interest Sector (ExpenseRed)
+            if (iSweep > gap) {
                 drawArc(
                     color = ExpenseRed,
-                    startAngle = -90f + pSweep,
-                    sweepAngle = iSweep,
+                    startAngle = -90f + rSweep + pSweep + gap / 2f,
+                    sweepAngle = iSweep - gap,
                     useCenter = false,
                     topLeft = rectOffset,
                     size = Size(radiusSize, radiusSize),
@@ -673,13 +866,13 @@ fun LoanDoughnutChart(
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text(
-                text = String.format(Locale.US, "%.0f%%", principalPct * 100),
+                text = String.format(Locale.US, "%.0f%%", repaidPct * 100),
                 color = TextPrimary,
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Bold
             )
             Text(
-                text = "Principal",
+                text = "Repaid",
                 color = TextMuted,
                 fontSize = 8.sp
             )
@@ -691,11 +884,13 @@ fun LoanDoughnutChart(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddLoanFormSheet(
+    accounts: List<AccountEntity>,
     onDismiss: () -> Unit,
-    onAddLoan: (bank: String, amount: Double, months: Int, rate: Double) -> Unit,
+    onAddLoan: (bank: String, amount: Double, months: Int, rate: Double, accountId: Int) -> Unit,
+    onNavigateToAccounts: () -> Unit,
     currencyFormat: DecimalFormat
 ) {
-    var bankInput by remember { mutableStateOf("") }
+    var selectedAccount by remember { mutableStateOf(accounts.firstOrNull()) }
     var amountInput by remember { mutableStateOf("") }
     var monthsInput by remember { mutableStateOf("") }
     var rateInput by remember { mutableStateOf("") }
@@ -714,8 +909,8 @@ fun AddLoanFormSheet(
     val liveRepayable = remember(liveEmi, parsedMonths) { liveEmi * parsedMonths }
     val liveInterest = remember(liveRepayable, parsedAmount) { (liveRepayable - parsedAmount).coerceAtLeast(0.0) }
 
-    val isFormValid = remember(bankInput, parsedAmount, parsedMonths, parsedRate) {
-        bankInput.isNotBlank() && parsedAmount > 0.0 && parsedMonths > 0 && parsedRate >= 0.0
+    val isFormValid = remember(selectedAccount, parsedAmount, parsedMonths, parsedRate) {
+        selectedAccount != null && parsedAmount > 0.0 && parsedMonths > 0 && parsedRate >= 0.0
     }
 
     Column(
@@ -726,47 +921,306 @@ fun AddLoanFormSheet(
             .navigationBarsPadding(),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
+        if (accounts.isEmpty()) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Default.AccountBalance,
+                    contentDescription = null,
+                    tint = TextMuted,
+                    modifier = Modifier.size(48.dp)
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+                Text(
+                    text = "No Bank Accounts Found",
+                    color = TextPrimary,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 15.sp
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = "You must link a bank/MFS account to receive the loan funds and pay EMI.",
+                    color = TextMuted,
+                    fontSize = 12.sp,
+                    textAlign = TextAlign.Center
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+                Button(
+                    onClick = {
+                        onDismiss()
+                        onNavigateToAccounts()
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = AccentTeal, contentColor = BackgroundDark),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Text("Add Bank Account", fontWeight = FontWeight.Bold)
+                }
+            }
+        } else {
+            Text(
+                text = "Calculate & Add Loan",
+                fontSize = 18.sp,
+                fontWeight = FontWeight.Bold,
+                color = TextPrimary
+            )
+
+            // Account Selection Dropdown
+            Box(modifier = Modifier.fillMaxWidth()) {
+                OutlinedTextField(
+                    value = selectedAccount?.let { "${it.name} [${it.accountSubtype}]" } ?: "Select Bank Account",
+                    onValueChange = {},
+                    readOnly = true,
+                    label = { Text("Select Account to Deposit Funds", color = TextSecondary) },
+                    colors = loanTextFieldColors(),
+                    trailingIcon = {
+                        IconButton(onClick = { expandedDropdown = !expandedDropdown }) {
+                            Icon(imageVector = Icons.Default.ArrowDropDown, contentDescription = "Dropdown Options", tint = TextPrimary)
+                        }
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { expandedDropdown = !expandedDropdown }
+                )
+
+                DropdownMenu(
+                    expanded = expandedDropdown,
+                    onDismissRequest = { expandedDropdown = false },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(CardDarker)
+                ) {
+                    accounts.forEach { account ->
+                        DropdownMenuItem(
+                            text = {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Text(account.name, color = TextPrimary, fontWeight = FontWeight.Medium)
+                                    Text("৳${currencyFormat.format(account.balance)}", color = AccentTeal, fontSize = 13.sp)
+                                }
+                            },
+                            onClick = {
+                                selectedAccount = account
+                                expandedDropdown = false
+                            }
+                        )
+                    }
+                }
+            }
+
+            // Amount Input (৳)
+            OutlinedTextField(
+                value = amountInput,
+                onValueChange = { amountInput = it.filter { char -> char.isDigit() || char == '.' } },
+                label = { Text("Loan Amount (৳)", color = TextSecondary) },
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                colors = loanTextFieldColors(),
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            // Month Repayment Period
+            OutlinedTextField(
+                value = monthsInput,
+                onValueChange = { monthsInput = it.filter { char -> char.isDigit() } },
+                label = { Text("Repayment Period (Months)", color = TextSecondary) },
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                colors = loanTextFieldColors(),
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            // Interest Rate (%)
+            OutlinedTextField(
+                value = rateInput,
+                onValueChange = { rateInput = it.filter { char -> char.isDigit() || char == '.' } },
+                label = { Text("Interest Rate (% per year)", color = TextSecondary) },
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                colors = loanTextFieldColors(),
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            // Dynamic Calculations Card (Premium View)
+            if (parsedAmount > 0 || parsedMonths > 0 || parsedRate > 0) {
+                Card(
+                    shape = RoundedCornerShape(12.dp),
+                    colors = CardDefaults.cardColors(containerColor = CardDarker),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .border(BorderStroke(1.dp, DividerColor), RoundedCornerShape(12.dp))
+                ) {
+                    Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text(text = "LIVE ESTIMATIONS", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = AccentTeal)
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text(text = "Monthly EMI:", color = TextSecondary, fontSize = 13.sp)
+                            Text(text = "৳${currencyFormat.format(liveEmi)}", color = AccentTeal, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                        }
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text(text = "Total Interest:", color = TextSecondary, fontSize = 13.sp)
+                            Text(text = "৳${currencyFormat.format(liveInterest)}", color = ExpenseRed, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                        }
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text(text = "Total Repayable:", color = TextSecondary, fontSize = 13.sp)
+                            Text(text = "৳${currencyFormat.format(liveRepayable)}", color = TextPrimary, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                        }
+                    }
+                }
+            }
+
+            // Action Buttons Row
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 10.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                OutlinedButton(
+                    onClick = onDismiss,
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = TextSecondary),
+                    border = BorderStroke(1.dp, DividerColor),
+                    modifier = Modifier.weight(1f),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Text("Cancel")
+                }
+
+                Button(
+                    onClick = {
+                        if (isFormValid && selectedAccount != null) {
+                            onAddLoan(
+                                selectedAccount!!.name,
+                                parsedAmount,
+                                parsedMonths,
+                                parsedRate,
+                                selectedAccount!!.id
+                            )
+                        }
+                    },
+                    enabled = isFormValid,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = AccentTeal,
+                        contentColor = BackgroundDark,
+                        disabledContainerColor = CardDark,
+                        disabledContentColor = TextMuted
+                    ),
+                    modifier = Modifier.weight(1f),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Text("Add Loan")
+                }
+            }
+        }
+    }
+}
+
+// ─── Composable: Repay Loan Form Sheet ───────────────────────
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun RepayLoanFormSheet(
+    loan: LoanEntity,
+    account: AccountEntity?,
+    accounts: List<AccountEntity>,
+    currencyFormat: DecimalFormat,
+    onDismiss: () -> Unit,
+    onRepay: (amount: Double, accountId: Int) -> Unit
+) {
+    val emi = remember(loan) { calculateEmi(loan.loanAmount, loan.interestRate, loan.durationMonths) }
+    val originalRepayable = remember(loan, emi) { emi * loan.durationMonths }
+    val remainingRepayable = remember(loan, originalRepayable) { (originalRepayable - loan.repaidAmount).coerceAtLeast(0.0) }
+
+    val initialAmount = remember(emi, remainingRepayable) {
+        val amount = if (remainingRepayable < emi) remainingRepayable else emi
+        String.format(Locale.US, "%.2f", amount)
+    }
+
+    var repayAmountInput by remember {
+        mutableStateOf(
+            TextFieldValue(
+                text = initialAmount,
+                selection = TextRange(initialAmount.length)
+            )
+        )
+    }
+    var selectedAccount by remember { mutableStateOf(account ?: accounts.firstOrNull()) }
+    var expandedDropdown by remember { mutableStateOf(false) }
+
+    val parsedAmount = remember(repayAmountInput.text) { repayAmountInput.text.toDoubleOrNull() ?: 0.0 }
+    val accountBalance = remember(selectedAccount) { selectedAccount?.balance ?: 0.0 }
+
+    // Validation
+    val isInsufficientBalance = parsedAmount > accountBalance
+    val isExceedingRemaining = parsedAmount > remainingRepayable
+    val isFormValid = parsedAmount > 0.0 && !isInsufficientBalance && !isExceedingRemaining && selectedAccount != null
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .verticalScroll(androidx.compose.foundation.rememberScrollState())
+            .padding(20.dp)
+            .navigationBarsPadding(),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
         Text(
-            text = "Calculate & Add Loan",
+            text = "Repay Loan - ${loan.bankName}",
             fontSize = 18.sp,
             fontWeight = FontWeight.Bold,
             color = TextPrimary
         )
 
-        // Bank Selection Dropdown
+        // Payment Account Information
         Box(modifier = Modifier.fillMaxWidth()) {
             OutlinedTextField(
-                value = bankInput,
-                onValueChange = { bankInput = it },
-                label = { Text("Select or Enter Bank", color = TextSecondary) },
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = AccentTeal,
-                    unfocusedBorderColor = DividerColor,
-                    focusedLabelColor = AccentTeal,
-                    unfocusedLabelColor = TextSecondary,
-                    focusedTextColor = TextPrimary,
-                    unfocusedTextColor = TextPrimary
-                ),
+                value = selectedAccount?.let { "${it.name} [Bal: ৳${currencyFormat.format(it.balance)}]" } ?: "Select Payment Account",
+                onValueChange = {},
+                readOnly = true,
+                label = { Text("Repay From Account", color = TextSecondary) },
+                colors = loanTextFieldColors(),
                 trailingIcon = {
                     IconButton(onClick = { expandedDropdown = !expandedDropdown }) {
                         Icon(imageVector = Icons.Default.ArrowDropDown, contentDescription = "Dropdown Options", tint = TextPrimary)
                     }
                 },
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { expandedDropdown = !expandedDropdown }
             )
 
             DropdownMenu(
                 expanded = expandedDropdown,
                 onDismissRequest = { expandedDropdown = false },
                 modifier = Modifier
-                    .fillMaxWidth(0.9f)
+                    .fillMaxWidth()
                     .background(CardDarker)
             ) {
-                BANK_PRESETS.forEach { preset ->
+                accounts.forEach { acc ->
                     DropdownMenuItem(
-                        text = { Text(preset, color = TextPrimary) },
+                        text = {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text(acc.name, color = TextPrimary, fontWeight = FontWeight.Medium)
+                                Text("৳${currencyFormat.format(acc.balance)}", color = AccentTeal, fontSize = 13.sp)
+                            }
+                        },
                         onClick = {
-                            bankInput = if (preset == "Other Bank") "" else preset
+                            selectedAccount = acc
                             expandedDropdown = false
                         }
                     )
@@ -774,99 +1228,96 @@ fun AddLoanFormSheet(
             }
         }
 
-        // Amount Input (৳)
-        OutlinedTextField(
-            value = amountInput,
-            onValueChange = { amountInput = it.filter { char -> char.isDigit() || char == '.' } },
-            label = { Text("Loan Amount (৳)", color = TextSecondary) },
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-            colors = OutlinedTextFieldDefaults.colors(
-                focusedBorderColor = AccentTeal,
-                unfocusedBorderColor = DividerColor,
-                focusedLabelColor = AccentTeal,
-                unfocusedLabelColor = TextSecondary,
-                focusedTextColor = TextPrimary,
-                unfocusedTextColor = TextPrimary
-            ),
-            modifier = Modifier.fillMaxWidth()
-        )
+        // Display current loan details
+        Card(
+            shape = RoundedCornerShape(12.dp),
+            colors = CardDefaults.cardColors(containerColor = CardDarker),
+            modifier = Modifier.fillMaxWidth().border(BorderStroke(1.dp, DividerColor), RoundedCornerShape(12.dp))
+        ) {
+            Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(text = "LOAN SUMMARY", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = AccentTeal)
 
-        // Month Repayment Period
-        OutlinedTextField(
-            value = monthsInput,
-            onValueChange = { monthsInput = it.filter { char -> char.isDigit() } },
-            label = { Text("Repayment Period (Months)", color = TextSecondary) },
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-            colors = OutlinedTextFieldDefaults.colors(
-                focusedBorderColor = AccentTeal,
-                unfocusedBorderColor = DividerColor,
-                focusedLabelColor = AccentTeal,
-                unfocusedLabelColor = TextSecondary,
-                focusedTextColor = TextPrimary,
-                unfocusedTextColor = TextPrimary
-            ),
-            modifier = Modifier.fillMaxWidth()
-        )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text(text = "Remaining Payable:", color = TextSecondary, fontSize = 13.sp)
+                    Text(text = "৳${currencyFormat.format(remainingRepayable)}", color = TextPrimary, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                }
 
-        // Interest Rate (%)
-        OutlinedTextField(
-            value = rateInput,
-            onValueChange = { rateInput = it.filter { char -> char.isDigit() || char == '.' } },
-            label = { Text("Interest Rate (% per year)", color = TextSecondary) },
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-            colors = OutlinedTextFieldDefaults.colors(
-                focusedBorderColor = AccentTeal,
-                unfocusedBorderColor = DividerColor,
-                focusedLabelColor = AccentTeal,
-                unfocusedLabelColor = TextSecondary,
-                focusedTextColor = TextPrimary,
-                unfocusedTextColor = TextPrimary
-            ),
-            modifier = Modifier.fillMaxWidth()
-        )
-
-        // Dynamic Calculations Card (Premium View)
-        if (parsedAmount > 0 || parsedMonths > 0 || parsedRate > 0) {
-            Card(
-                shape = RoundedCornerShape(12.dp),
-                colors = CardDefaults.cardColors(containerColor = CardDarker),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .border(BorderStroke(1.dp, DividerColor), RoundedCornerShape(12.dp))
-            ) {
-                Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text(text = "LIVE ESTIMATIONS", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = AccentTeal)
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Text(text = "Monthly EMI:", color = TextSecondary, fontSize = 13.sp)
-                        Text(text = "৳${currencyFormat.format(liveEmi)}", color = AccentTeal, fontSize = 14.sp, fontWeight = FontWeight.Bold)
-                    }
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Text(text = "Total Interest:", color = TextSecondary, fontSize = 13.sp)
-                        Text(text = "৳${currencyFormat.format(liveInterest)}", color = ExpenseRed, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
-                    }
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Text(text = "Total Repayable:", color = TextSecondary, fontSize = 13.sp)
-                        Text(text = "৳${currencyFormat.format(liveRepayable)}", color = TextPrimary, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
-                    }
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text(text = "Monthly EMI Amount:", color = TextSecondary, fontSize = 13.sp)
+                    Text(text = "৳${currencyFormat.format(emi)}", color = TextSecondary, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
                 }
             }
         }
 
-        // Action Buttons Row
+        // Repayment Amount Input
+        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            OutlinedTextField(
+                value = repayAmountInput,
+                onValueChange = { newValue ->
+                    val filteredText = newValue.text.filter { char -> char.isDigit() || char == '.' }
+                    if (filteredText == newValue.text) {
+                        repayAmountInput = newValue
+                    } else {
+                        repayAmountInput = TextFieldValue(
+                            text = filteredText,
+                            selection = TextRange(filteredText.length)
+                        )
+                    }
+                },
+                label = { Text("Repayment Amount (৳)", color = TextSecondary) },
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedTextColor       = TextPrimary,
+                    unfocusedTextColor     = TextPrimary,
+                    focusedBorderColor     = if (isInsufficientBalance || isExceedingRemaining) ExpenseRed else AccentTeal,
+                    unfocusedBorderColor   = if (isInsufficientBalance || isExceedingRemaining) ExpenseRed else DividerColor,
+                    focusedContainerColor  = CardDarker,
+                    unfocusedContainerColor = CardDarker,
+                    focusedLabelColor      = if (isInsufficientBalance || isExceedingRemaining) ExpenseRed else AccentTeal,
+                    unfocusedLabelColor    = TextSecondary
+                ),
+                modifier = Modifier.fillMaxWidth(),
+                trailingIcon = {
+                    TextButton(
+                        onClick = {
+                            val payAllText = String.format(Locale.US, "%.2f", remainingRepayable)
+                            repayAmountInput = TextFieldValue(text = payAllText, selection = TextRange(payAllText.length))
+                        },
+                        modifier = Modifier.padding(end = 8.dp)
+                    ) {
+                        Text("PAY ALL", color = AccentTeal, fontWeight = FontWeight.Bold, fontSize = 11.sp)
+                    }
+                }
+            )
+
+            if (isInsufficientBalance) {
+                Text(
+                    text = "Insufficient balance in selected account (৳${currencyFormat.format(accountBalance)})",
+                    color = ExpenseRed,
+                    fontSize = 11.sp,
+                    modifier = Modifier.padding(horizontal = 4.dp)
+                )
+            } else if (isExceedingRemaining) {
+                Text(
+                    text = "Amount exceeds the remaining loan balance (৳${currencyFormat.format(remainingRepayable)})",
+                    color = ExpenseRed,
+                    fontSize = 11.sp,
+                    modifier = Modifier.padding(horizontal = 4.dp)
+                )
+            }
+        }
+
+        // Action Buttons
         Row(
-            modifier = Modifier.fillMaxWidth().padding(top = 10.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 10.dp),
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             OutlinedButton(
@@ -881,8 +1332,8 @@ fun AddLoanFormSheet(
 
             Button(
                 onClick = {
-                    if (isFormValid) {
-                        onAddLoan(bankInput, parsedAmount, parsedMonths, parsedRate)
+                    if (isFormValid && selectedAccount != null) {
+                        onRepay(parsedAmount, selectedAccount!!.id)
                     }
                 },
                 enabled = isFormValid,
@@ -895,7 +1346,7 @@ fun AddLoanFormSheet(
                 modifier = Modifier.weight(1f),
                 shape = RoundedCornerShape(12.dp)
             ) {
-                Text("Add Loan")
+                Text("Confirm Repay", fontWeight = FontWeight.Bold)
             }
         }
     }
