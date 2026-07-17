@@ -35,6 +35,7 @@ import androidx.compose.material.icons.filled.Inbox
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.AccountBalance
 import androidx.compose.material.icons.filled.People
+import androidx.compose.material.icons.filled.MonetizationOn
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.DrawerValue
@@ -113,6 +114,8 @@ import com.shejan.financebuddy.data.db.PayeeEntity
 import com.shejan.financebuddy.data.db.PayeeAccountEntity
 import com.shejan.financebuddy.sms.SmsPermissionHandler
 import com.shejan.financebuddy.ui.profile.EditProfileDialog
+import com.shejan.financebuddy.data.db.LoanEntity
+import com.shejan.financebuddy.ui.loans.LoansScreen
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.material.icons.filled.Person
@@ -216,7 +219,24 @@ fun AppNavigation(
                     onNavigateToExpenses = { navController.navigate("expense_list") },
                     onNavigateToSettings = { navController.navigate("settings") },
                     onNavigateToBankAccounts = { navController.navigate("bank_accounts") },
-                    onNavigateToPayees = { navController.navigate("payees") }
+                    onNavigateToPayees = { navController.navigate("payees") },
+                    onNavigateToLoans = { navController.navigate("loans") }
+                )
+            }
+
+            composable("loans") {
+                val loanDao = remember { database.loanDao() }
+                val loans by loanDao.getAllLoans().collectAsState(initial = emptyList())
+                val scope = rememberCoroutineScope()
+                LoansScreen(
+                    loans = loans,
+                    onBack = { navController.popBackStack() },
+                    onAddLoan = { loan ->
+                        scope.launch(kotlinx.coroutines.Dispatchers.IO) { loanDao.insertLoan(loan) }
+                    },
+                    onDeleteLoan = { loan ->
+                        scope.launch(kotlinx.coroutines.Dispatchers.IO) { loanDao.deleteLoan(loan) }
+                    }
                 )
             }
 
@@ -361,7 +381,8 @@ fun MainDashboardContainer(
     onNavigateToExpenses: () -> Unit,
     onNavigateToSettings: () -> Unit,
     onNavigateToBankAccounts: () -> Unit = {},
-    onNavigateToPayees: () -> Unit = {}
+    onNavigateToPayees: () -> Unit = {},
+    onNavigateToLoans: () -> Unit = {}
 ) {
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val scope       = rememberCoroutineScope()
@@ -571,6 +592,16 @@ fun MainDashboardContainer(
                         onClick = {
                             scope.launch { drawerState.close() }
                             onNavigateToPayees()
+                        }
+                    )
+                    DrawerMenuItem(
+                        icon = Icons.Default.MonetizationOn,
+                        label = "Loans",
+                        onClick = {
+                            scope.launch {
+                                drawerState.close()
+                                onNavigateToLoans()
+                            }
                         }
                     )
                     DrawerMenuItem(

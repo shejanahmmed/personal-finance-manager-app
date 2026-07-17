@@ -42,6 +42,7 @@ import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
+import androidx.compose.material.icons.filled.Label
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -564,23 +565,29 @@ fun AccountCardChip(
                     }
                 }
 
-                // Bottom Column: Nickname only (removed Acc No)
-                Column(
-                    modifier = Modifier.fillMaxWidth()
+                // Bottom Row: Tag icon + Nickname value
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Start
                 ) {
+                    Icon(
+                        imageVector = Icons.Default.Label,
+                        contentDescription = "Nickname Tag",
+                        tint = TextPrimary.copy(alpha = 0.5f),
+                        modifier = Modifier.size(10.dp)
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
                     val displayShowAs = if (account.showAs.isNotBlank()) {
                         account.showAs
                     } else {
                         "Not set"
                     }
-
                     Text(
-                        text = buildAnnotatedString {
-                            withStyle(style = SpanStyle(color = TextPrimary.copy(alpha = 0.7f))) {
-                                append("Nickname: $displayShowAs")
-                            }
-                        },
+                        text = displayShowAs,
                         fontSize = 9.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = TextPrimary.copy(alpha = 0.8f),
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
@@ -925,4 +932,3 @@ private fun getLast7DayNames(): List<String> {
     }
     return names.reversed()
 }
-
