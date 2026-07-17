@@ -11,6 +11,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.filled.Notes
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CheckCircle
@@ -75,20 +76,26 @@ fun PendingTransactionsScreen(
     val scope = rememberCoroutineScope()
     var isScanning by remember { mutableStateOf(false) }
 
+    var showSyncOptionsDialog by remember { mutableStateOf(false) }
+
+    fun startSyncProcess(daysLimit: Int?) {
+        isScanning = true
+        scope.launch {
+            val count = com.shejan.financebuddy.sms.SmsSyncHelper.syncPreviousSms(context, database, daysLimit)
+            isScanning = false
+            android.widget.Toast.makeText(
+                context,
+                if (count > 0) "Imported $count transaction messages!" else "No new transaction messages found.",
+                android.widget.Toast.LENGTH_LONG
+            ).show()
+        }
+    }
+
     val permissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission()
     ) { isGranted ->
         if (isGranted) {
-            isScanning = true
-            scope.launch {
-                val count = com.shejan.financebuddy.sms.SmsSyncHelper.syncPreviousSms(context, database)
-                isScanning = false
-                android.widget.Toast.makeText(
-                    context,
-                    if (count > 0) "Imported $count transaction messages!" else "No new transaction messages found.",
-                    android.widget.Toast.LENGTH_LONG
-                ).show()
-            }
+            showSyncOptionsDialog = true
         } else {
             android.widget.Toast.makeText(
                 context,
@@ -98,22 +105,13 @@ fun PendingTransactionsScreen(
         }
     }
 
-    fun triggerHistoryScan() {
+    fun checkPermissionAndShowSyncDialog() {
         val hasReadPermission = androidx.core.content.ContextCompat.checkSelfPermission(
             context,
             android.Manifest.permission.READ_SMS
         ) == android.content.pm.PackageManager.PERMISSION_GRANTED
         if (hasReadPermission) {
-            isScanning = true
-            scope.launch {
-                val count = com.shejan.financebuddy.sms.SmsSyncHelper.syncPreviousSms(context, database)
-                isScanning = false
-                android.widget.Toast.makeText(
-                    context,
-                    if (count > 0) "Imported $count transaction messages!" else "No new transaction messages found.",
-                    android.widget.Toast.LENGTH_LONG
-                ).show()
-            }
+            showSyncOptionsDialog = true
         } else {
             permissionLauncher.launch(android.Manifest.permission.READ_SMS)
         }
@@ -130,90 +128,94 @@ fun PendingTransactionsScreen(
             .fillMaxSize()
             .background(BackgroundDark)
     ) {
-        Column(modifier = Modifier.fillMaxSize()) {
+        // Ambient glow
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(250.dp)
+                .background(Brush.verticalGradient(colors = listOf(AccentTeal.copy(alpha = 0.07f), Color.Transparent)))
+        )
 
-            // ── Premium Top Bar ──────────────────────────────────────────────
-            Box(
+        Column(modifier = Modifier.fillMaxSize()) {
+            Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(
-                        Brush.verticalGradient(
-                            colors = listOf(CardDarker, BackgroundDark.copy(alpha = 0.95f))
-                        )
-                    )
-                    .border(width = 1.dp, color = DividerColor.copy(alpha = 0.5f), shape = RoundedCornerShape(0.dp))
-                    .padding(top = 44.dp, start = 8.dp, end = 16.dp, bottom = 16.dp)
+                    .statusBarsPadding()
+                    .padding(horizontal = 8.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically
+                IconButton(
+                    onClick = onBack,
+                    modifier = Modifier.size(36.dp)
                 ) {
-                    IconButton(onClick = onBack) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.KeyboardArrowLeft,
+                        contentDescription = "Back",
+                        tint = TextPrimary,
+                        modifier = Modifier.size(22.dp)
+                    )
+                }
+                Spacer(modifier = Modifier.width(8.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "Transaction Inbox",
+                        color = TextPrimary,
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        text = if (pendingList.isEmpty()) "No unreviewed transactions" else "${pendingList.size} unreviewed transactions",
+                        color = TextMuted,
+                        fontSize = 12.sp
+                    )
+                }
+
+                IconButton(
+                    onClick = { checkPermissionAndShowSyncDialog() },
+                    enabled = !isScanning,
+                    modifier = Modifier.size(36.dp)
+                ) {
+                    if (isScanning) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(20.dp),
+                            strokeWidth = 2.dp,
+                            color = AccentTeal
+                        )
+                    } else {
                         Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back",
-                            tint = TextPrimary
+                            imageVector = Icons.Default.History,
+                            contentDescription = "Scan SMS History",
+                            tint = AccentTeal,
+                            modifier = Modifier.size(22.dp)
                         )
-                    }
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = "Transaction Inbox",
-                            color = TextPrimary,
-                            fontSize = 20.sp,
-                            fontWeight = FontWeight.Bold,
-                            letterSpacing = (-0.5).sp
-                        )
-                        Text(
-                            text = if (pendingList.isEmpty()) "No unreviewed transactions" else "${pendingList.size} unreviewed transactions",
-                            color = TextSecondary,
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Medium
-                        )
-                    }
-
-                    IconButton(
-                        onClick = { triggerHistoryScan() },
-                        enabled = !isScanning,
-                        modifier = Modifier.padding(end = 4.dp)
-                    ) {
-                        if (isScanning) {
-                            CircularProgressIndicator(
-                                modifier = Modifier.size(20.dp),
-                                strokeWidth = 2.dp,
-                                color = AccentTeal
-                            )
-                        } else {
-                            Icon(
-                                imageVector = Icons.Default.History,
-                                contentDescription = "Scan SMS History",
-                                tint = AccentTeal
-                            )
-                        }
-                    }
-
-                    if (pendingList.isNotEmpty()) {
-                        Button(
-                            onClick = { showDismissAllDialog = true },
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = ExpenseRed.copy(alpha = 0.12f),
-                                contentColor = ExpenseRed
-                            ),
-                            shape = RoundedCornerShape(10.dp),
-                            contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp),
-                            modifier = Modifier.height(34.dp)
-                        ) {
-                            Text("Dismiss All", fontSize = 11.sp, fontWeight = FontWeight.Bold)
-                        }
                     }
                 }
+
+                if (pendingList.isNotEmpty()) {
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Button(
+                        onClick = { showDismissAllDialog = true },
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = ExpenseRed.copy(alpha = 0.12f),
+                            contentColor = ExpenseRed
+                        ),
+                        shape = RoundedCornerShape(10.dp),
+                        contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp),
+                        modifier = Modifier.height(34.dp)
+                    ) {
+                        Text("Dismiss All", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                    }
+                }
+                Spacer(modifier = Modifier.width(8.dp))
             }
+
+            HorizontalDivider(color = DividerColor, modifier = Modifier.padding(horizontal = 16.dp))
 
             // ── Scrollable list with entrance animations ──────────────────────
             if (pendingList.isEmpty()) {
                 EmptyState(
                     isScanning = isScanning,
-                    onScanHistory = { triggerHistoryScan() }
+                    onScanHistory = { checkPermissionAndShowSyncDialog() }
                 )
             } else {
                 LazyColumn(
@@ -306,6 +308,75 @@ fun PendingTransactionsScreen(
                 },
                 dismissButton = {
                     TextButton(onClick = { showDismissAllDialog = false }) {
+                        Text("Cancel", color = TextSecondary)
+                    }
+                }
+            )
+        }
+
+        if (showSyncOptionsDialog) {
+            AlertDialog(
+                onDismissRequest = { showSyncOptionsDialog = false },
+                containerColor   = CardDarker,
+                title = {
+                    Text(
+                        "Sync SMS History",
+                        color = TextPrimary,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 18.sp
+                    )
+                },
+                text = {
+                    Column(
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(
+                            "Select the timeframe to scan for bank and MFS transaction messages:",
+                            color = TextSecondary,
+                            fontSize = 13.sp,
+                            modifier = Modifier.padding(bottom = 6.dp)
+                        )
+                        val options = listOf(
+                            Pair("1 Month (30 Days)", 30),
+                            Pair("3 Months", 90),
+                            Pair("6 Months", 180),
+                            Pair("1 Year", 365),
+                            Pair("All SMS History", null as Int?)
+                        )
+                        options.forEach { (label, days) ->
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .background(CardDark)
+                                    .clickable {
+                                        showSyncOptionsDialog = false
+                                        startSyncProcess(days)
+                                    }
+                                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.History,
+                                    contentDescription = null,
+                                    tint = AccentTeal,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                                Spacer(modifier = Modifier.width(12.dp))
+                                Text(
+                                    text = label,
+                                    color = TextPrimary,
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.Medium
+                                )
+                            }
+                        }
+                    }
+                },
+                confirmButton = {},
+                dismissButton = {
+                    TextButton(onClick = { showSyncOptionsDialog = false }) {
                         Text("Cancel", color = TextSecondary)
                     }
                 }
@@ -1159,7 +1230,7 @@ private fun EmptyState(
                         tint = AccentTeal
                     )
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text("Scan Past 30 Days SMS", fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                    Text("Scan SMS History", fontSize = 13.sp, fontWeight = FontWeight.Bold)
                 }
             }
         }

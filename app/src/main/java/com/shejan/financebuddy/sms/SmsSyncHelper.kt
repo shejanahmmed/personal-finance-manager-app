@@ -20,7 +20,7 @@ object SmsSyncHelper {
      * 
      * @return The number of newly imported transactions.
      */
-    suspend fun syncPreviousSms(context: Context, database: FinanceDatabase): Int = withContext(Dispatchers.IO) {
+    suspend fun syncPreviousSms(context: Context, database: FinanceDatabase, daysLimit: Int? = 30): Int = withContext(Dispatchers.IO) {
         if (!isReadSmsPermissionGranted(context)) {
             Log.w(TAG, "READ_SMS permission not granted. Aborting sync.")
             return@withContext 0
@@ -33,10 +33,17 @@ object SmsSyncHelper {
         val uri = Uri.parse("content://sms/inbox")
         val projection = arrayOf("address", "body", "date")
 
-        // Query the last 30 days of SMS messages
-        val thirtyDaysAgo = System.currentTimeMillis() - (30L * 24 * 60 * 60 * 1000)
-        val selection = "date >= ?"
-        val selectionArgs = arrayOf(thirtyDaysAgo.toString())
+        // Build selection dynamically based on daysLimit
+        val selection: String?
+        val selectionArgs: Array<String>?
+        if (daysLimit != null && daysLimit > 0) {
+            val limitMillis = System.currentTimeMillis() - (daysLimit.toLong() * 24 * 60 * 60 * 1000)
+            selection = "date >= ?"
+            selectionArgs = arrayOf(limitMillis.toString())
+        } else {
+            selection = null
+            selectionArgs = null
+        }
 
         var importedCount = 0
 
