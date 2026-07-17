@@ -36,6 +36,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -50,6 +52,7 @@ import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -102,7 +105,8 @@ fun HomeScreen(
     onExpenseClick: () -> Unit,
     payees: List<PayeeEntity> = emptyList(),
     payeeAccounts: List<PayeeAccountEntity> = emptyList(),
-    onSavePayee: (String, String, String, String) -> Unit = { _, _, _, _ -> }
+    onSavePayee: (String, String, String, String) -> Unit = { _, _, _, _ -> },
+    hideBalancesPref: Boolean = false
 ) {
     var showAddSheet by remember { mutableStateOf(false) }
     val sheetState   = rememberModalBottomSheetState(skipPartiallyExpanded = true)
@@ -214,7 +218,11 @@ fun HomeScreen(
                         horizontalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
                         items(activeAccounts) { account ->
-                            AccountCardChip(account = account, currencyFormat = currencyFormat)
+                            AccountCardChip(
+                                account = account,
+                                currencyFormat = currencyFormat,
+                                hideBalancesPref = hideBalancesPref
+                            )
                         }
                     }
                 } else {
@@ -451,9 +459,19 @@ fun HomeScreen(
 @Composable
 fun AccountCardChip(
     account: AccountEntity,
-    currencyFormat: DecimalFormat
+    currencyFormat: DecimalFormat,
+    hideBalancesPref: Boolean = false
 ) {
     val cardColor = remember { Color(android.graphics.Color.parseColor(account.colorHex)) }
+    var isBalanceVisible by remember(hideBalancesPref) { mutableStateOf(!hideBalancesPref) }
+
+    LaunchedEffect(isBalanceVisible, hideBalancesPref) {
+        if (isBalanceVisible && hideBalancesPref) {
+            kotlinx.coroutines.delay(3000)
+            isBalanceVisible = false
+        }
+    }
+
     Card(
         shape   = RoundedCornerShape(16.dp),
         colors  = CardDefaults.cardColors(containerColor = cardColor.copy(alpha = 0.12f)),
@@ -500,15 +518,42 @@ fun AccountCardChip(
 
             Spacer(modifier = Modifier.height(2.dp))
 
-            // Middle Text: Amount
-            Text(
-                text  = "৳${currencyFormat.format(account.balance)}",
-                fontSize = 15.sp,
-                fontWeight = FontWeight.Bold,
-                color = TextPrimary,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
+            // Middle Row: Amount & Visibility Toggle
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                val displayText = if (!hideBalancesPref || isBalanceVisible) {
+                    "৳${currencyFormat.format(account.balance)}"
+                } else {
+                    "৳••••••"
+                }
+
+                Text(
+                    text  = displayText,
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = TextPrimary,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f)
+                )
+
+                if (hideBalancesPref) {
+                    IconButton(
+                        onClick = { isBalanceVisible = !isBalanceVisible },
+                        modifier = Modifier.size(20.dp)
+                    ) {
+                        Icon(
+                            imageVector = if (isBalanceVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff,
+                            contentDescription = "Toggle Balance Visibility",
+                            tint = TextPrimary.copy(alpha = 0.6f),
+                            modifier = Modifier.size(14.dp)
+                        )
+                    }
+                }
+            }
 
             Spacer(modifier = Modifier.height(2.dp))
 
@@ -538,7 +583,7 @@ fun AccountCardChip(
                         }
                     },
                     fontSize = 9.sp,
-                    lineHeight = 13.5.sp,
+                    lineHeight = 15.sp,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis
                 )

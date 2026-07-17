@@ -44,6 +44,7 @@ fun SettingsScreen(
     val scope = rememberCoroutineScope()
     val themeMode by preferencesManager.themeMode.collectAsState(initial = "SYSTEM")
     val smsSyncChoice by preferencesManager.smsSyncChoice.collectAsState(initial = null)
+    val hideBalancesPref by preferencesManager.hideCardBalances.collectAsState(initial = false)
 
     Box(
         modifier = Modifier
@@ -219,9 +220,39 @@ fun SettingsScreen(
                     )
                 }
 
+                Spacer(modifier = Modifier.height(24.dp))
+
+                // ─── SECTION 3: PRIVACY & DISPLAY ─────────────────────────
+                Text(
+                    text = "Privacy & Display",
+                    color = AccentTeal,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(bottom = 8.dp)
+                )
+
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(CardDark)
+                        .border(1.dp, DividerColor, RoundedCornerShape(16.dp))
+                        .padding(4.dp)
+                ) {
+                    ThemeOptionRow(
+                        title = "Hide Card Balances",
+                        description = "Mask bank and mobile account balances on the Home dashboard by default",
+                        icon = Icons.Default.Shield,
+                        selected = hideBalancesPref,
+                        onClick = {
+                            scope.launch { preferencesManager.setHideCardBalances(!hideBalancesPref) }
+                        }
+                    )
+                }
+
                 Spacer(modifier = Modifier.height(32.dp))
 
-                // ─── SECTION 3: APP INFO (LOCALIZED) ──────────────────────
+                // ─── SECTION 4: APP INFO (LOCALIZED) ──────────────────────
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()

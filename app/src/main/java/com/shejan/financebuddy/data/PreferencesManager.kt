@@ -20,6 +20,7 @@ class PreferencesManager(private val context: Context) {
         private val THEME_MODE = stringPreferencesKey("theme_mode")
         private val PROFILE_NAME = stringPreferencesKey("profile_name")
         private val PROFILE_IMAGE_PATH = stringPreferencesKey("profile_image_path")
+        private val HIDE_CARD_BALANCES = booleanPreferencesKey("hide_card_balances")
     }
 
     /** Emits true if the user has already completed onboarding. */
@@ -79,6 +80,18 @@ class PreferencesManager(private val context: Context) {
     suspend fun setProfileImagePath(path: String) {
         context.dataStore.edit { prefs ->
             prefs[PROFILE_IMAGE_PATH] = path
+        }
+    }
+
+    /** Emits whether card balances should be hidden by default. Defaults to false. */
+    val hideCardBalances: Flow<Boolean> = context.dataStore.data.map { prefs ->
+        prefs[HIDE_CARD_BALANCES] ?: false
+    }
+
+    /** Sets the user's hide card balances preference. */
+    suspend fun setHideCardBalances(hide: Boolean) {
+        context.dataStore.edit { prefs ->
+            prefs[HIDE_CARD_BALANCES] = hide
         }
     }
 }

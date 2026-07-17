@@ -369,6 +369,7 @@ fun MainDashboardContainer(
 
     val profileName by preferencesManager.profileName.collectAsState(initial = "User")
     val profileImagePath by preferencesManager.profileImagePath.collectAsState(initial = "")
+    val hideBalancesPref by preferencesManager.hideCardBalances.collectAsState(initial = false)
     var showEditProfileDialog by remember { mutableStateOf(false) }
 
     if (showEditProfileDialog) {
@@ -741,7 +742,8 @@ fun MainDashboardContainer(
                                     )
                                 }
                             }
-                        }
+                        },
+                        hideBalancesPref = hideBalancesPref
                     )
                     "budget" -> BudgetScreen(
                         budgets           = budgets,
