@@ -46,6 +46,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.text.SpanStyle
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -457,13 +460,13 @@ fun AccountCardChip(
         border  = androidx.compose.foundation.BorderStroke(1.dp, cardColor.copy(alpha = 0.4f)),
         modifier = Modifier
             .width(180.dp)
-            .height(100.dp)
+            .height(110.dp)
     ) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(horizontal = 12.dp, vertical = 10.dp),
-            verticalArrangement = Arrangement.SpaceBetween
+                .padding(horizontal = 12.dp, vertical = 8.dp),
+            verticalArrangement = Arrangement.Top
         ) {
             // Top Row: Bank name & Subtype/Type tag
             Row(
@@ -495,6 +498,8 @@ fun AccountCardChip(
                 }
             }
 
+            Spacer(modifier = Modifier.height(2.dp))
+
             // Middle Text: Amount
             Text(
                 text  = "৳${currencyFormat.format(account.balance)}",
@@ -505,29 +510,36 @@ fun AccountCardChip(
                 overflow = TextOverflow.Ellipsis
             )
 
-            // Bottom Row: Account Number and Show As
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.Start
+            Spacer(modifier = Modifier.height(2.dp))
+
+            // Bottom Column: Account Number and Nickname
+            Column(
+                modifier = Modifier.fillMaxWidth()
             ) {
                 val displayAcc = if (account.accountNumber.isNotBlank()) {
                     val last4 = account.accountNumber.takeLast(4)
-                    "•••• $last4"
+                    "**** **** **** $last4"
                 } else {
                     "unknown"
                 }
                 val displayShowAs = if (account.showAs.isNotBlank()) {
                     account.showAs
                 } else {
-                    "unknown"
+                    "Not set"
                 }
 
                 Text(
-                    text = "Acc: $displayAcc  •  $displayShowAs",
+                    text = buildAnnotatedString {
+                        withStyle(style = SpanStyle(color = TextPrimary)) {
+                            append("Acc No: $displayAcc\n")
+                        }
+                        withStyle(style = SpanStyle(color = TextPrimary.copy(alpha = 0.7f))) {
+                            append("Nickname: $displayShowAs")
+                        }
+                    },
                     fontSize = 9.sp,
-                    color = TextSecondary,
-                    maxLines = 1,
+                    lineHeight = 13.5.sp,
+                    maxLines = 2,
                     overflow = TextOverflow.Ellipsis
                 )
             }
