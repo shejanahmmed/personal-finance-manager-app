@@ -558,198 +558,220 @@ fun LoanCardItem(
         colors = CardDefaults.cardColors(containerColor = CardDark),
         modifier = Modifier
             .fillMaxWidth()
-            .clickable { expanded = !expanded }
             .animateContentSize()
     ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            // Card Header
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.fillMaxWidth()
+        Column {
+            // Clickable upper part (Header & metrics)
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { expanded = !expanded }
+                    .padding(start = 16.dp, top = 16.dp, end = 16.dp, bottom = 12.dp)
             ) {
-                // Bank Indicator Dot
-                Box(
-                    modifier = Modifier
-                        .size(10.dp)
-                        .clip(CircleShape)
-                        .background(bankColor)
-                )
-                Spacer(modifier = Modifier.width(10.dp))
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = loan.bankName,
-                        color = TextPrimary,
-                        fontSize = 15.sp,
-                        fontWeight = FontWeight.Bold,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                    Text(
-                        text = "${loan.durationMonths} Months | ${loan.interestRate}% APR",
-                        color = TextSecondary,
-                        fontSize = 12.sp
-                    )
-                }
-
-                IconButton(
-                    onClick = onDeleteClick,
-                    modifier = Modifier.size(36.dp)
+                // Card Header
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.fillMaxWidth()
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.Delete,
-                        contentDescription = "Delete Loan",
-                        tint = ExpenseRed.copy(alpha = 0.7f),
-                        modifier = Modifier.size(18.dp)
+                    // Bank Indicator Dot
+                    Box(
+                        modifier = Modifier
+                            .size(10.dp)
+                            .clip(CircleShape)
+                            .background(bankColor)
                     )
+                    Spacer(modifier = Modifier.width(10.dp))
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = loan.bankName,
+                            color = TextPrimary,
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.Bold,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                        Text(
+                            text = "${loan.durationMonths} Months | ${loan.interestRate}% APR",
+                            color = TextSecondary,
+                            fontSize = 12.sp
+                        )
+                    }
+
+                    IconButton(
+                        onClick = onDeleteClick,
+                        modifier = Modifier.size(36.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Delete,
+                            contentDescription = "Delete Loan",
+                            tint = ExpenseRed.copy(alpha = 0.7f),
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
                 }
-            }
 
-            Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(12.dp))
 
-            // Main Info: Amount & EMI Row
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Column {
-                    Text(
-                        text = "Remaining Principal",
-                        fontSize = 10.sp,
-                        color = TextMuted
-                    )
-                    Text(
-                        text = "৳${currencyFormat.format(remainingPrincipal)}",
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = TextPrimary
-                    )
-                }
-
-                Column(horizontalAlignment = Alignment.End) {
-                    Text(
-                        text = "Monthly EMI",
-                        fontSize = 10.sp,
-                        color = TextMuted
-                    )
-                    Text(
-                        text = "৳${currencyFormat.format(emi)}",
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = AccentTeal
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(10.dp))
-
-            // Repayment Progress Bar
-            Column(modifier = Modifier.fillMaxWidth()) {
+                // Main Info: Amount & EMI Row
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text(
-                        text = "Repaid: ${String.format(Locale.US, "%.1f%%", percentPaid)}",
-                        fontSize = 10.sp,
-                        color = TextSecondary
-                    )
-                    Text(
-                        text = "৳${currencyFormat.format(loan.repaidAmount)} / ৳${currencyFormat.format(originalRepayable)}",
-                        fontSize = 10.sp,
-                        color = TextMuted
+                    Column {
+                        Text(
+                            text = "Remaining Principal",
+                            fontSize = 10.sp,
+                            color = TextMuted
+                        )
+                        Text(
+                            text = "৳${currencyFormat.format(remainingPrincipal)}",
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = TextPrimary
+                        )
+                    }
+
+                    Column(horizontalAlignment = Alignment.End) {
+                        Text(
+                            text = "Monthly EMI",
+                            fontSize = 10.sp,
+                            color = TextMuted
+                        )
+                        Text(
+                            text = "৳${currencyFormat.format(emi)}",
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = AccentTeal
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(10.dp))
+
+                // Repayment Progress Bar
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "Repaid: ${String.format(Locale.US, "%.1f%%", percentPaid)}",
+                            fontSize = 10.sp,
+                            color = TextSecondary
+                        )
+                        Text(
+                            text = "৳${currencyFormat.format(loan.repaidAmount)} / ৳${currencyFormat.format(originalRepayable)}",
+                            fontSize = 10.sp,
+                            color = TextMuted
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(4.dp))
+                    // Custom Progress Bar
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(6.dp)
+                            .clip(RoundedCornerShape(3.dp))
+                            .background(DividerColor.copy(alpha = 0.3f))
+                    ) {
+                        if (percentPaid > 0f) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth(fraction = (percentPaid / 100f).coerceIn(0f, 1f))
+                                    .height(6.dp)
+                                    .clip(RoundedCornerShape(3.dp))
+                                    .background(AccentTeal)
+                            )
+                        }
+                    }
+                }
+
+                // Expand Arrow Row
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(top = 10.dp),
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.KeyboardArrowDown,
+                        contentDescription = if (expanded) "Collapse" else "Expand",
+                        tint = TextMuted,
+                        modifier = Modifier
+                            .size(20.dp)
+                            .rotate(rotationState)
                     )
                 }
-                Spacer(modifier = Modifier.height(4.dp))
-                LinearProgressIndicator(
-                    progress = { percentPaid / 100f },
-                    color = AccentTeal,
-                    trackColor = DividerColor.copy(alpha = 0.3f),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(6.dp)
-                        .clip(RoundedCornerShape(3.dp))
-                )
-            }
-
-            // Expand Arrow Row
-            Row(
-                modifier = Modifier.fillMaxWidth().padding(top = 10.dp),
-                horizontalArrangement = Arrangement.Center
-            ) {
-                Icon(
-                    imageVector = Icons.Default.KeyboardArrowDown,
-                    contentDescription = if (expanded) "Collapse" else "Expand",
-                    tint = TextMuted,
-                    modifier = Modifier
-                        .size(20.dp)
-                        .rotate(rotationState)
-                )
             }
 
             // Expanded Details Block
             if (expanded) {
-                HorizontalDivider(color = DividerColor.copy(alpha = 0.5f), modifier = Modifier.padding(vertical = 12.dp))
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(start = 16.dp, end = 16.dp, bottom = 16.dp)
                 ) {
-                    // Doughnut Chart (Repaid vs Remaining Principal vs Interest)
-                    LoanDoughnutChart(
-                        principalRemaining = remainingPrincipal,
-                        interestRemaining = remainingInterest,
-                        repaid = loan.repaidAmount,
-                        modifier = Modifier
-                            .size(110.dp)
-                            .padding(end = 4.dp)
-                    )
+                    HorizontalDivider(color = DividerColor.copy(alpha = 0.5f), modifier = Modifier.padding(bottom = 12.dp))
 
-                    Spacer(modifier = Modifier.width(12.dp))
-
-                    // Numbers Breakdown
-                    Column(
-                        modifier = Modifier.weight(1f),
-                        verticalArrangement = Arrangement.spacedBy(6.dp)
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        DetailTextRow(label = "Original Principal", value = "৳${currencyFormat.format(loan.loanAmount)}", valueColor = TextPrimary)
-                        DetailTextRow(label = "Remaining Principal", value = "৳${currencyFormat.format(remainingPrincipal)}", valueColor = AccentTeal)
-                        DetailTextRow(label = "Remaining Interest", value = "৳${currencyFormat.format(remainingInterest)}", valueColor = ExpenseRed)
-                        DetailTextRow(label = "Remaining Payable", value = "৳${currencyFormat.format(remainingRepayable)}", valueColor = TextPrimary)
-                        if (linkedAccount != null) {
-                            DetailTextRow(label = "Account Linked", value = linkedAccount.name, valueColor = bankColor)
+                        // Doughnut Chart (Repaid vs Remaining Principal vs Interest)
+                        LoanDoughnutChart(
+                            principalRemaining = remainingPrincipal,
+                            interestRemaining = remainingInterest,
+                            repaid = loan.repaidAmount,
+                            modifier = Modifier
+                                .size(110.dp)
+                                .padding(end = 4.dp)
+                        )
+
+                        Spacer(modifier = Modifier.width(12.dp))
+
+                        // Numbers Breakdown
+                        Column(
+                            modifier = Modifier.weight(1f),
+                            verticalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            DetailTextRow(label = "Original Principal", value = "৳${currencyFormat.format(loan.loanAmount)}", valueColor = TextPrimary)
+                            DetailTextRow(label = "Remaining Principal", value = "৳${currencyFormat.format(remainingPrincipal)}", valueColor = AccentTeal)
+                            DetailTextRow(label = "Remaining Interest", value = "৳${currencyFormat.format(remainingInterest)}", valueColor = ExpenseRed)
+                            DetailTextRow(label = "Remaining Payable", value = "৳${currencyFormat.format(remainingRepayable)}", valueColor = TextPrimary)
+                            if (linkedAccount != null) {
+                                DetailTextRow(label = "Account Linked", value = linkedAccount.name, valueColor = bankColor)
+                            }
                         }
                     }
-                }
 
-                // Repay Loan Button or Fully Repaid Indicator
-                if (remainingRepayable <= 0.0) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(top = 16.dp)
-                            .background(AccentTeal.copy(alpha = 0.1f), RoundedCornerShape(12.dp))
-                            .border(1.dp, AccentTeal.copy(alpha = 0.3f), RoundedCornerShape(12.dp))
-                            .padding(vertical = 12.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(imageVector = Icons.Default.CheckCircle, contentDescription = null, tint = AccentTeal, modifier = Modifier.size(16.dp))
+                    // Repay Loan Button or Fully Repaid Indicator
+                    if (remainingRepayable <= 0.0) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(top = 16.dp)
+                                .background(AccentTeal.copy(alpha = 0.1f), RoundedCornerShape(12.dp))
+                                .border(1.dp, AccentTeal.copy(alpha = 0.3f), RoundedCornerShape(12.dp))
+                                .padding(vertical = 12.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(imageVector = Icons.Default.CheckCircle, contentDescription = null, tint = AccentTeal, modifier = Modifier.size(16.dp))
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text("Fully Repaid", color = AccentTeal, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                            }
+                        }
+                    } else {
+                        Button(
+                            onClick = onRepayClick,
+                            colors = ButtonDefaults.buttonColors(containerColor = AccentTeal, contentColor = Color.White),
+                            shape = RoundedCornerShape(12.dp),
+                            modifier = Modifier.fillMaxWidth().padding(top = 16.dp)
+                        ) {
+                            Icon(imageVector = Icons.Default.Payment, contentDescription = null, modifier = Modifier.size(16.dp))
                             Spacer(modifier = Modifier.width(8.dp))
-                            Text("Fully Repaid", color = AccentTeal, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                            Text("Repay Loan", fontWeight = FontWeight.Bold, fontSize = 13.sp)
                         }
-                    }
-                } else {
-                    Button(
-                        onClick = onRepayClick,
-                        colors = ButtonDefaults.buttonColors(containerColor = AccentTeal, contentColor = BackgroundDark),
-                        shape = RoundedCornerShape(12.dp),
-                        modifier = Modifier.fillMaxWidth().padding(top = 16.dp)
-                    ) {
-                        Icon(imageVector = Icons.Default.Payment, contentDescription = null, modifier = Modifier.size(16.dp))
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text("Repay Loan", fontWeight = FontWeight.Bold, fontSize = 13.sp)
                     }
                 }
             }
@@ -818,45 +840,42 @@ fun LoanDoughnutChart(
             val pSweep = principalPct * 360f * animProgress.value
             val iSweep = interestPct * 360f * animProgress.value
 
-            val activeSegmentsCount = (if (rSweep > 0) 1 else 0) + (if (pSweep > 0) 1 else 0) + (if (iSweep > 0) 1 else 0)
-            val gap = if (activeSegmentsCount > 1) 6f else 0f
-
             // Repaid Sector (AccentTeal)
-            if (rSweep > gap) {
+            if (rSweep > 0f) {
                 drawArc(
                     color = AccentTeal,
-                    startAngle = -90f + gap / 2f,
-                    sweepAngle = rSweep - gap,
+                    startAngle = -90f,
+                    sweepAngle = rSweep,
                     useCenter = false,
                     topLeft = rectOffset,
                     size = Size(radiusSize, radiusSize),
-                    style = Stroke(width = strokeW, cap = StrokeCap.Round)
+                    style = Stroke(width = strokeW, cap = StrokeCap.Butt)
                 )
             }
 
             // Remaining Principal Sector (AccentBlue)
-            if (pSweep > gap) {
+            if (pSweep > 0f) {
                 drawArc(
                     color = AccentBlue,
-                    startAngle = -90f + rSweep + gap / 2f,
-                    sweepAngle = pSweep - gap,
+                    startAngle = -90f + rSweep,
+                    sweepAngle = pSweep,
                     useCenter = false,
                     topLeft = rectOffset,
                     size = Size(radiusSize, radiusSize),
-                    style = Stroke(width = strokeW, cap = StrokeCap.Round)
+                    style = Stroke(width = strokeW, cap = StrokeCap.Butt)
                 )
             }
 
             // Remaining Interest Sector (ExpenseRed)
-            if (iSweep > gap) {
+            if (iSweep > 0f) {
                 drawArc(
                     color = ExpenseRed,
-                    startAngle = -90f + rSweep + pSweep + gap / 2f,
-                    sweepAngle = iSweep - gap,
+                    startAngle = -90f + rSweep + pSweep,
+                    sweepAngle = iSweep,
                     useCenter = false,
                     topLeft = rectOffset,
                     size = Size(radiusSize, radiusSize),
-                    style = Stroke(width = strokeW, cap = StrokeCap.Round)
+                    style = Stroke(width = strokeW, cap = StrokeCap.Butt)
                 )
             }
         }
