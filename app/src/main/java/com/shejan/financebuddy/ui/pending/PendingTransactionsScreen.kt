@@ -12,6 +12,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.material.icons.automirrored.filled.Notes
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CheckCircle
@@ -25,6 +26,8 @@ import androidx.compose.material.icons.filled.Category
 import androidx.compose.material.icons.filled.CreditCard
 import androidx.compose.material.icons.filled.Sms
 import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.filled.Tune
+import androidx.compose.material.icons.filled.Delete
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import kotlinx.coroutines.launch
@@ -66,6 +69,12 @@ fun PendingTransactionsScreen(
     pendingList: List<PendingSmsTransactionEntity>,
     accounts: List<AccountEntity>,
     database: com.shejan.financebuddy.data.db.FinanceDatabase,
+    mappingsList: List<com.shejan.financebuddy.data.db.SmsSenderMappingEntity>,
+    potentialSenders: List<com.shejan.financebuddy.sms.PotentialSender>,
+    onAddMapping: (String, Int) -> Unit,
+    onDeleteMapping: (com.shejan.financebuddy.data.db.SmsSenderMappingEntity) -> Unit,
+    onLoadPotentialSenders: () -> Unit,
+    onSyncSenderHistory: (String, Int, (Int) -> Unit) -> Unit,
     onConfirm: (PendingSmsTransactionEntity, PendingSmsTransactionEntity) -> Unit,
     onDismiss: (PendingSmsTransactionEntity) -> Unit,
     onUpdate: (PendingSmsTransactionEntity) -> Unit,
@@ -119,6 +128,8 @@ fun PendingTransactionsScreen(
 
     var editTarget by remember { mutableStateOf<PendingSmsTransactionEntity?>(null) }
     var showDismissAllDialog by remember { mutableStateOf(false) }
+    var showMappingConfigSheet by remember { mutableStateOf(false) }
+    val configSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
     // Edit bottom sheet state
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
@@ -189,6 +200,23 @@ fun PendingTransactionsScreen(
                             modifier = Modifier.size(22.dp)
                         )
                     }
+                }
+
+                Spacer(modifier = Modifier.width(4.dp))
+
+                IconButton(
+                    onClick = {
+                        onLoadPotentialSenders()
+                        showMappingConfigSheet = true
+                    },
+                    modifier = Modifier.size(36.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Tune,
+                        contentDescription = "SMS Sender Mapping Settings",
+                        tint = AccentTeal,
+                        modifier = Modifier.size(22.dp)
+                    )
                 }
 
                 if (pendingList.isNotEmpty()) {
@@ -381,6 +409,36 @@ fun PendingTransactionsScreen(
                     }
                 }
             )
+        }
+
+        if (showMappingConfigSheet) {
+            ModalBottomSheet(
+                onDismissRequest = { showMappingConfigSheet = false },
+                sheetState       = configSheetState,
+                containerColor   = CardDarker,
+                shape            = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
+                tonalElevation   = 8.dp,
+                dragHandle = {
+                    Box(
+                        modifier = Modifier
+                            .padding(vertical = 12.dp)
+                            .width(36.dp)
+                            .height(4.dp)
+                            .clip(CircleShape)
+                            .background(DividerColor)
+                    )
+                }
+            ) {
+                SmsSenderMappingsConfigSheet(
+                    accounts = accounts,
+                    mappingsList = mappingsList,
+                    potentialSenders = potentialSenders,
+                    onAddMapping = onAddMapping,
+                    onDeleteMapping = onDeleteMapping,
+                    onSyncSenderHistory = onSyncSenderHistory,
+                    onDismiss = { showMappingConfigSheet = false }
+                )
+            }
         }
     }
 }
@@ -635,46 +693,67 @@ private fun PendingTransactionCard(
             // Action Buttons
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
                 // Dismiss Button
-                OutlinedButton(
-                    onClick = onDismiss,
-                    modifier = Modifier.weight(1f),
-                    shape = RoundedCornerShape(12.dp),
-                    colors = ButtonDefaults.outlinedButtonColors(
-                        contentColor = ExpenseRed,
-                        containerColor = Color.Transparent
-                    ),
-                    border = BorderStroke(1.dp, ExpenseRed.copy(alpha = 0.3f))
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier.weight(1f)
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.Close,
-                        contentDescription = null,
-                        modifier = Modifier.size(14.dp)
+                    Box(
+                        modifier = Modifier
+                            .size(46.dp)
+                            .clip(RoundedCornerShape(6.dp))
+                            .background(ExpenseRed.copy(alpha = 0.08f))
+                            .border(1.dp, ExpenseRed.copy(alpha = 0.25f), RoundedCornerShape(6.dp))
+                            .clickable { onDismiss() },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Close,
+                            contentDescription = "Dismiss",
+                            tint = ExpenseRed,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(5.dp))
+                    Text(
+                        text = "Dismiss",
+                        color = ExpenseRed,
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Bold
                     )
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text("Dismiss", fontSize = 12.sp, fontWeight = FontWeight.Bold)
                 }
 
                 // Edit Button
-                OutlinedButton(
-                    onClick = onEdit,
-                    modifier = Modifier.weight(1f),
-                    shape = RoundedCornerShape(12.dp),
-                    colors = ButtonDefaults.outlinedButtonColors(
-                        contentColor = TextSecondary,
-                        containerColor = Color.Transparent
-                    ),
-                    border = BorderStroke(1.dp, DividerColor)
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier.weight(1f)
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.Edit,
-                        contentDescription = null,
-                        modifier = Modifier.size(14.dp)
+                    Box(
+                        modifier = Modifier
+                            .size(46.dp)
+                            .clip(RoundedCornerShape(6.dp))
+                            .background(CardDarker)
+                            .border(1.dp, DividerColor, RoundedCornerShape(6.dp))
+                            .clickable { onEdit() },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Edit,
+                            contentDescription = "Edit",
+                            tint = TextSecondary,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(5.dp))
+                    Text(
+                        text = "Edit",
+                        color = TextSecondary,
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Bold
                     )
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text("Edit", fontSize = 12.sp, fontWeight = FontWeight.Bold)
                 }
 
                 // Confirm Button
@@ -682,29 +761,37 @@ private fun PendingTransactionCard(
                 val isInsufficient = (pending.type == "EXPENSE" || pending.type == "TRANSFER") &&
                         sourceAccount != null && pending.amount > sourceAccount.balance
                 val canConfirm = pending.fromAccountId != -1 && !isInsufficient
-                Button(
-                    onClick = { onConfirm(pending) },
-                    modifier = Modifier.weight(1f),
-                    shape = RoundedCornerShape(12.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = IncomeGreen,
-                        disabledContainerColor = IncomeGreen.copy(alpha = 0.15f),
-                        disabledContentColor = TextMuted
-                    ),
-                    enabled = canConfirm
+
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier.weight(1f)
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.Check,
-                        contentDescription = null,
-                        modifier = Modifier.size(14.dp),
-                        tint = if (canConfirm) BackgroundDark else TextMuted
-                    )
-                    Spacer(modifier = Modifier.width(4.dp))
+                    Box(
+                        modifier = Modifier
+                            .size(46.dp)
+                            .clip(RoundedCornerShape(6.dp))
+                            .background(if (canConfirm) IncomeGreen else IncomeGreen.copy(alpha = 0.12f))
+                            .border(
+                                width = 1.dp,
+                                color = if (canConfirm) IncomeGreen else DividerColor.copy(alpha = 0.5f),
+                                shape = RoundedCornerShape(6.dp)
+                            )
+                            .clickable(enabled = canConfirm) { onConfirm(pending) },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Check,
+                            contentDescription = "Confirm",
+                            tint = if (canConfirm) BackgroundDark else TextMuted,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(5.dp))
                     Text(
                         text = "Confirm",
-                        fontSize = 12.sp,
-                        color = if (canConfirm) BackgroundDark else TextMuted,
-                        fontWeight = FontWeight.ExtraBold
+                        color = if (canConfirm) IncomeGreen else TextMuted,
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Bold
                     )
                 }
             }
@@ -1312,5 +1399,247 @@ private fun formatAmount(amount: Double): String {
 private fun formatTimestamp(ms: Long): String {
     val sdf = SimpleDateFormat("dd MMM yyyy, hh:mm a", Locale.getDefault())
     return sdf.format(Date(ms))
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun SmsSenderMappingsConfigSheet(
+    accounts: List<AccountEntity>,
+    mappingsList: List<com.shejan.financebuddy.data.db.SmsSenderMappingEntity>,
+    potentialSenders: List<com.shejan.financebuddy.sms.PotentialSender>,
+    onAddMapping: (String, Int) -> Unit,
+    onDeleteMapping: (com.shejan.financebuddy.data.db.SmsSenderMappingEntity) -> Unit,
+    onSyncSenderHistory: (String, Int, (Int) -> Unit) -> Unit,
+    onDismiss: () -> Unit
+) {
+    val context = LocalContext.current
+    var selectedTab by remember { mutableStateOf(0) } // 0 = Active, 1 = Link New
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .fillMaxHeight(0.85f)
+            .padding(horizontal = 20.dp)
+    ) {
+        // Sheet Title
+        Text(
+            text = "SMS Sender Configurations",
+            color = TextPrimary,
+            fontSize = 20.sp,
+            fontWeight = FontWeight.Bold
+        )
+        Text(
+            text = "Map custom numbers/sender IDs to your bank accounts",
+            color = TextMuted,
+            fontSize = 12.sp,
+            modifier = Modifier.padding(bottom = 16.dp)
+        )
+
+        // Custom TabRow
+        TabRow(
+            selectedTabIndex = selectedTab,
+            containerColor = Color.Transparent,
+            contentColor = AccentTeal,
+            divider = { HorizontalDivider(color = DividerColor) }
+        ) {
+            Tab(
+                selected = selectedTab == 0,
+                onClick = { selectedTab = 0 },
+                text = { Text("Active Mappings (${mappingsList.size})", fontWeight = FontWeight.Bold, fontSize = 13.sp) },
+                selectedContentColor = AccentTeal,
+                unselectedContentColor = TextMuted
+            )
+            Tab(
+                selected = selectedTab == 1,
+                onClick = { selectedTab = 1 },
+                text = { Text("Link New Sender (${potentialSenders.size})", fontWeight = FontWeight.Bold, fontSize = 13.sp) },
+                selectedContentColor = AccentTeal,
+                unselectedContentColor = TextMuted
+            )
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
+            if (selectedTab == 0) {
+                // Active Mappings Tab
+                if (mappingsList.isEmpty()) {
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Icon(Icons.Default.Tune, null, tint = TextMuted, modifier = Modifier.size(48.dp))
+                            Spacer(modifier = Modifier.height(12.dp))
+                            Text("No custom mappings yet", color = TextMuted, fontSize = 14.sp, fontWeight = FontWeight.Medium)
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text("Go to 'Link New Sender' tab to link a number", color = TextMuted.copy(alpha = 0.6f), fontSize = 12.sp)
+                        }
+                    }
+                } else {
+                    LazyColumn(
+                        verticalArrangement = Arrangement.spacedBy(10.dp),
+                        modifier = Modifier.fillMaxSize()
+                    ) {
+                        items(mappingsList) { mapping ->
+                            val account = accounts.find { it.id == mapping.accountId }
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clip(RoundedCornerShape(14.dp))
+                                    .background(CardDark)
+                                    .border(1.dp, DividerColor, RoundedCornerShape(14.dp))
+                                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = mapping.senderAddress,
+                                        color = TextPrimary,
+                                        fontSize = 15.sp,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                    Spacer(modifier = Modifier.height(2.dp))
+                                    Text(
+                                        text = "Mapped to: ${account?.name ?: "Unknown Account"}",
+                                        color = AccentTeal,
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.Medium
+                                    )
+                                }
+                                IconButton(onClick = { onDeleteMapping(mapping) }) {
+                                    Icon(
+                                        imageVector = Icons.Default.Delete,
+                                        contentDescription = "Delete Mapping",
+                                        tint = ExpenseRed,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            } else {
+                // Link New Tab
+                if (potentialSenders.isEmpty()) {
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.padding(horizontal = 32.dp)) {
+                            Icon(Icons.Default.Sms, null, tint = TextMuted, modifier = Modifier.size(48.dp))
+                            Spacer(modifier = Modifier.height(12.dp))
+                            Text("No unmapped senders found", color = TextMuted, fontSize = 14.sp, fontWeight = FontWeight.Medium)
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text("SMS inbox scanned, but no unmapped transaction-like messages were detected.", color = TextMuted.copy(alpha = 0.6f), fontSize = 12.sp, textAlign = TextAlign.Center)
+                        }
+                    }
+                } else {
+                    LazyColumn(
+                        verticalArrangement = Arrangement.spacedBy(12.dp),
+                        modifier = Modifier.fillMaxSize()
+                    ) {
+                        items(potentialSenders) { sender ->
+                            var showAccountMenu by remember { mutableStateOf(false) }
+                            
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clip(RoundedCornerShape(14.dp))
+                                    .background(CardDark)
+                                    .border(1.dp, DividerColor, RoundedCornerShape(14.dp))
+                                    .padding(14.dp)
+                            ) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(
+                                            text = sender.senderAddress,
+                                            color = TextPrimary,
+                                            fontSize = 15.sp,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                        Text(
+                                            text = formatTimestamp(sender.timestamp),
+                                            color = TextMuted,
+                                            fontSize = 10.sp
+                                        )
+                                    }
+                                    
+                                    Box {
+                                        Button(
+                                            onClick = { showAccountMenu = true },
+                                            colors = ButtonDefaults.buttonColors(containerColor = AccentTeal),
+                                            shape = RoundedCornerShape(10.dp),
+                                            contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp),
+                                            modifier = Modifier.height(34.dp)
+                                        ) {
+                                            Text("Link Account", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = BackgroundDark)
+                                        }
+                                        
+                                        DropdownMenu(
+                                            expanded = showAccountMenu,
+                                            onDismissRequest = { showAccountMenu = false },
+                                            containerColor = CardDarker
+                                        ) {
+                                            DropdownMenuItem(
+                                                text = { Text("Select Target Account:", color = AccentTeal, fontWeight = FontWeight.Bold, fontSize = 11.sp) },
+                                                onClick = {},
+                                                enabled = false
+                                            )
+                                            accounts.forEach { account ->
+                                                DropdownMenuItem(
+                                                    text = { Text(account.name, color = TextPrimary, fontSize = 13.sp) },
+                                                    onClick = {
+                                                        showAccountMenu = false
+                                                        onAddMapping(sender.senderAddress, account.id)
+                                                        onSyncSenderHistory(sender.senderAddress, account.id) { count ->
+                                                            android.widget.Toast.makeText(
+                                                                context,
+                                                                "Success! Mapped ${sender.senderAddress} and imported $count transactions.",
+                                                                android.widget.Toast.LENGTH_LONG
+                                                            ).show()
+                                                        }
+                                                    }
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
+                                
+                                Spacer(modifier = Modifier.height(8.dp))
+                                
+                                // Preview Message Bubble
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .background(CardDarker, RoundedCornerShape(8.dp))
+                                        .padding(10.dp)
+                                ) {
+                                    Text(
+                                        text = sender.latestMessage,
+                                        color = TextSecondary,
+                                        fontSize = 11.sp,
+                                        lineHeight = 16.sp
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        
+        Spacer(modifier = Modifier.height(16.dp))
+        
+        OutlinedButton(
+            onClick = onDismiss,
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(48.dp),
+            shape = RoundedCornerShape(14.dp),
+            colors = ButtonDefaults.outlinedButtonColors(contentColor = TextSecondary),
+            border = BorderStroke(1.dp, DividerColor)
+        ) {
+            Text("Close Settings")
+        }
+        Spacer(modifier = Modifier.height(32.dp))
+    }
 }
 

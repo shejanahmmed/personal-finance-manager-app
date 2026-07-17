@@ -52,15 +52,36 @@ class SmsReceiver : BroadcastReceiver() {
             val body = bodyBuilder.toString().trim()
             if (body.isBlank()) continue
 
-            val parsed = SmsParser.parse(sender, body) ?: continue
-
-            Log.d(TAG, "Parsed SMS from $sender: amount=${parsed.amount} type=${parsed.type}")
-
             scope.launch {
-                // Try to resolve accountId from the detected account name
+                val mapping = db.smsSenderMappingDao().getMappingForSenderOnce(sender)
                 val accounts = accountDao.getAllAccountsOnce()
-                val matchedAccount = accounts.firstOrNull { acc ->
-                    acc.name.equals(parsed.detectedAccountName, ignoreCase = true)
+
+                val parsed = if (mapping != null) {
+                    val matchedAccount = accounts.find { it.id == mapping.accountId }
+                    if (matchedAccount != null) {
+                        SmsParser.parse(
+                            sender = sender,
+                            body = body,
+                            resolvedAccountName = matchedAccount.name,
+                            bankIndicator = matchedAccount.name
+                        )
+                    } else {
+                        SmsParser.parse(sender, body)
+                    }
+                } else {
+                    SmsParser.parse(sender, body)
+                }
+
+                if (parsed == null) return@launch
+
+                Log.d(TAG, "Parsed SMS from $sender: amount=${parsed.amount} type=${parsed.type}")
+
+                val matchedAccount = if (mapping != null) {
+                    accounts.find { it.id == mapping.accountId }
+                } else {
+                    accounts.firstOrNull { acc ->
+                        acc.name.equals(parsed.detectedAccountName, ignoreCase = true)
+                    }
                 }
 
                 val pending = PendingSmsTransactionEntity(

@@ -27,6 +27,47 @@ class PendingTransactionsViewModel(private val database: FinanceDatabase) : View
         pendingSmsDao.getPendingCount()
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 0)
 
+    /** SMS Sender Mappings flow */
+    val mappingsList: StateFlow<List<com.shejan.financebuddy.data.db.SmsSenderMappingEntity>> =
+        database.smsSenderMappingDao().getAllMappingsFlow()
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    private val _potentialSenders = kotlinx.coroutines.flow.MutableStateFlow<List<com.shejan.financebuddy.sms.PotentialSender>>(emptyList())
+    val potentialSenders: StateFlow<List<com.shejan.financebuddy.sms.PotentialSender>> = _potentialSenders
+
+    fun loadPotentialSenders(context: android.content.Context) {
+        viewModelScope.launch(Dispatchers.IO) {
+            val senders = com.shejan.financebuddy.sms.SmsSyncHelper.findPotentialUnknownSenders(context, database)
+            _potentialSenders.value = senders
+        }
+    }
+
+    fun addMapping(senderAddress: String, accountId: Int) {
+        viewModelScope.launch(Dispatchers.IO) {
+            database.smsSenderMappingDao().insertMapping(
+                com.shejan.financebuddy.data.db.SmsSenderMappingEntity(
+                    senderAddress = senderAddress.lowercase().trim(),
+                    accountId = accountId
+                )
+            )
+        }
+    }
+
+    fun deleteMapping(mapping: com.shejan.financebuddy.data.db.SmsSenderMappingEntity) {
+        viewModelScope.launch(Dispatchers.IO) {
+            database.smsSenderMappingDao().deleteMapping(mapping)
+        }
+    }
+
+    fun syncSenderHistory(context: android.content.Context, senderAddress: String, accountId: Int, onComplete: (Int) -> Unit) {
+        viewModelScope.launch(Dispatchers.IO) {
+            val count = com.shejan.financebuddy.sms.SmsSyncHelper.syncPreviousSmsForSender(context, database, senderAddress, accountId)
+            launch(Dispatchers.Main) {
+                onComplete(count)
+            }
+        }
+    }
+
     /**
      * Confirms a pending entry: inserts it as a real transaction (updating balances)
      * and removes it from the pending queue.

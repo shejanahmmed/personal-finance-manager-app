@@ -119,37 +119,42 @@ object SmsParser {
         return SENDER_ACCOUNT_MAP[sender.lowercase().trim()]
     }
 
-    // ─── Main entry point ─────────────────────────────────────────────────────
-
     /**
      * Attempts to parse a financial transaction from an SMS.
      *
-     * @param sender  The originating address (alphanumeric sender ID from the bank/MFS).
-     * @param body    The full SMS message text.
-     * @return        A [ParsedSmsData] on success, or null if the SMS is not a recognisable transaction.
+     * @param sender              The originating address.
+     * @param body                The full SMS message text.
+     * @param resolvedAccountName Optional pre-resolved account name (from custom mappings).
+     * @param bankIndicator       Optional bank/MFS indicator string (to route parsing patterns).
+     * @return                    A [ParsedSmsData] on success, or null if the SMS is not a recognisable transaction.
      */
-    fun parse(sender: String, body: String): ParsedSmsData? {
-        val accountName = resolveAccount(sender) ?: return null
-        val senderLower = sender.lowercase().trim()
+    fun parse(
+        sender: String,
+        body: String,
+        resolvedAccountName: String? = null,
+        bankIndicator: String? = null
+    ): ParsedSmsData? {
+        val accountName = resolvedAccountName ?: resolveAccount(sender) ?: return null
+        val lookupString = bankIndicator?.lowercase() ?: sender.lowercase().trim()
 
         return try {
             when {
-                isBkash(senderLower)      -> parseBkash(body, accountName)
-                isNagad(senderLower)      -> parseNagad(body, accountName)
-                isRocket(senderLower)     -> parseRocket(body, accountName)
-                isUpay(senderLower)       -> parseUpay(body, accountName)
-                isCellfin(senderLower)    -> parseCellfin(body, accountName)
-                isOkWallet(senderLower)   -> parseOkWallet(body, accountName)
-                isMyCash(senderLower)     -> parseMyCash(body, accountName)
-                isBracBank(senderLower)   -> parseBracBank(body, accountName)
-                isCityBank(senderLower)   -> parseCityBank(body, accountName)
-                isEbl(senderLower)        -> parseEbl(body, accountName)
-                isDbbl(senderLower)       -> parseDbbl(body, accountName)
-                isPrimeBank(senderLower)  -> parsePrimeBank(body, accountName)
-                isMtb(senderLower)        -> parseMtb(body, accountName)
-                isIbbl(senderLower)       -> parseIbbl(body, accountName)
-                isAlArafah(senderLower)   -> parseAlArafah(body, accountName)
-                isSjibl(senderLower)      -> parseSjibl(body, accountName)
+                isBkash(lookupString)      -> parseBkash(body, accountName)
+                isNagad(lookupString)      -> parseNagad(body, accountName)
+                isRocket(lookupString)     -> parseRocket(body, accountName)
+                isUpay(lookupString)       -> parseUpay(body, accountName)
+                isCellfin(lookupString)    -> parseCellfin(body, accountName)
+                isOkWallet(lookupString)   -> parseOkWallet(body, accountName)
+                isMyCash(lookupString)     -> parseMyCash(body, accountName)
+                isBracBank(lookupString)   -> parseBracBank(body, accountName)
+                isCityBank(lookupString)   -> parseCityBank(body, accountName)
+                isEbl(lookupString)        -> parseEbl(body, accountName)
+                isDbbl(lookupString)       -> parseDbbl(body, accountName)
+                isPrimeBank(lookupString)  -> parsePrimeBank(body, accountName)
+                isMtb(lookupString)        -> parseMtb(body, accountName)
+                isIbbl(lookupString)       -> parseIbbl(body, accountName)
+                isAlArafah(lookupString)   -> parseAlArafah(body, accountName)
+                isSjibl(lookupString)      -> parseSjibl(body, accountName)
                 else                      -> null
             }
         } catch (e: Exception) {
