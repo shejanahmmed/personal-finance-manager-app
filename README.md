@@ -91,6 +91,8 @@ erDiagram
         double balance "Current Available Balance"
         string colorHex "Theme Color Indicator"
         string accountSubtype "Savings | Current | Student"
+        boolean isManaged "Managed for someone else"
+        string holderName "Account holder name"
         string accountNumber "Optional reference number"
         string showAs "Custom display alias (Show As)"
     }
@@ -134,7 +136,28 @@ erDiagram
         long deadline "Optional Deadline Epoch Millis"
         long createdAt "Creation Epoch Millis"
     }
+    PAYEES {
+        int id PK "Auto-Increment"
+        string name "Profile Name"
+        string uniqueId "e.g. PAY-8F3A"
+        long createdAt "Timestamp"
+    }
+    PAYEE_ACCOUNTS {
+        int id PK "Auto-Increment"
+        int payeeId FK "Links to PAYEES.id"
+        string bankName "Bank/MFS Name"
+        string accountNumber "Account/Mobile Number"
+        string recipientName "Recipient Name"
+        string type "BANK | MFS"
+        string nickname "Account Nickname (Optional)"
+    }
+    SMS_SENDER_MAPPINGS {
+        int id PK "Auto-Increment"
+        string senderAddress "Sender Number/Address"
+        int accountId "Mapped Local Account ID"
+    }
     ACCOUNTS ||--o{ TRANSACTIONS : "fromAccountId / toAccountId"
+    PAYEES ||--o{ PAYEE_ACCOUNTS : "payeeId"
 ```
 
 ### Self-Synchronizing Balances
@@ -157,12 +180,17 @@ app/src/main/java/com/shejan/financebuddy/
 │   │   ├── BudgetEntity.kt               # Budget limit database model
 │   │   ├── GoalEntity.kt                 # Savings Goal database model
 │   │   ├── PendingSmsTransactionEntity.kt# Temporary SMS transaction model
+│   │   ├── PayeeEntity.kt                # Recipient Profile model
+│   │   ├── PayeeAccountEntity.kt         # Recipient Bank Account model
+│   │   ├── SmsSenderMappingEntity.kt     # Custom SMS sender mapping model
 │   │   ├── AccountDao.kt                 # Queries for wallets/institutions
 │   │   ├── TransactionDao.kt             # Atomic balance-adjusting transaction queries
 │   │   ├── BudgetDao.kt                  # Category-based budget constraint queries
 │   │   ├── GoalDao.kt                    # Savings goal deposit and CRUD queries
 │   │   ├── PendingSmsDao.kt              # CRUD operations for Transaction Inbox
-│   │   ├── DatabaseMigrations.kt         # Version-controlled schema migrations (1→2, 2→3, 3→4, 4→5)
+│   │   ├── PayeeDao.kt                   # CRUD operations for Recipient Profiles
+│   │   ├── SmsSenderMappingDao.kt        # CRUD operations for custom sender mappings
+│   │   ├── DatabaseMigrations.kt         # Version-controlled schema migrations (1→2 to 9→10)
 │   │   ├── DatabaseKeyManager.kt         # Android Keystore-backed database encryption keys
 │   │   └── FinanceDatabase.kt            # Encrypted Room database configuration & seeding logic
 │   └── PreferencesManager.kt             # DataStore configurations (Onboarding & SMS Setup)
@@ -183,7 +211,7 @@ app/src/main/java/com/shejan/financebuddy/
 │   ├── goals/
 │   │   └── GoalsScreen.kt                # Savings goal progress rings & deposit forms
 │   ├── pending/
-│   │   └── PendingTransactionsScreen.kt  # Transaction Inbox queue & manual scan UI
+│   │   └── PendingTransactionsScreen.kt  # Transaction Inbox queue, mapping settings & manual scan
 │   ├── onboarding/
 │   │   ├── OnboardingPage.kt             # Pager metadata model
 │   │   └── OnboardingScreen.kt           # Interactive onboarding walk-through
@@ -205,11 +233,9 @@ Upon initialization, the database seeds default local financial institutions:
 
 ### 2. Transaction Inbox & SMS Auto-Detection
 FinanceBuddy automates expense tracking through local SMS interceptors:
-- **On-Device Regex Parser**: Extracts transaction type, amounts, account keywords, and reference notes from bank SMS.
-- **Glassmorphic Setup Options**: At first start, users choose to:
-  *   *Sync History & Future SMS*: Intercepts incoming SMS and retroactively parses inbox messages from the past 30 days.
-  *   *Track Future SMS Only*: Only detects transaction messages arriving after permission is granted.
-  *   *Keep Manual*: Disables SMS permissions and automation entirely.
+- **On-Device Regex Parser**: Extracts transaction type, amounts, account keywords, and reference notes from bank SMS. Supports routing mapped custom or unknown senders dynamically to specific bank/MFS sub-parsers.
+- **Flexible Configurable Sync Timeframes**: At setup, or during manual scans, users can choose to scan inbox history for the past **1 month, 3 months, 6 months, 1 year, or All messages** (rather than just a fixed 30-day range).
+- **Custom SMS Sender Mappings**: Users can map numeric or unknown SMS senders to specific local accounts via the **SMS Sender Configurations** sheet (linked via the top-right corner option button of the Inbox). When an unknown transaction is received, the app prompts linking, saves it to `sms_sender_mappings`, and runs a retroactive history scan.
 - **Inbox Review Queue**: SMS transactions are placed in the *Transaction Inbox* (formerly pending list) where users review, edit, confirm, or dismiss them before balances adjust.
 - **Manual Historical Scan**: Offers scan triggers in the empty state and top header of the inbox to scan or re-scan messages at any time.
 
@@ -237,7 +263,13 @@ Bespoke charts designed with native Compose Canvas drawing APIs:
 ### 7. Streamlined Transfer Sheet & Autocomplete
 - **Vertical Input Flow**: Stacked *From* and *To* account selectors vertically in the `Own Account` transfer view for clean, professional styling.
 - **Payee-Free Other Transfers**: Removed payee profile dropdown overlays when transferring to `Other's Account`, opting for direct inputs for Recipient Name and Recipient Account/Mobile Number.
-- **Intelligent Autocomplete & Auto-Fill**: Integrates an autocomplete popup for the recipient name field. When selected, it automatically populates both the recipient's name and account number. If a contact has multiple accounts, they are listed separately to let the user select the exact account they want.
+- **Recipient Profiles (Payees)**: Supports full profiles with the ability to associate multiple bank/MFS accounts. Users can add or edit accounts with custom bank names, account numbers, and account-specific nicknames.
+- **Intelligent Autocomplete & Auto-Fill**: Integrates an autocomplete popup for the recipient name field. When selected, it automatically populates the recipient's name and the selected account/nickname details.
+
+### 8. UI/UX Refinements
+- **Redesigned Inbox Actions**: Action buttons (Dismiss, Edit, Confirm) in the Transaction Inbox cards are redesigned as space-optimized, `46.dp` square boxes with `6.dp` rounded corners. They feature clear icons and small (`10.sp`) labels below, eliminating layout cut-offs.
+- **Tightened Bottom Navigation**: The spacing/gap between navigation icons and their text labels in the bottom navigation bar has been tightened to ensure a cohesive and professional visual layout.
+- **Header Uniformity**: The Transaction Inbox screen title section is redesigned to match the style and sizing of the main account title headers.
 
 ---
 
