@@ -24,6 +24,10 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
@@ -465,6 +469,14 @@ fun AccountCardChip(
     val cardColor = remember { Color(android.graphics.Color.parseColor(account.colorHex)) }
     var isBalanceVisible by remember(hideBalancesPref) { mutableStateOf(!hideBalancesPref) }
 
+    // Card flip animation state
+    var isFlipped by remember { mutableStateOf(false) }
+    val rotation by animateFloatAsState(
+        targetValue = if (isFlipped) 180f else 0f,
+        animationSpec = tween(durationMillis = 400, easing = FastOutSlowInEasing),
+        label = "CardFlipAnimation"
+    )
+
     LaunchedEffect(isBalanceVisible, hideBalancesPref) {
         if (isBalanceVisible && hideBalancesPref) {
             kotlinx.coroutines.delay(3000)
@@ -477,114 +489,166 @@ fun AccountCardChip(
         colors  = CardDefaults.cardColors(containerColor = cardColor.copy(alpha = 0.12f)),
         border  = androidx.compose.foundation.BorderStroke(1.dp, cardColor.copy(alpha = 0.4f)),
         modifier = Modifier
-            .width(180.dp)
-            .height(110.dp)
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(horizontal = 12.dp, vertical = 8.dp),
-            verticalArrangement = Arrangement.Top
-        ) {
-            // Top Row: Bank name & Subtype/Type tag
-            Row(
-                modifier              = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment     = Alignment.Top
+            .width(165.dp)
+            .height(95.dp)
+            .graphicsLayer {
+                rotationY = rotation
+                cameraDistance = 12f * density
+            }
+            .clickable(
+                interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
+                indication = null
             ) {
+                isFlipped = !isFlipped
+            }
+    ) {
+        if (rotation <= 90f) {
+            // Front side of card
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                verticalArrangement = Arrangement.SpaceBetween
+            ) {
+                // Top Row: Bank name only (removed account type badge)
+                Row(
+                    modifier              = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment     = Alignment.Top
+                ) {
+                    Text(
+                        text = account.name,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 11.sp,
+                        color = TextPrimary,
+                        modifier = Modifier.weight(1f).padding(end = 4.dp),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+
+                // Middle Row: Amount & Visibility Toggle
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    val displayText = if (!hideBalancesPref || isBalanceVisible) {
+                        "৳${currencyFormat.format(account.balance)}"
+                    } else {
+                        "৳••••••"
+                    }
+
+                    Text(
+                        text  = displayText,
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = TextPrimary,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f)
+                    )
+
+                    if (hideBalancesPref) {
+                        IconButton(
+                            onClick = { isBalanceVisible = !isBalanceVisible },
+                            modifier = Modifier.size(20.dp)
+                        ) {
+                            Icon(
+                                imageVector = if (isBalanceVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff,
+                                contentDescription = "Toggle Balance Visibility",
+                                tint = TextPrimary.copy(alpha = 0.6f),
+                                modifier = Modifier.size(14.dp)
+                            )
+                        }
+                    }
+                }
+
+                // Bottom Column: Nickname only (removed Acc No)
+                Column(
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    val displayShowAs = if (account.showAs.isNotBlank()) {
+                        account.showAs
+                    } else {
+                        "Not set"
+                    }
+
+                    Text(
+                        text = buildAnnotatedString {
+                            withStyle(style = SpanStyle(color = TextPrimary.copy(alpha = 0.7f))) {
+                                append("Nickname: $displayShowAs")
+                            }
+                        },
+                        fontSize = 9.sp,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+            }
+        } else {
+            // Back side of card
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .graphicsLayer { rotationY = 180f }
+                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                verticalArrangement = Arrangement.SpaceBetween
+            ) {
+                // Top header: Bank name
                 Text(
                     text = account.name,
                     fontWeight = FontWeight.Bold,
                     fontSize = 11.sp,
                     color = TextPrimary,
-                    modifier = Modifier.weight(1f).padding(end = 4.dp),
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
-                Box(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(4.dp))
-                        .background(cardColor.copy(alpha = 0.2f))
-                        .padding(horizontal = 5.dp, vertical = 1.5.dp)
+
+                // Back Side details (Acc Type & Acc No) with premium design
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
+                    val accType = if (account.accountSubtype.isNotBlank()) account.accountSubtype else account.type
+                    
                     Text(
-                        text = if (account.accountSubtype.isNotBlank()) account.accountSubtype else account.type,
-                        fontSize = 8.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = cardColor
+                        text = buildAnnotatedString {
+                            withStyle(style = SpanStyle(color = TextSecondary, fontWeight = FontWeight.Medium)) {
+                                append("Type: ")
+                            }
+                            withStyle(style = SpanStyle(color = cardColor, fontWeight = FontWeight.Bold)) {
+                                append(accType)
+                            }
+                        },
+                        fontSize = 10.sp
+                    )
+
+                    val displayAcc = if (account.accountNumber.isNotBlank()) {
+                        val last4 = account.accountNumber.takeLast(4)
+                        "**** **** **** $last4"
+                    } else {
+                        "unknown"
+                    }
+
+                    Text(
+                        text = buildAnnotatedString {
+                            withStyle(style = SpanStyle(color = TextSecondary, fontWeight = FontWeight.Medium)) {
+                                append("Acc No: ")
+                            }
+                            withStyle(style = SpanStyle(color = TextPrimary, fontWeight = FontWeight.SemiBold)) {
+                                append(displayAcc)
+                            }
+                        },
+                        fontSize = 10.sp
                     )
                 }
-            }
 
-            Spacer(modifier = Modifier.height(2.dp))
-
-            // Middle Row: Amount & Visibility Toggle
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                val displayText = if (!hideBalancesPref || isBalanceVisible) {
-                    "৳${currencyFormat.format(account.balance)}"
-                } else {
-                    "৳••••••"
-                }
-
+                // Small flip back helper
                 Text(
-                    text  = displayText,
-                    fontSize = 15.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = TextPrimary,
+                    text = "Tap to flip back",
+                    fontSize = 8.sp,
+                    color = TextMuted,
                     maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f)
-                )
-
-                if (hideBalancesPref) {
-                    IconButton(
-                        onClick = { isBalanceVisible = !isBalanceVisible },
-                        modifier = Modifier.size(20.dp)
-                    ) {
-                        Icon(
-                            imageVector = if (isBalanceVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff,
-                            contentDescription = "Toggle Balance Visibility",
-                            tint = TextPrimary.copy(alpha = 0.6f),
-                            modifier = Modifier.size(14.dp)
-                        )
-                    }
-                }
-            }
-
-            Spacer(modifier = Modifier.height(2.dp))
-
-            // Bottom Column: Account Number and Nickname
-            Column(
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                val displayAcc = if (account.accountNumber.isNotBlank()) {
-                    val last4 = account.accountNumber.takeLast(4)
-                    "**** **** **** $last4"
-                } else {
-                    "unknown"
-                }
-                val displayShowAs = if (account.showAs.isNotBlank()) {
-                    account.showAs
-                } else {
-                    "Not set"
-                }
-
-                Text(
-                    text = buildAnnotatedString {
-                        withStyle(style = SpanStyle(color = TextPrimary)) {
-                            append("Acc No: $displayAcc\n")
-                        }
-                        withStyle(style = SpanStyle(color = TextPrimary.copy(alpha = 0.7f))) {
-                            append("Nickname: $displayShowAs")
-                        }
-                    },
-                    fontSize = 9.sp,
-                    lineHeight = 15.sp,
-                    maxLines = 2,
                     overflow = TextOverflow.Ellipsis
                 )
             }
