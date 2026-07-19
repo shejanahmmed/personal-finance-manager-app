@@ -37,6 +37,7 @@ import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.AccountBalance
 import androidx.compose.material.icons.filled.People
 import androidx.compose.material.icons.filled.MonetizationOn
+import androidx.compose.material.icons.filled.Summarize
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.DrawerValue
@@ -93,6 +94,7 @@ import com.shejan.financebuddy.ui.goals.GoalsScreen
 import com.shejan.financebuddy.ui.home.HomeScreen
 import com.shejan.financebuddy.ui.home.TransactionListScreen
 import com.shejan.financebuddy.ui.history.HistoryScreen
+import com.shejan.financebuddy.ui.reports.ReportsScreen
 import com.shejan.financebuddy.ui.onboarding.OnboardingScreenRoot
 import com.shejan.financebuddy.ui.pending.PendingTransactionsScreen
 import com.shejan.financebuddy.ui.pending.PendingTransactionsViewModel
@@ -272,7 +274,16 @@ fun AppNavigation(
                     onNavigateToBankAccounts = { navController.navigate("bank_accounts") },
                     onNavigateToPayees = { navController.navigate("payees") },
                     onNavigateToLoans = { navController.navigate("loans") },
-                    onNavigateToHistory = { navController.navigate("transaction_history") }
+                    onNavigateToHistory = { navController.navigate("transaction_history") },
+                    onNavigateToReports = { navController.navigate("reports") }
+                )
+            }
+
+            composable("reports") {
+                ReportsScreen(
+                    allTransactions = allTransactions,
+                    accounts = accounts,
+                    onBack = { navController.popBackStack() }
                 )
             }
 
@@ -476,7 +487,8 @@ fun MainDashboardContainer(
     onNavigateToBankAccounts: () -> Unit = {},
     onNavigateToPayees: () -> Unit = {},
     onNavigateToLoans: () -> Unit = {},
-    onNavigateToHistory: () -> Unit = {}
+    onNavigateToHistory: () -> Unit = {},
+    onNavigateToReports: () -> Unit = {}
 ) {
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val scope       = rememberCoroutineScope()
@@ -748,6 +760,14 @@ fun MainDashboardContainer(
                         onClick = {
                             scope.launch { drawerState.close() }
                             onNavigateToHistory()
+                        }
+                    )
+                    DrawerMenuItem(
+                        icon = Icons.Default.Summarize,
+                        label = "Financial Report",
+                        onClick = {
+                            scope.launch { drawerState.close() }
+                            onNavigateToReports()
                         }
                     )
                     DrawerMenuItem(
