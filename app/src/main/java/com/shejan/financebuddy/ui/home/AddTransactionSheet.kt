@@ -509,8 +509,12 @@ fun AddTransactionSheet(
                                         ) {
                                             Column(modifier = Modifier.weight(1f)) {
                                                 Text(nameToShow, color = TextPrimary, fontWeight = FontWeight.Medium, fontSize = 14.sp)
+                                                val accLast4 = if (acc.accountNumber.length > 4) {
+                                                    val last4 = acc.accountNumber.takeLast(4)
+                                                    if (acc.accountNumber.length == 16) "•••• •••• •••• $last4" else "•".repeat(acc.accountNumber.length - 4) + " $last4"
+                                                } else acc.accountNumber
                                                 Text(
-                                                    text = "${acc.bankName} • ${acc.accountNumber}",
+                                                    text = "${acc.bankName} • $accLast4",
                                                     color = TextSecondary,
                                                     fontSize = 12.sp
                                                 )

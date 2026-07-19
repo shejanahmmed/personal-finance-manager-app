@@ -319,8 +319,18 @@ private fun PayeeAccountCard(
                         Text(account.type, color = cardColor, fontSize = 8.sp, fontWeight = FontWeight.Bold)
                     }
                 }
-                Spacer(Modifier.height(2.dp))
-                Text("Number: ${account.accountNumber}", color = TextSecondary, fontSize = 12.sp)
+                val maskedNumber = if (account.accountNumber.length > 4) {
+                    val last4 = account.accountNumber.takeLast(4)
+                    when (account.accountNumber.length) {
+                        16 -> "•••• •••• •••• $last4"
+                        13 -> "•••• •••• • $last4"
+                        11 -> "•••• ••• $last4"
+                        else -> "•".repeat(account.accountNumber.length - 4) + " $last4"
+                    }
+                } else {
+                    account.accountNumber
+                }
+                Text("Number: $maskedNumber", color = TextSecondary, fontSize = 12.sp)
                 if (account.recipientName.isNotBlank()) {
                     Text("Name: ${account.recipientName}", color = TextMuted, fontSize = 11.sp)
                 }
