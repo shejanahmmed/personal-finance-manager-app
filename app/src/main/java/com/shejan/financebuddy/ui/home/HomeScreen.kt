@@ -44,6 +44,8 @@ import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material.icons.filled.Label
+import androidx.compose.material3.Badge
+import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -54,6 +56,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
+import com.shejan.financebuddy.ui.notifications.AppNotification
+import com.shejan.financebuddy.ui.notifications.NotificationsBottomSheet
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.text.SpanStyle
@@ -115,10 +119,19 @@ fun HomeScreen(
     onSavePayee: (String, String, String, String) -> Unit = { _, _, _, _ -> },
     hideBalancesPref: Boolean = false,
     loans: List<LoanEntity> = emptyList(),
-    onNavigateToLoans: () -> Unit = {}
+    onNavigateToLoans: () -> Unit = {},
+    notifications: List<AppNotification> = emptyList(),
+    onNotificationAction: (String) -> Unit = {},
+    onMarkAllNotificationsRead: () -> Unit = {},
+    onDismissNotification: (String) -> Unit = {}
 ) {
     var showAddSheet by remember { mutableStateOf(false) }
     val sheetState   = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+
+    var showNotificationsSheet by remember { mutableStateOf(false) }
+    val notificationsSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+
+    val unreadNotificationsCount = remember(notifications) { notifications.count { !it.isRead } }
 
     val recentTransactions = remember(allTransactions) { allTransactions.take(5) }
     val currencyFormat = remember { DecimalFormat("##,##,##0.00") }
@@ -605,10 +618,41 @@ fun HomeScreen(
                     color      = TextPrimary
                 )
 
-                IconButton(onClick = { /* notification action */ }) {
-                    Icon(imageVector = Icons.Default.Notifications, contentDescription = "Notifications", tint = TextPrimary)
+                IconButton(onClick = { showNotificationsSheet = true }) {
+                    if (unreadNotificationsCount > 0) {
+                        BadgedBox(
+                            badge = {
+                                Badge(
+                                    containerColor = ExpenseRed,
+                                    contentColor = Color.White
+                                ) {
+                                    Text(
+                                        text = if (unreadNotificationsCount > 9) "9+" else unreadNotificationsCount.toString(),
+                                        fontSize = 10.sp,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
+                            }
+                        ) {
+                            Icon(imageVector = Icons.Default.Notifications, contentDescription = "Notifications", tint = TextPrimary)
+                        }
+                    } else {
+                        Icon(imageVector = Icons.Default.Notifications, contentDescription = "Notifications", tint = TextPrimary)
+                    }
                 }
             }
+        }
+
+        // Bottom sheet for notifications
+        if (showNotificationsSheet) {
+            NotificationsBottomSheet(
+                notifications = notifications,
+                sheetState = notificationsSheetState,
+                onDismiss = { showNotificationsSheet = false },
+                onNotificationAction = onNotificationAction,
+                onMarkAllAsRead = onMarkAllNotificationsRead,
+                onDismissNotification = onDismissNotification
+            )
         }
 
         // Bottom sheet for transaction additions

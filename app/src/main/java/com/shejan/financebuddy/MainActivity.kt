@@ -118,6 +118,7 @@ import com.shejan.financebuddy.sms.SmsPermissionHandler
 import com.shejan.financebuddy.ui.profile.EditProfileDialog
 import com.shejan.financebuddy.data.db.LoanEntity
 import com.shejan.financebuddy.ui.loans.LoansScreen
+import com.shejan.financebuddy.ui.notifications.NotificationHelper
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.material.icons.filled.Person
@@ -487,6 +488,28 @@ fun MainDashboardContainer(
     val spentByCategory = remember(categoryExpenseSums) { categoryExpenseSums.associate { it.category to it.total } }
 
     val goals by goalDao.getAllGoals().collectAsState(initial = emptyList())
+    val pendingSmsList by pendingSmsDao.getAllPending().collectAsState(initial = emptyList())
+
+    var readNotificationIds by remember { mutableStateOf(setOf<String>()) }
+    var dismissedNotificationIds by remember { mutableStateOf(setOf<String>()) }
+
+    val rawNotifications = remember(pendingSmsList, loans, budgets, goals, allTransactions) {
+        NotificationHelper.generateNotifications(
+            pendingSmsList = pendingSmsList,
+            loans = loans,
+            budgets = budgets,
+            goals = goals,
+            transactions = allTransactions
+        )
+    }
+
+    val notifications = remember(rawNotifications, readNotificationIds, dismissedNotificationIds) {
+        rawNotifications
+            .filterNot { it.id in dismissedNotificationIds }
+            .map { n ->
+                if (n.id in readNotificationIds) n.copy(isRead = true) else n
+            }
+    }
 
     val blurRadius by animateDpAsState(
         targetValue = if (drawerState.targetValue == DrawerValue.Open) 16.dp else 0.dp,
@@ -832,7 +855,22 @@ fun MainDashboardContainer(
                         },
                         hideBalancesPref = hideBalancesPref,
                         loans = loans,
-                        onNavigateToLoans = onNavigateToLoans
+                        onNavigateToLoans = onNavigateToLoans,
+                        notifications = notifications,
+                        onNotificationAction = { route ->
+                            when (route) {
+                                "pending_transactions" -> onNavigateToPending()
+                                "loans" -> onNavigateToLoans()
+                                "budget" -> currentTab = "budget"
+                                "goals" -> currentTab = "goals"
+                            }
+                        },
+                        onMarkAllNotificationsRead = {
+                            readNotificationIds = notifications.map { it.id }.toSet()
+                        },
+                        onDismissNotification = { id ->
+                            dismissedNotificationIds = dismissedNotificationIds + id
+                        }
                     )
                     "budget" -> BudgetScreen(
                         budgets           = budgets,
