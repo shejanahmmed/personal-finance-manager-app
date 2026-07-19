@@ -293,6 +293,7 @@ fun PendingTransactionsScreen(
                 EditPendingSheet(
                     pending  = target,
                     accounts = accounts,
+                    database = database,
                     onSave   = { edited ->
                         onUpdate(edited)
                         editTarget = null
@@ -628,7 +629,11 @@ private fun PendingTransactionCard(
                         if (pending.note.isNotBlank()) {
                             DetailRowItem(
                                 icon = Icons.AutoMirrored.Filled.Notes,
-                                label = "Note",
+                                label = when (pending.type) {
+                                    "EXPENSE" -> "Recipient / Note"
+                                    "INCOME"  -> "Source / Note"
+                                    else      -> "Note"
+                                },
                                 value = pending.note
                             )
                         }
@@ -806,9 +811,12 @@ private fun PendingTransactionCard(
 private fun EditPendingSheet(
     pending: PendingSmsTransactionEntity,
     accounts: List<AccountEntity>,
+    database: com.shejan.financebuddy.data.db.FinanceDatabase,
     onSave: (PendingSmsTransactionEntity) -> Unit,
     onCancel: () -> Unit
 ) {
+    val payees by database.payeeDao().getAllPayees().collectAsState(initial = emptyList())
+
     var amount        by remember { mutableStateOf(pending.amount.toString()) }
     var type          by remember { mutableStateOf(pending.type) }
     var category      by remember { mutableStateOf(pending.category) }
@@ -841,13 +849,30 @@ private fun EditPendingSheet(
         mutableStateOf(
             if (pending.note.startsWith("To: ")) {
                 pending.note.removePrefix("To: ").substringBefore(" (").trim()
-            } else ""
+            } else if (pending.note.contains(" - ")) {
+                pending.note.substringBefore(" - ").trim()
+            } else {
+                pending.note
+            }
+        )
+    }
+
+    var expenseNote by remember(pending) {
+        mutableStateOf(
+            if (pending.note.startsWith("To: ") && pending.note.contains(" - ")) {
+                pending.note.substringAfter(" - ").trim()
+            } else if (!pending.note.startsWith("To: ") && pending.note.contains(" - ")) {
+                pending.note.substringAfter(" - ").trim()
+            } else {
+                ""
+            }
         )
     }
 
     var showCategoryDropdown    by remember { mutableStateOf(false) }
     var showFromAccountDropdown by remember { mutableStateOf(false) }
     var showToAccountDropdown   by remember { mutableStateOf(false) }
+    var showRecipientDropdown by remember { mutableStateOf(false) }
 
     val selectedBalance = accounts.find { it.id == fromAccountId }?.balance ?: 0.0
     val parsedAmount = amount.toDoubleOrNull() ?: 0.0
@@ -966,17 +991,90 @@ private fun EditPendingSheet(
 
         Spacer(modifier = Modifier.height(14.dp))
 
-        // ── Note / Merchant ──────────────────────────────────────────────────
-        SheetLabel("Merchant / Description")
-        OutlinedTextField(
-            value = note,
-            onValueChange = { note = it },
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(14.dp),
-            colors = outlinedTextFieldColors(),
-            maxLines = 2,
-            placeholder = { Text("e.g. bKash cash out fee, Restora...", color = TextMuted) }
-        )
+        // ── Recipient / Note / Description ────────────────────────────────────
+        if (type == "EXPENSE") {
+            // Money sent / outflow -> Show Recipient Name field
+            SheetLabel("Recipient Name")
+            ExposedDropdownMenuBox(
+                expanded = showRecipientDropdown && payees.any { it.name.contains(recipientName, ignoreCase = true) },
+                onExpandedChange = { showRecipientDropdown = it }
+            ) {
+                OutlinedTextField(
+                    value = recipientName,
+                    onValueChange = {
+                        recipientName = it
+                        showRecipientDropdown = true
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryEditable),
+                    label = { Text("Recipient Name", color = TextSecondary) },
+                    placeholder = { Text("e.g. Rahat, Daraz, bKash 017xxxxxxxx...", color = TextMuted) },
+                    singleLine = true,
+                    shape = RoundedCornerShape(14.dp),
+                    colors = outlinedTextFieldColors()
+                )
+                val matchingPayees = payees.filter { it.name.contains(recipientName, ignoreCase = true) }
+                if (matchingPayees.isNotEmpty()) {
+                    ExposedDropdownMenu(
+                        expanded = showRecipientDropdown,
+                        onDismissRequest = { showRecipientDropdown = false },
+                        modifier = Modifier.background(CardDarker)
+                    ) {
+                        DropdownMenuItem(
+                            text = { Text("Saved Recipients", color = AccentTeal, fontWeight = FontWeight.Bold, fontSize = 11.sp) },
+                            onClick = {},
+                            enabled = false
+                        )
+                        matchingPayees.forEach { p ->
+                            DropdownMenuItem(
+                                text = { Text(p.name, color = TextPrimary, fontSize = 13.sp) },
+                                onClick = {
+                                    recipientName = p.name
+                                    showRecipientDropdown = false
+                                }
+                            )
+                        }
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(14.dp))
+
+            SheetLabel("Note / Description (Optional)")
+            OutlinedTextField(
+                value = expenseNote,
+                onValueChange = { expenseNote = it },
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(14.dp),
+                colors = outlinedTextFieldColors(),
+                maxLines = 2,
+                placeholder = { Text("e.g. Lunch bill, Cash out fee...", color = TextMuted) }
+            )
+        } else if (type == "INCOME") {
+            SheetLabel("Source / Description")
+            OutlinedTextField(
+                value = recipientName,
+                onValueChange = { recipientName = it },
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(14.dp),
+                colors = outlinedTextFieldColors(),
+                maxLines = 2,
+                placeholder = { Text("e.g. Salary, Refund from Daraz...", color = TextMuted) }
+            )
+        } else {
+            // TRANSFER
+            SheetLabel("Note / Remarks (Optional)")
+            OutlinedTextField(
+                value = expenseNote,
+                onValueChange = { expenseNote = it },
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(14.dp),
+                colors = outlinedTextFieldColors(),
+                maxLines = 2,
+                placeholder = { Text("e.g. Monthly transfer...", color = TextMuted) }
+            )
+        }
 
         Spacer(modifier = Modifier.height(14.dp))
 
@@ -1170,16 +1268,49 @@ private fun EditPendingSheet(
 
             if (!isOwnAccount) {
                 Spacer(modifier = Modifier.height(14.dp))
-                OutlinedTextField(
-                    value = recipientName,
-                    onValueChange = { recipientName = it },
-                    label = { Text("Recipient Name", color = TextSecondary) },
-                    placeholder = { Text("Enter recipient name", color = TextMuted) },
-                    shape = RoundedCornerShape(14.dp),
-                    colors = outlinedTextFieldColors(),
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
+                ExposedDropdownMenuBox(
+                    expanded = showRecipientDropdown && payees.any { it.name.contains(recipientName, ignoreCase = true) },
+                    onExpandedChange = { showRecipientDropdown = it }
+                ) {
+                    OutlinedTextField(
+                        value = recipientName,
+                        onValueChange = {
+                            recipientName = it
+                            showRecipientDropdown = true
+                        },
+                        label = { Text("Recipient Name", color = TextSecondary) },
+                        placeholder = { Text("Enter recipient name", color = TextMuted) },
+                        shape = RoundedCornerShape(14.dp),
+                        colors = outlinedTextFieldColors(),
+                        singleLine = true,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryEditable)
+                    )
+                    val matchingPayees = payees.filter { it.name.contains(recipientName, ignoreCase = true) }
+                    if (matchingPayees.isNotEmpty()) {
+                        ExposedDropdownMenu(
+                            expanded = showRecipientDropdown,
+                            onDismissRequest = { showRecipientDropdown = false },
+                            modifier = Modifier.background(CardDarker)
+                        ) {
+                            DropdownMenuItem(
+                                text = { Text("Saved Recipients", color = AccentTeal, fontWeight = FontWeight.Bold, fontSize = 11.sp) },
+                                onClick = {},
+                                enabled = false
+                            )
+                            matchingPayees.forEach { p ->
+                                DropdownMenuItem(
+                                    text = { Text(p.name, color = TextPrimary, fontSize = 13.sp) },
+                                    onClick = {
+                                        recipientName = p.name
+                                        showRecipientDropdown = false
+                                    }
+                                )
+                            }
+                        }
+                    }
+                }
             }
         }
 
@@ -1196,13 +1327,29 @@ private fun EditPendingSheet(
             onClick = {
                 if (isValid) {
                     val parsedAmount = amount.toDoubleOrNull() ?: pending.amount
-                    val finalNote = if (type == "TRANSFER" && !isOwnAccount) {
-                        val selectedBankName = accounts.find { it.id == toAccountId }?.name ?: ""
-                        val rawNote = note.removePrefix("To: ").substringAfter(" - ", "")
-                        val cleanedNote = if (rawNote.contains(" (")) "" else rawNote
-                        "To: ${recipientName.trim()} ($selectedBankName)" + (if (cleanedNote.trim().isNotEmpty()) " - ${cleanedNote.trim()}" else "")
-                    } else {
-                        note
+                    val finalNote = when {
+                        type == "EXPENSE" -> {
+                            val rName = recipientName.trim()
+                            val rNote = expenseNote.trim()
+                            if (rName.isNotEmpty() && rNote.isNotEmpty()) {
+                                "$rName - $rNote"
+                            } else if (rName.isNotEmpty()) {
+                                rName
+                            } else {
+                                rNote
+                            }
+                        }
+                        type == "INCOME" -> {
+                            recipientName.trim()
+                        }
+                        type == "TRANSFER" && !isOwnAccount -> {
+                            val selectedBankName = accounts.find { it.id == toAccountId }?.name ?: ""
+                            val cleanNote = expenseNote.trim()
+                            "To: ${recipientName.trim()} ($selectedBankName)" + (if (cleanNote.isNotEmpty()) " - $cleanNote" else "")
+                        }
+                        else -> {
+                            expenseNote.trim().ifEmpty { note }
+                        }
                     }
                     onSave(
                         pending.copy(
