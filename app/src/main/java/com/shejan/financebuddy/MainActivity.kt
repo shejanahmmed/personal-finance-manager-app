@@ -32,6 +32,7 @@ import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Inbox
+import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.AccountBalance
 import androidx.compose.material.icons.filled.People
@@ -91,6 +92,7 @@ import com.shejan.financebuddy.ui.budget.BudgetScreen
 import com.shejan.financebuddy.ui.goals.GoalsScreen
 import com.shejan.financebuddy.ui.home.HomeScreen
 import com.shejan.financebuddy.ui.home.TransactionListScreen
+import com.shejan.financebuddy.ui.history.HistoryScreen
 import com.shejan.financebuddy.ui.onboarding.OnboardingScreenRoot
 import com.shejan.financebuddy.ui.pending.PendingTransactionsScreen
 import com.shejan.financebuddy.ui.pending.PendingTransactionsViewModel
@@ -220,7 +222,16 @@ fun AppNavigation(
                     onNavigateToSettings = { navController.navigate("settings") },
                     onNavigateToBankAccounts = { navController.navigate("bank_accounts") },
                     onNavigateToPayees = { navController.navigate("payees") },
-                    onNavigateToLoans = { navController.navigate("loans") }
+                    onNavigateToLoans = { navController.navigate("loans") },
+                    onNavigateToHistory = { navController.navigate("transaction_history") }
+                )
+            }
+
+            composable("transaction_history") {
+                HistoryScreen(
+                    transactions = allTransactions,
+                    accounts = accounts,
+                    onBack = { navController.popBackStack() }
                 )
             }
 
@@ -415,7 +426,8 @@ fun MainDashboardContainer(
     onNavigateToSettings: () -> Unit,
     onNavigateToBankAccounts: () -> Unit = {},
     onNavigateToPayees: () -> Unit = {},
-    onNavigateToLoans: () -> Unit = {}
+    onNavigateToLoans: () -> Unit = {},
+    onNavigateToHistory: () -> Unit = {}
 ) {
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val scope       = rememberCoroutineScope()
@@ -654,6 +666,14 @@ fun MainDashboardContainer(
                         onClick = {
                             scope.launch { drawerState.close() }
                             onNavigateToPending()
+                        }
+                    )
+                    DrawerMenuItem(
+                        icon = Icons.Default.History,
+                        label = "History",
+                        onClick = {
+                            scope.launch { drawerState.close() }
+                            onNavigateToHistory()
                         }
                     )
                     DrawerMenuItem(
