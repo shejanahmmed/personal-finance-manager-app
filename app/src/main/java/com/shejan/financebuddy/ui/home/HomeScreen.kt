@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -75,6 +76,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.shejan.financebuddy.data.db.AccountEntity
 import com.shejan.financebuddy.data.db.TransactionEntity
+import com.shejan.financebuddy.data.db.LoanEntity
 import com.shejan.financebuddy.data.db.PayeeEntity
 import com.shejan.financebuddy.data.db.PayeeAccountEntity
 import com.shejan.financebuddy.ui.home.components.BalanceTrendLineChart
@@ -111,7 +113,9 @@ fun HomeScreen(
     payees: List<PayeeEntity> = emptyList(),
     payeeAccounts: List<PayeeAccountEntity> = emptyList(),
     onSavePayee: (String, String, String, String) -> Unit = { _, _, _, _ -> },
-    hideBalancesPref: Boolean = false
+    hideBalancesPref: Boolean = false,
+    loans: List<LoanEntity> = emptyList(),
+    onNavigateToLoans: () -> Unit = {}
 ) {
     var showAddSheet by remember { mutableStateOf(false) }
     val sheetState   = rememberModalBottomSheetState(skipPartiallyExpanded = true)
@@ -428,6 +432,147 @@ fun HomeScreen(
                         color    = TextMuted,
                         fontSize = 13.sp
                     )
+                }
+
+                Spacer(modifier = Modifier.height(18.dp))
+
+                // ── 7. Loans Overview ──────────────────────────────────
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 20.dp, vertical = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text(
+                        text = "Loans Overview",
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = TextPrimary
+                    )
+                    Text(
+                        text = "View All →",
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = AccentTeal,
+                        modifier = Modifier.clickable { onNavigateToLoans() }
+                    )
+                }
+
+                val totalPrincipal = remember(loans) { loans.sumOf { it.loanAmount } }
+                val totalRepaid = remember(loans) { loans.sumOf { it.repaidAmount } }
+                val remainingBalance = remember(totalPrincipal, totalRepaid) { (totalPrincipal - totalRepaid).coerceAtLeast(0.0) }
+                val overallProgress = remember(totalPrincipal, totalRepaid) {
+                    if (totalPrincipal > 0) (totalRepaid / totalPrincipal).toFloat().coerceIn(0f, 1f) else 0f
+                }
+
+                Card(
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(containerColor = CardDark),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 20.dp, vertical = 8.dp)
+                        .clickable { onNavigateToLoans() }
+                ) {
+                    if (loans.isEmpty()) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(24.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = "No active loans — tap to add or manage loans",
+                                color = TextMuted,
+                                fontSize = 13.sp
+                            )
+                        }
+                    } else {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(18.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Column {
+                                    Text("Remaining Payable", fontSize = 11.sp, color = TextSecondary)
+                                    Spacer(Modifier.height(2.dp))
+                                    Text(
+                                        text = "৳${currencyFormat.format(remainingBalance)}",
+                                        fontSize = 18.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = TextPrimary
+                                    )
+                                }
+                                Box(
+                                    modifier = Modifier
+                                        .clip(RoundedCornerShape(8.dp))
+                                        .background(AccentTeal.copy(alpha = 0.15f))
+                                        .padding(horizontal = 8.dp, vertical = 4.dp)
+                                ) {
+                                    Text(
+                                        text = "${loans.size} ${if (loans.size == 1) "Active Loan" else "Active Loans"}",
+                                        color = AccentTeal,
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
+                            }
+
+                            Spacer(Modifier.height(14.dp))
+
+                            // Progress bar
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text("Repayment Progress", fontSize = 11.sp, color = TextMuted)
+                                Text(
+                                    text = "${(overallProgress * 100).toInt()}% Repaid",
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = AccentTeal
+                                )
+                            }
+                            Spacer(Modifier.height(6.dp))
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(6.dp)
+                                    .clip(RoundedCornerShape(3.dp))
+                                    .background(DividerColor)
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxHeight()
+                                        .fillMaxWidth(overallProgress)
+                                        .clip(RoundedCornerShape(3.dp))
+                                        .background(AccentTeal)
+                                )
+                            }
+
+                            Spacer(Modifier.height(14.dp))
+
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Column {
+                                    Text("Total Borrowed", fontSize = 10.sp, color = TextMuted)
+                                    Text("৳${currencyFormat.format(totalPrincipal)}", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = TextSecondary)
+                                }
+                                Column(horizontalAlignment = Alignment.End) {
+                                    Text("Total Repaid", fontSize = 10.sp, color = TextMuted)
+                                    Text("৳${currencyFormat.format(totalRepaid)}", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = IncomeGreen)
+                                }
+                            }
+                        }
+                    }
                 }
 
                 Spacer(modifier = Modifier.height(48.dp))

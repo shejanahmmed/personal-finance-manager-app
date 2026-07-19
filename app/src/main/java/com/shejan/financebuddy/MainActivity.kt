@@ -474,6 +474,9 @@ fun MainDashboardContainer(
     val transactionDao = remember { database.transactionDao() }
     val budgetDao      = remember { database.budgetDao() }
     val goalDao        = remember { database.goalDao() }
+    val loanDao        = remember { database.loanDao() }
+
+    val loans by loanDao.getAllLoans().collectAsState(initial = emptyList())
 
     val startOfMonth = remember { getStartOfMonthTimestamp() }
     val monthlyIncome   by transactionDao.getMonthlyIncome(startOfMonth).collectAsState(initial = 0.0)
@@ -827,7 +830,9 @@ fun MainDashboardContainer(
                                 }
                             }
                         },
-                        hideBalancesPref = hideBalancesPref
+                        hideBalancesPref = hideBalancesPref,
+                        loans = loans,
+                        onNavigateToLoans = onNavigateToLoans
                     )
                     "budget" -> BudgetScreen(
                         budgets           = budgets,
