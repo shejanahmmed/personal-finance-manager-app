@@ -1,31 +1,35 @@
 package com.shejan.financebuddy.ui.home
 
+import android.app.DatePickerDialog
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Category
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.CreditCard
+import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.TrendingDown
 import androidx.compose.material.icons.filled.TrendingUp
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -49,17 +53,104 @@ fun TransactionListScreen(
     // Standard back handler to support system back gestures
     BackHandler(onBack = onBack)
 
+    val context = LocalContext.current
     val currencyFormat = remember { DecimalFormat("##,##,##0.00") }
-    val totalAmount = remember(transactions) { transactions.sumOf { it.amount } }
+
+    // Filter states: "ALL", "WEEK", "MONTH", "YEAR", "CUSTOM"
+    var selectedFilter by remember { mutableStateOf("ALL") }
+    var customDateMillis by remember { mutableStateOf<Long?>(null) }
+    var showDatePicker by remember { mutableStateOf(false) }
+
+    // Date Picker launcher for Custom Date selection
+    if (showDatePicker) {
+        val cal = Calendar.getInstance()
+        if (customDateMillis != null) {
+            cal.timeInMillis = customDateMillis!!
+        }
+        DisposableEffect(Unit) {
+            val dialog = DatePickerDialog(
+                context,
+                { _, year, month, dayOfMonth ->
+                    val selectedCal = Calendar.getInstance().apply {
+                        set(year, month, dayOfMonth, 0, 0, 0)
+                        set(Calendar.MILLISECOND, 0)
+                    }
+                    customDateMillis = selectedCal.timeInMillis
+                    selectedFilter = "CUSTOM"
+                    showDatePicker = false
+                },
+                cal.get(Calendar.YEAR),
+                cal.get(Calendar.MONTH),
+                cal.get(Calendar.DAY_OF_MONTH)
+            )
+            dialog.setOnCancelListener { showDatePicker = false }
+            dialog.show()
+            onDispose { dialog.dismiss() }
+        }
+    }
+
+    // Filtered transactions based on selected filter
+    val filteredTransactions = remember(transactions, selectedFilter, customDateMillis) {
+        when (selectedFilter) {
+            "WEEK" -> {
+                val startOfWeek = Calendar.getInstance().apply {
+                    firstDayOfWeek = Calendar.MONDAY
+                    set(Calendar.DAY_OF_WEEK, Calendar.MONDAY)
+                    set(Calendar.HOUR_OF_DAY, 0)
+                    set(Calendar.MINUTE, 0)
+                    set(Calendar.SECOND, 0)
+                    set(Calendar.MILLISECOND, 0)
+                }.timeInMillis
+                transactions.filter { it.timestamp >= startOfWeek }
+            }
+            "MONTH" -> {
+                val startOfMonth = Calendar.getInstance().apply {
+                    set(Calendar.DAY_OF_MONTH, 1)
+                    set(Calendar.HOUR_OF_DAY, 0)
+                    set(Calendar.MINUTE, 0)
+                    set(Calendar.SECOND, 0)
+                    set(Calendar.MILLISECOND, 0)
+                }.timeInMillis
+                transactions.filter { it.timestamp >= startOfMonth }
+            }
+            "YEAR" -> {
+                val startOfYear = Calendar.getInstance().apply {
+                    set(Calendar.DAY_OF_YEAR, 1)
+                    set(Calendar.HOUR_OF_DAY, 0)
+                    set(Calendar.MINUTE, 0)
+                    set(Calendar.SECOND, 0)
+                    set(Calendar.MILLISECOND, 0)
+                }.timeInMillis
+                transactions.filter { it.timestamp >= startOfYear }
+            }
+            "CUSTOM" -> {
+                if (customDateMillis == null) transactions
+                else {
+                    val startOfDay = customDateMillis!!
+                    val endOfDay = Calendar.getInstance().apply {
+                        timeInMillis = customDateMillis!!
+                        set(Calendar.HOUR_OF_DAY, 23)
+                        set(Calendar.MINUTE, 59)
+                        set(Calendar.SECOND, 59)
+                        set(Calendar.MILLISECOND, 999)
+                    }.timeInMillis
+                    transactions.filter { it.timestamp in startOfDay..endOfDay }
+                }
+            }
+            else -> transactions
+        }
+    }
+
+    val totalAmount = remember(filteredTransactions) { filteredTransactions.sumOf { it.amount } }
 
     // Group transactions by date string
-    val groupedTransactions = remember(transactions) {
+    val groupedTransactions = remember(filteredTransactions) {
         val dateFormat = SimpleDateFormat("dd MMMM yyyy", Locale.getDefault())
         val todayStr = dateFormat.format(Date())
         val cal = Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, -1) }
         val yesterdayStr = dateFormat.format(cal.time)
 
-        transactions.groupBy { tx ->
+        filteredTransactions.groupBy { tx ->
             val dateStr = dateFormat.format(Date(tx.timestamp))
             when (dateStr) {
                 todayStr -> "Today"
@@ -68,6 +159,16 @@ fun TransactionListScreen(
             }
         }
     }
+
+    val filterOptions = listOf(
+        "ALL" to "All Time",
+        "WEEK" to "This Week",
+        "MONTH" to "This Month",
+        "YEAR" to "This Year",
+        "CUSTOM" to if (selectedFilter == "CUSTOM" && customDateMillis != null) {
+            SimpleDateFormat("dd MMM yyyy", Locale.getDefault()).format(Date(customDateMillis!!))
+        } else "Select Date"
+    )
 
     Box(
         modifier = Modifier
@@ -116,7 +217,6 @@ fun TransactionListScreen(
                         )
                     }
 
-                    // Request: "add a small back button at the top right corner when tap it will work"
                     Box(
                         modifier = Modifier
                             .size(34.dp)
@@ -136,8 +236,60 @@ fun TransactionListScreen(
                 }
             }
 
+            // ─── Filter Bar ───────────────────────────────────────────────
+            LazyRow(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 8.dp),
+                contentPadding = PaddingValues(horizontal = 20.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                items(filterOptions) { (key, label) ->
+                    val isSelected = selectedFilter == key
+                    val chipBg = if (isSelected) glowColor.copy(alpha = 0.18f) else CardDark
+                    val chipBorder = if (isSelected) glowColor else DividerColor
+                    val chipTextColor = if (isSelected) glowColor else TextSecondary
+
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(20.dp))
+                            .background(chipBg)
+                            .border(1.dp, chipBorder, RoundedCornerShape(20.dp))
+                            .clickable {
+                                if (key == "CUSTOM") {
+                                    showDatePicker = true
+                                } else {
+                                    selectedFilter = key
+                                }
+                            }
+                            .padding(horizontal = 14.dp, vertical = 7.dp)
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            if (key == "CUSTOM") {
+                                Icon(
+                                    imageVector = Icons.Default.CalendarMonth,
+                                    contentDescription = null,
+                                    tint = chipTextColor,
+                                    modifier = Modifier.size(14.dp)
+                                )
+                            }
+                            Text(
+                                text = label,
+                                color = chipTextColor,
+                                fontSize = 12.sp,
+                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
+                            )
+                        }
+                    }
+                }
+            }
+
             // ─── Content List ─────────────────────────────────────────────
-            if (transactions.isEmpty()) {
+            if (filteredTransactions.isEmpty()) {
                 EmptyTransactionsState(type = type)
             } else {
                 LazyColumn(
@@ -149,7 +301,7 @@ fun TransactionListScreen(
                         SummaryAggregateCard(
                             type = type,
                             totalAmount = totalAmount,
-                            count = transactions.size,
+                            count = filteredTransactions.size,
                             formatter = currencyFormat
                         )
                     }

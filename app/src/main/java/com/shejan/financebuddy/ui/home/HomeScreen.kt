@@ -252,6 +252,30 @@ fun HomeScreen(
                 Spacer(modifier = Modifier.height(12.dp))
 
                 // ── 2. Income vs Expense Summary ──────────────────────
+                val currentMonthYearText = remember {
+                    java.text.SimpleDateFormat("MMMM | yyyy", java.util.Locale.getDefault()).format(java.util.Date())
+                }
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 20.dp)
+                        .padding(bottom = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text(
+                        text = "Overview",
+                        color = TextPrimary,
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        text = currentMonthYearText,
+                        color = AccentTeal,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
