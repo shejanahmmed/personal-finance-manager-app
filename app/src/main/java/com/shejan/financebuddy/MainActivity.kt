@@ -122,12 +122,18 @@ import com.shejan.financebuddy.ui.notifications.NotificationHelper
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.material.icons.filled.Person
+import androidx.fragment.app.FragmentActivity
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.compose.runtime.DisposableEffect
+import com.shejan.financebuddy.ui.security.LockScreen
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import java.util.Calendar
 
-class MainActivity : ComponentActivity() {
+class MainActivity : FragmentActivity() {
 
     private lateinit var preferencesManager: PreferencesManager
     private lateinit var database: FinanceDatabase
@@ -141,6 +147,40 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             val themeMode by preferencesManager.themeMode.collectAsState(initial = "SYSTEM")
+            val isAppLockEnabled by preferencesManager.isAppLockEnabled.collectAsState(initial = false)
+            val appLockType by preferencesManager.appLockType.collectAsState(initial = "PIN")
+            val appLockPin by preferencesManager.appLockPin.collectAsState(initial = "")
+            val autoLockTimeout by preferencesManager.autoLockTimeout.collectAsState(initial = "IMMEDIATELY")
+
+            var isAppUnlocked by remember { mutableStateOf(false) }
+            var lastBackgroundTime by remember { mutableStateOf(0L) }
+            val lifecycleOwner = LocalLifecycleOwner.current
+
+            DisposableEffect(lifecycleOwner, isAppLockEnabled, autoLockTimeout) {
+                val observer = LifecycleEventObserver { _, event ->
+                    if (event == Lifecycle.Event.ON_STOP) {
+                        lastBackgroundTime = System.currentTimeMillis()
+                    } else if (event == Lifecycle.Event.ON_START) {
+                        if (isAppLockEnabled && lastBackgroundTime > 0) {
+                            val elapsed = System.currentTimeMillis() - lastBackgroundTime
+                            val timeoutMs = when (autoLockTimeout) {
+                                "1_MIN" -> 60_000L
+                                "3_MIN" -> 180_000L
+                                "5_MIN" -> 300_000L
+                                else -> 0L // IMMEDIATELY
+                            }
+                            if (elapsed >= timeoutMs) {
+                                isAppUnlocked = false
+                            }
+                        }
+                    }
+                }
+                lifecycleOwner.lifecycle.addObserver(observer)
+                onDispose {
+                    lifecycleOwner.lifecycle.removeObserver(observer)
+                }
+            }
+
             val darkTheme = when (themeMode) {
                 "DARK" -> true
                 "LIGHT" -> false
@@ -151,10 +191,18 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    AppNavigation(
-                        preferencesManager = preferencesManager,
-                        database           = database
-                    )
+                    if (isAppLockEnabled && !isAppUnlocked) {
+                        LockScreen(
+                            savedPin = appLockPin,
+                            lockType = appLockType,
+                            onUnlocked = { isAppUnlocked = true }
+                        )
+                    } else {
+                        AppNavigation(
+                            preferencesManager = preferencesManager,
+                            database           = database
+                        )
+                    }
                 }
             }
         }

@@ -21,6 +21,54 @@ class PreferencesManager(private val context: Context) {
         private val PROFILE_NAME = stringPreferencesKey("profile_name")
         private val PROFILE_IMAGE_PATH = stringPreferencesKey("profile_image_path")
         private val HIDE_CARD_BALANCES = booleanPreferencesKey("hide_card_balances")
+        private val APP_LOCK_ENABLED = booleanPreferencesKey("app_lock_enabled")
+        private val APP_LOCK_TYPE = stringPreferencesKey("app_lock_type")
+        private val APP_LOCK_PIN = stringPreferencesKey("app_lock_pin")
+        private val AUTO_LOCK_TIMEOUT = stringPreferencesKey("auto_lock_timeout")
+    }
+
+    /** Emits whether App Lock security is enabled. Defaults to false. */
+    val isAppLockEnabled: Flow<Boolean> = context.dataStore.data.map { prefs ->
+        prefs[APP_LOCK_ENABLED] ?: false
+    }
+
+    suspend fun setAppLockEnabled(enabled: Boolean) {
+        context.dataStore.edit { prefs ->
+            prefs[APP_LOCK_ENABLED] = enabled
+        }
+    }
+
+    /** Emits selected Lock Type: "PIN" or "FINGERPRINT". Defaults to "PIN". */
+    val appLockType: Flow<String> = context.dataStore.data.map { prefs ->
+        prefs[APP_LOCK_TYPE] ?: "PIN"
+    }
+
+    suspend fun setAppLockType(type: String) {
+        context.dataStore.edit { prefs ->
+            prefs[APP_LOCK_TYPE] = type
+        }
+    }
+
+    /** Emits saved 6-digit PIN code. Defaults to "". */
+    val appLockPin: Flow<String> = context.dataStore.data.map { prefs ->
+        prefs[APP_LOCK_PIN] ?: ""
+    }
+
+    suspend fun setAppLockPin(pin: String) {
+        context.dataStore.edit { prefs ->
+            prefs[APP_LOCK_PIN] = pin
+        }
+    }
+
+    /** Emits Auto-Lock timeout setting: "IMMEDIATELY", "1_MIN", "3_MIN", or "5_MIN". Defaults to "IMMEDIATELY". */
+    val autoLockTimeout: Flow<String> = context.dataStore.data.map { prefs ->
+        prefs[AUTO_LOCK_TIMEOUT] ?: "IMMEDIATELY"
+    }
+
+    suspend fun setAutoLockTimeout(timeout: String) {
+        context.dataStore.edit { prefs ->
+            prefs[AUTO_LOCK_TIMEOUT] = timeout
+        }
     }
 
     /** Emits true if the user has already completed onboarding. */

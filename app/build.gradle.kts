@@ -52,6 +52,7 @@ dependencies {
     ksp(libs.androidx.room.compiler)
     implementation(libs.android.database.sqlcipher)
     implementation(libs.androidx.security.crypto)
+    implementation(libs.androidx.biometric)
     implementation(libs.androidx.compose.material.icons.core)
     implementation(libs.androidx.compose.material.icons.extended)
     testImplementation(libs.junit)
