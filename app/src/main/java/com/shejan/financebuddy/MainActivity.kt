@@ -307,14 +307,19 @@ fun AppNavigation(
                     onAddLoan = { loan, accountId ->
                         scope.launch(kotlinx.coroutines.Dispatchers.IO) {
                             loanDao.insertLoan(loan)
+                            val (txType, txNote) = if (loan.isLent) {
+                                Pair("EXPENSE", "Lent money to ${loan.lenderName}")
+                            } else {
+                                Pair("INCOME", if (loan.loanType == "PERSONAL") "Personal loan from ${loan.lenderName}" else "Loan from ${loan.bankName}")
+                            }
                             transactionDao.insertTransaction(
                                 TransactionEntity(
                                     amount = loan.loanAmount,
-                                    type = "INCOME",
+                                    type = txType,
                                     category = "Loan",
                                     timestamp = System.currentTimeMillis(),
                                     fromAccountId = accountId,
-                                    note = "Loan from ${loan.bankName}"
+                                    note = txNote
                                 )
                             )
                         }
@@ -326,14 +331,19 @@ fun AppNavigation(
                         scope.launch(kotlinx.coroutines.Dispatchers.IO) {
                             val updatedLoan = loan.copy(repaidAmount = loan.repaidAmount + repayAmount)
                             loanDao.insertLoan(updatedLoan)
+                            val (txType, txNote) = if (loan.isLent) {
+                                Pair("INCOME", "Repayment from ${loan.lenderName}")
+                            } else {
+                                Pair("EXPENSE", if (loan.loanType == "PERSONAL") "Repayment to ${loan.lenderName}" else "Repayment to ${loan.bankName}")
+                            }
                             transactionDao.insertTransaction(
                                 TransactionEntity(
                                     amount = repayAmount,
-                                    type = "EXPENSE",
+                                    type = txType,
                                     category = "Loan Repayment",
                                     timestamp = System.currentTimeMillis(),
                                     fromAccountId = accountId,
-                                    note = "Repayment to ${loan.bankName}"
+                                    note = txNote
                                 )
                             )
                         }

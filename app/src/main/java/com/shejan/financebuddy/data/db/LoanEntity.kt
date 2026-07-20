@@ -12,5 +12,8 @@ data class LoanEntity(
     val interestRate: Double,
     val repaidAmount: Double = 0.0,
     val accountId: Int = 0,
+    val loanType: String = "BANK", // "BANK" or "PERSONAL"
+    val lenderName: String = "",
+    val isLent: Boolean = false, // false = borrowed, true = lent
     val createdAt: Long = System.currentTimeMillis()
 )
