@@ -578,7 +578,8 @@ fun MainDashboardContainer(
 
     ModalNavigationDrawer(
         drawerState = drawerState,
-        gesturesEnabled = false,
+        gesturesEnabled = drawerState.isOpen,
+        scrimColor = Color.Black.copy(alpha = 0.5f),
         drawerContent = {
             ModalDrawerSheet(
                 modifier             = Modifier.fillMaxWidth(0.70f),

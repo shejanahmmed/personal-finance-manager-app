@@ -14,9 +14,6 @@ import androidx.compose.material.icons.filled.ChevronLeft
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.PictureAsPdf
-import androidx.compose.material.icons.filled.SwapHoriz
-import androidx.compose.material.icons.filled.TrendingDown
-import androidx.compose.material.icons.filled.TrendingUp
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -51,6 +48,9 @@ fun ReportsScreen(
     val currencyFormat = remember { DecimalFormat("##,##,##0.00") }
     val accountsMap = remember(accounts) { accounts.associateBy { it.id } }
 
+    // Report view mode state: "MONTHLY" or "YEARLY"
+    var selectedReportType by remember { mutableStateOf("MONTHLY") }
+
     // Calendar state for month/year selection
     val selectedCalendar = remember {
         mutableStateOf(Calendar.getInstance().apply {
@@ -70,7 +70,7 @@ fun ReportsScreen(
         selectedCalendar.value.get(Calendar.YEAR)
     }
 
-    // Start & End of selected month timestamps
+    // ─── Monthly View Calculations ─────────────────────────────────
     val startOfMonthMillis = remember(selectedCalendar.value.timeInMillis) {
         selectedCalendar.value.timeInMillis
     }
@@ -85,13 +85,11 @@ fun ReportsScreen(
         cal.timeInMillis
     }
 
-    // Transactions in selected month
     val monthTransactions = remember(allTransactions, startOfMonthMillis, endOfMonthMillis) {
         allTransactions.filter { it.timestamp in startOfMonthMillis..endOfMonthMillis }
             .sortedByDescending { it.timestamp }
     }
 
-    // Calculations for the month
     val totalIncome = remember(monthTransactions) {
         monthTransactions.filter { it.type == "INCOME" }.sumOf { it.amount }
     }
@@ -100,12 +98,10 @@ fun ReportsScreen(
         monthTransactions.filter { it.type == "EXPENSE" }.sumOf { it.amount }
     }
 
-    // Total Current Balance of all accounts today
     val totalCurrentBalance = remember(accounts) {
         accounts.sumOf { it.balance }
     }
 
-    // Net changes that occurred AFTER the start of the selected month up to now
     val netChangesAfterStart = remember(allTransactions, startOfMonthMillis) {
         allTransactions.filter { it.timestamp >= startOfMonthMillis }.sumOf { tx ->
             when (tx.type) {
@@ -116,13 +112,78 @@ fun ReportsScreen(
         }
     }
 
-    // Starting Balance at the start of the selected month
     val startingBalance = remember(totalCurrentBalance, netChangesAfterStart) {
         totalCurrentBalance - netChangesAfterStart
     }
 
     val remainingBalance = remember(startingBalance, totalIncome, totalExpense) {
         startingBalance + totalIncome - totalExpense
+    }
+
+    // ─── Yearly View Calculations (All 12 Months for Selected Year) ──
+    val yearlyMonthlySummaries = remember(allTransactions, totalCurrentBalance, year) {
+        val monthNames = arrayOf("January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December")
+        val list = mutableListOf<MonthSummaryData>()
+
+        for (m in 0..11) {
+            val cal = Calendar.getInstance().apply {
+                set(Calendar.YEAR, year)
+                set(Calendar.MONTH, m)
+                set(Calendar.DAY_OF_MONTH, 1)
+                set(Calendar.HOUR_OF_DAY, 0)
+                set(Calendar.MINUTE, 0)
+                set(Calendar.SECOND, 0)
+                set(Calendar.MILLISECOND, 0)
+            }
+            val mStart = cal.timeInMillis
+            cal.set(Calendar.DAY_OF_MONTH, cal.getActualMaximum(Calendar.DAY_OF_MONTH))
+            cal.set(Calendar.HOUR_OF_DAY, 23)
+            cal.set(Calendar.MINUTE, 59)
+            cal.set(Calendar.SECOND, 59)
+            cal.set(Calendar.MILLISECOND, 999)
+            val mEnd = cal.timeInMillis
+
+            val mTxs = allTransactions.filter { it.timestamp in mStart..mEnd }
+            val mInc = mTxs.filter { it.type == "INCOME" }.sumOf { it.amount }
+            val mExp = mTxs.filter { it.type == "EXPENSE" }.sumOf { it.amount }
+
+            val mNetAfter = allTransactions.filter { it.timestamp >= mStart }.sumOf { tx ->
+                when (tx.type) {
+                    "INCOME" -> tx.amount
+                    "EXPENSE" -> -tx.amount
+                    else -> 0.0
+                }
+            }
+            val mStartBal = totalCurrentBalance - mNetAfter
+            val mRemBal = mStartBal + mInc - mExp
+
+            list.add(
+                MonthSummaryData(
+                    monthName = monthNames[m],
+                    startingBalance = mStartBal,
+                    totalIncome = mInc,
+                    totalExpense = mExp,
+                    remainingBalance = mRemBal
+                )
+            )
+        }
+        list
+    }
+
+    val totalAnnualIncome = remember(yearlyMonthlySummaries) {
+        yearlyMonthlySummaries.sumOf { it.totalIncome }
+    }
+
+    val totalAnnualExpense = remember(yearlyMonthlySummaries) {
+        yearlyMonthlySummaries.sumOf { it.totalExpense }
+    }
+
+    val annualStartingBalance = remember(yearlyMonthlySummaries) {
+        yearlyMonthlySummaries.firstOrNull()?.startingBalance ?: 0.0
+    }
+
+    val annualRemainingBalance = remember(yearlyMonthlySummaries) {
+        yearlyMonthlySummaries.lastOrNull()?.remainingBalance ?: 0.0
     }
 
     Box(
@@ -148,7 +209,7 @@ fun ReportsScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .statusBarsPadding()
-                    .padding(top = 16.dp, start = 20.dp, end = 20.dp, bottom = 12.dp)
+                    .padding(top = 16.dp, start = 20.dp, end = 20.dp, bottom = 8.dp)
             ) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -164,7 +225,7 @@ fun ReportsScreen(
                             letterSpacing = (-0.5).sp
                         )
                         Text(
-                            text = "Monthly statement & balance overview",
+                            text = "Monthly & annual statement overview",
                             color = TextSecondary,
                             fontSize = 12.sp,
                             fontWeight = FontWeight.Medium
@@ -190,7 +251,54 @@ fun ReportsScreen(
                 }
             }
 
-            // ─── Month & Year Selector Bar ───────────────────────────────
+            // ─── Segmented Tab Switch (Monthly vs Yearly) ─────────────────
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp, vertical = 6.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(CardDarker)
+                    .padding(4.dp)
+            ) {
+                val isMonthly = selectedReportType == "MONTHLY"
+                val isYearly = selectedReportType == "YEARLY"
+
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(if (isMonthly) AccentTeal else Color.Transparent)
+                        .clickable { selectedReportType = "MONTHLY" }
+                        .padding(vertical = 8.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "Monthly Breakdown",
+                        color = if (isMonthly) Color.Black else TextSecondary,
+                        fontSize = 13.sp,
+                        fontWeight = if (isMonthly) FontWeight.Bold else FontWeight.Medium
+                    )
+                }
+
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(if (isYearly) AccentTeal else Color.Transparent)
+                        .clickable { selectedReportType = "YEARLY" }
+                        .padding(vertical = 8.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "Yearly Summary",
+                        color = if (isYearly) Color.Black else TextSecondary,
+                        fontSize = 13.sp,
+                        fontWeight = if (isYearly) FontWeight.Bold else FontWeight.Medium
+                    )
+                }
+            }
+
+            // ─── Selector Bar (Month/Year or Year) ───────────────────────
             Card(
                 shape = RoundedCornerShape(16.dp),
                 colors = CardDefaults.cardColors(containerColor = CardDark),
@@ -208,7 +316,11 @@ fun ReportsScreen(
                     IconButton(
                         onClick = {
                             val newCal = selectedCalendar.value.clone() as Calendar
-                            newCal.add(Calendar.MONTH, -1)
+                            if (selectedReportType == "MONTHLY") {
+                                newCal.add(Calendar.MONTH, -1)
+                            } else {
+                                newCal.add(Calendar.YEAR, -1)
+                            }
                             selectedCalendar.value = newCal
                         },
                         modifier = Modifier
@@ -218,20 +330,20 @@ fun ReportsScreen(
                     ) {
                         Icon(
                             imageVector = Icons.Default.ChevronLeft,
-                            contentDescription = "Previous Month",
+                            contentDescription = "Previous Period",
                             tint = TextPrimary
                         )
                     }
 
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Text(
-                            text = "$monthName $year",
+                            text = if (selectedReportType == "MONTHLY") "$monthName $year" else "Calendar Year $year",
                             color = AccentTeal,
                             fontSize = 16.sp,
                             fontWeight = FontWeight.Bold
                         )
                         Text(
-                            text = "${monthTransactions.size} transactions recorded",
+                            text = if (selectedReportType == "MONTHLY") "${monthTransactions.size} transactions recorded" else "12 Months Financial History",
                             color = TextMuted,
                             fontSize = 11.sp
                         )
@@ -240,7 +352,11 @@ fun ReportsScreen(
                     IconButton(
                         onClick = {
                             val newCal = selectedCalendar.value.clone() as Calendar
-                            newCal.add(Calendar.MONTH, 1)
+                            if (selectedReportType == "MONTHLY") {
+                                newCal.add(Calendar.MONTH, 1)
+                            } else {
+                                newCal.add(Calendar.YEAR, 1)
+                            }
                             selectedCalendar.value = newCal
                         },
                         modifier = Modifier
@@ -250,16 +366,16 @@ fun ReportsScreen(
                     ) {
                         Icon(
                             imageVector = Icons.Default.ChevronRight,
-                            contentDescription = "Next Month",
+                            contentDescription = "Next Period",
                             tint = TextPrimary
                         )
                     }
                 }
             }
 
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(4.dp))
 
-            // ─── Content List (Table + Summary Box) ──────────────────────
+            // ─── Content List ─────────────────────────────────────────────
             LazyColumn(
                 modifier = Modifier
                     .weight(1f)
@@ -267,80 +383,171 @@ fun ReportsScreen(
                 contentPadding = PaddingValues(horizontal = 20.dp, vertical = 8.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                // Table Header Card
-                item {
-                    Text(
-                        text = "Monthly Transactions Breakdown",
-                        color = TextPrimary,
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        modifier = Modifier.padding(bottom = 6.dp, start = 4.dp)
-                    )
-
-                    // Table Column Headers
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp))
-                            .background(CardDarker)
-                            .padding(horizontal = 10.dp, vertical = 10.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text("Date", color = TextMuted, fontSize = 10.5.sp, fontWeight = FontWeight.Bold, maxLines = 1, softWrap = false, modifier = Modifier.weight(0.9f))
-                        Text("Category", color = TextMuted, fontSize = 10.5.sp, fontWeight = FontWeight.Bold, maxLines = 1, softWrap = false, modifier = Modifier.weight(1.1f))
-                        Text("Type", color = TextMuted, fontSize = 10.5.sp, fontWeight = FontWeight.Bold, maxLines = 1, softWrap = false, modifier = Modifier.weight(0.8f))
-                        Text("Account", color = TextMuted, fontSize = 10.5.sp, fontWeight = FontWeight.Bold, maxLines = 1, softWrap = false, modifier = Modifier.weight(1.0f))
-                        Text("Amount", color = TextMuted, fontSize = 10.5.sp, fontWeight = FontWeight.Bold, maxLines = 1, softWrap = false, modifier = Modifier.weight(1.7f), textAlign = TextAlign.End)
-                    }
-                }
-
-                if (monthTransactions.isEmpty()) {
+                if (selectedReportType == "MONTHLY") {
+                    // ───────────────────────────────────────────────────────
+                    // MONTHLY VIEW DETAILED TABLE
+                    // ───────────────────────────────────────────────────────
                     item {
-                        Card(
-                            shape = RoundedCornerShape(bottomStart = 12.dp, bottomEnd = 12.dp),
-                            colors = CardDefaults.cardColors(containerColor = CardDark),
-                            modifier = Modifier.fillMaxWidth()
+                        Text(
+                            text = "Monthly Transactions Breakdown",
+                            color = TextPrimary,
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            modifier = Modifier.padding(bottom = 6.dp, start = 4.dp)
+                        )
+
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp))
+                                .background(CardDarker)
+                                .padding(horizontal = 10.dp, vertical = 10.dp),
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(32.dp),
-                                contentAlignment = Alignment.Center
+                            Text("Date", color = TextMuted, fontSize = 10.5.sp, fontWeight = FontWeight.Bold, maxLines = 1, softWrap = false, modifier = Modifier.weight(0.9f))
+                            Text("Category", color = TextMuted, fontSize = 10.5.sp, fontWeight = FontWeight.Bold, maxLines = 1, softWrap = false, modifier = Modifier.weight(1.1f))
+                            Text("Type", color = TextMuted, fontSize = 10.5.sp, fontWeight = FontWeight.Bold, maxLines = 1, softWrap = false, modifier = Modifier.weight(0.8f))
+                            Text("Account", color = TextMuted, fontSize = 10.5.sp, fontWeight = FontWeight.Bold, maxLines = 1, softWrap = false, modifier = Modifier.weight(1.0f))
+                            Text("Amount", color = TextMuted, fontSize = 10.5.sp, fontWeight = FontWeight.Bold, maxLines = 1, softWrap = false, modifier = Modifier.weight(1.7f), textAlign = TextAlign.End)
+                        }
+                    }
+
+                    if (monthTransactions.isEmpty()) {
+                        item {
+                            Card(
+                                shape = RoundedCornerShape(bottomStart = 12.dp, bottomEnd = 12.dp),
+                                colors = CardDefaults.cardColors(containerColor = CardDark),
+                                modifier = Modifier.fillMaxWidth()
                             ) {
-                                Text(
-                                    text = "No transactions found for $monthName $year",
-                                    color = TextMuted,
-                                    fontSize = 13.sp
-                                )
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(32.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        text = "No transactions found for $monthName $year",
+                                        color = TextMuted,
+                                        fontSize = 13.sp
+                                    )
+                                }
+                            }
+                        }
+                    } else {
+                        itemsIndexed(monthTransactions) { index, tx ->
+                            val isLast = index == monthTransactions.size - 1
+                            val shape = if (isLast) RoundedCornerShape(bottomStart = 12.dp, bottomEnd = 12.dp) else RoundedCornerShape(0.dp)
+                            val bgColor = if (index % 2 == 0) CardDark else CardDarker
+                            val formattedDate = remember(tx.timestamp) { SimpleDateFormat("dd MMM", Locale.getDefault()).format(Date(tx.timestamp)) }
+                            val accName = accountsMap[tx.fromAccountId]?.name ?: "Account #${tx.fromAccountId}"
+
+                            val (typeLabel, typeColor) = when (tx.type) {
+                                "INCOME" -> "Income" to IncomeGreen
+                                "EXPENSE" -> "Expense" to ExpenseRed
+                                else -> "Transfer" to TransferYellow
+                            }
+
+                            Surface(shape = shape, color = bgColor, modifier = Modifier.fillMaxWidth()) {
+                                Column {
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(horizontal = 10.dp, vertical = 10.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Text(text = formattedDate, color = TextPrimary, fontSize = 10.5.sp, fontWeight = FontWeight.Medium, maxLines = 1, softWrap = false, modifier = Modifier.weight(0.9f))
+                                        Text(text = tx.category, color = TextPrimary, fontSize = 10.5.sp, maxLines = 1, softWrap = false, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1.1f))
+                                        Box(modifier = Modifier.weight(0.8f)) {
+                                            Surface(shape = RoundedCornerShape(4.dp), color = typeColor.copy(alpha = 0.15f)) {
+                                                Text(text = typeLabel, color = typeColor, fontSize = 8.5.sp, fontWeight = FontWeight.Bold, maxLines = 1, softWrap = false, modifier = Modifier.padding(horizontal = 3.dp, vertical = 2.dp))
+                                            }
+                                        }
+                                        Text(text = accName, color = TextSecondary, fontSize = 10.sp, maxLines = 1, softWrap = false, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1.0f))
+                                        val prefix = if (tx.type == "INCOME") "+৳" else if (tx.type == "EXPENSE") "-৳" else "৳"
+                                        Text(text = "$prefix${currencyFormat.format(tx.amount)}", color = typeColor, fontSize = 10.5.sp, fontWeight = FontWeight.Bold, maxLines = 1, softWrap = false, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.End, modifier = Modifier.weight(1.7f))
+                                    }
+                                    if (!isLast) HorizontalDivider(color = DividerColor.copy(alpha = 0.5f))
+                                }
                             }
                         }
                     }
-                } else {
-                    itemsIndexed(monthTransactions) { index, tx ->
-                        val isLast = index == monthTransactions.size - 1
-                        val shape = if (isLast) {
-                            RoundedCornerShape(bottomStart = 12.dp, bottomEnd = 12.dp)
-                        } else {
-                            RoundedCornerShape(0.dp)
-                        }
 
-                        val bgColor = if (index % 2 == 0) CardDark else CardDarker
-                        val formattedDate = remember(tx.timestamp) {
-                            SimpleDateFormat("dd MMM", Locale.getDefault()).format(Date(tx.timestamp))
-                        }
-                        val accName = accountsMap[tx.fromAccountId]?.name ?: "Account #${tx.fromAccountId}"
-
-                        val (typeLabel, typeColor) = when (tx.type) {
-                            "INCOME" -> "Income" to IncomeGreen
-                            "EXPENSE" -> "Expense" to ExpenseRed
-                            else -> "Transfer" to TransferYellow
-                        }
-
-                        Surface(
-                            shape = shape,
-                            color = bgColor,
-                            modifier = Modifier.fillMaxWidth()
+                    // Summary Box (Monthly)
+                    item {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Card(
+                            shape = RoundedCornerShape(16.dp),
+                            colors = CardDefaults.cardColors(containerColor = CardDark),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .border(1.dp, AccentTeal.copy(alpha = 0.3f), RoundedCornerShape(16.dp))
                         ) {
+                            Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
+                                Text("Monthly Balance & Statement Summary", color = AccentTeal, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text("Closing calculation for $monthName $year", color = TextMuted, fontSize = 11.sp)
+
+                                HorizontalDivider(color = DividerColor, modifier = Modifier.padding(vertical = 12.dp))
+
+                                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                                    Text("🏦 Starting Bank / Accounts Balance", color = TextSecondary, fontSize = 12.sp)
+                                    Text("৳${currencyFormat.format(startingBalance)}", color = TextPrimary, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                                }
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                                    Text("📈 Total Income (+)", color = TextSecondary, fontSize = 12.sp)
+                                    Text("+৳${currencyFormat.format(totalIncome)}", color = IncomeGreen, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                                }
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                                    Text("📉 Total Expense (-)", color = TextSecondary, fontSize = 12.sp)
+                                    Text("-৳${currencyFormat.format(totalExpense)}", color = ExpenseRed, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                                }
+                                HorizontalDivider(color = DividerColor, modifier = Modifier.padding(vertical = 10.dp))
+                                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                                    Text("💳 Remaining Balance (Closing)", color = TextPrimary, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                                    Text("৳${currencyFormat.format(remainingBalance)}", color = AccentTeal, fontSize = 15.sp, fontWeight = FontWeight.ExtraBold)
+                                }
+                            }
+                        }
+                    }
+
+                } else {
+                    // ───────────────────────────────────────────────────────
+                    // YEARLY VIEW (12 MONTHS SUMMARY TABLE)
+                    // ───────────────────────────────────────────────────────
+                    item {
+                        Text(
+                            text = "Annual Monthly History ($year)",
+                            color = TextPrimary,
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            modifier = Modifier.padding(bottom = 6.dp, start = 4.dp)
+                        )
+
+                        // Yearly Table Headers
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp))
+                                .background(CardDarker)
+                                .padding(horizontal = 10.dp, vertical = 10.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text("Month", color = TextMuted, fontSize = 10.5.sp, fontWeight = FontWeight.Bold, maxLines = 1, softWrap = false, modifier = Modifier.weight(0.9f))
+                            Text("Starting Bal", color = TextMuted, fontSize = 10.5.sp, fontWeight = FontWeight.Bold, maxLines = 1, softWrap = false, modifier = Modifier.weight(1.1f))
+                            Text("Income (+)", color = TextMuted, fontSize = 10.5.sp, fontWeight = FontWeight.Bold, maxLines = 1, softWrap = false, modifier = Modifier.weight(1.1f))
+                            Text("Expense (-)", color = TextMuted, fontSize = 10.5.sp, fontWeight = FontWeight.Bold, maxLines = 1, softWrap = false, modifier = Modifier.weight(1.1f))
+                            Text("Closing Bal", color = TextMuted, fontSize = 10.5.sp, fontWeight = FontWeight.Bold, maxLines = 1, softWrap = false, modifier = Modifier.weight(1.2f), textAlign = TextAlign.End)
+                        }
+                    }
+
+                    itemsIndexed(yearlyMonthlySummaries) { index, mData ->
+                        val isLast = index == yearlyMonthlySummaries.size - 1
+                        val shape = if (isLast) RoundedCornerShape(bottomStart = 12.dp, bottomEnd = 12.dp) else RoundedCornerShape(0.dp)
+                        val bgColor = if (index % 2 == 0) CardDark else CardDarker
+
+                        Surface(shape = shape, color = bgColor, modifier = Modifier.fillMaxWidth()) {
                             Column {
                                 Row(
                                     modifier = Modifier
@@ -348,156 +555,60 @@ fun ReportsScreen(
                                         .padding(horizontal = 10.dp, vertical = 10.dp),
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    Text(
-                                        text = formattedDate,
-                                        color = TextPrimary,
-                                        fontSize = 10.5.sp,
-                                        fontWeight = FontWeight.Medium,
-                                        maxLines = 1,
-                                        softWrap = false,
-                                        modifier = Modifier.weight(0.9f)
-                                    )
-                                    Text(
-                                        text = tx.category,
-                                        color = TextPrimary,
-                                        fontSize = 10.5.sp,
-                                        maxLines = 1,
-                                        softWrap = false,
-                                        overflow = TextOverflow.Ellipsis,
-                                        modifier = Modifier.weight(1.1f)
-                                    )
-                                    Box(modifier = Modifier.weight(0.8f)) {
-                                        Surface(
-                                            shape = RoundedCornerShape(4.dp),
-                                            color = typeColor.copy(alpha = 0.15f)
-                                        ) {
-                                            Text(
-                                                text = typeLabel,
-                                                color = typeColor,
-                                                fontSize = 8.5.sp,
-                                                fontWeight = FontWeight.Bold,
-                                                maxLines = 1,
-                                                softWrap = false,
-                                                modifier = Modifier.padding(horizontal = 3.dp, vertical = 2.dp)
-                                            )
-                                        }
-                                    }
-                                    Text(
-                                        text = accName,
-                                        color = TextSecondary,
-                                        fontSize = 10.sp,
-                                        maxLines = 1,
-                                        softWrap = false,
-                                        overflow = TextOverflow.Ellipsis,
-                                        modifier = Modifier.weight(1.0f)
-                                    )
-                                    val prefix = if (tx.type == "INCOME") "+৳" else if (tx.type == "EXPENSE") "-৳" else "৳"
-                                    Text(
-                                        text = "$prefix${currencyFormat.format(tx.amount)}",
-                                        color = typeColor,
-                                        fontSize = 10.5.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        maxLines = 1,
-                                        softWrap = false,
-                                        overflow = TextOverflow.Ellipsis,
-                                        textAlign = TextAlign.End,
-                                        modifier = Modifier.weight(1.7f)
-                                    )
+                                    Text(text = mData.monthName, color = TextPrimary, fontSize = 10.5.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, softWrap = false, modifier = Modifier.weight(0.9f))
+                                    Text(text = "৳${currencyFormat.format(mData.startingBalance)}", color = TextSecondary, fontSize = 10.sp, maxLines = 1, softWrap = false, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1.1f))
+                                    Text(text = "+৳${currencyFormat.format(mData.totalIncome)}", color = IncomeGreen, fontSize = 10.sp, fontWeight = FontWeight.Medium, maxLines = 1, softWrap = false, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1.1f))
+                                    Text(text = "-৳${currencyFormat.format(mData.totalExpense)}", color = ExpenseRed, fontSize = 10.sp, fontWeight = FontWeight.Medium, maxLines = 1, softWrap = false, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1.1f))
+                                    Text(text = "৳${currencyFormat.format(mData.remainingBalance)}", color = AccentTeal, fontSize = 10.5.sp, fontWeight = FontWeight.Bold, maxLines = 1, softWrap = false, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.End, modifier = Modifier.weight(1.2f))
                                 }
-                                if (!isLast) {
-                                    HorizontalDivider(color = DividerColor.copy(alpha = 0.5f))
-                                }
+                                if (!isLast) HorizontalDivider(color = DividerColor.copy(alpha = 0.5f))
                             }
                         }
                     }
-                }
 
-                // ─── Summary Box (At the end in a styled card box) ────────
-                item {
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Card(
-                        shape = RoundedCornerShape(16.dp),
-                        colors = CardDefaults.cardColors(containerColor = CardDark),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .border(1.dp, AccentTeal.copy(alpha = 0.3f), RoundedCornerShape(16.dp))
-                    ) {
-                        Column(
+                    // Summary Box (Yearly)
+                    item {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Card(
+                            shape = RoundedCornerShape(16.dp),
+                            colors = CardDefaults.cardColors(containerColor = CardDark),
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(16.dp)
+                                .border(1.dp, AccentTeal.copy(alpha = 0.3f), RoundedCornerShape(16.dp))
                         ) {
-                            Text(
-                                text = "Monthly Balance & Statement Summary",
-                                color = AccentTeal,
-                                fontSize = 14.sp,
-                                fontWeight = FontWeight.Bold
-                            )
-                            Spacer(modifier = Modifier.height(4.dp))
-                            Text(
-                                text = "Closing calculation for $monthName $year",
-                                color = TextMuted,
-                                fontSize = 11.sp
-                            )
+                            Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
+                                Text("Annual Financial Summary ($year)", color = AccentTeal, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text("Full 12-month consolidated overview", color = TextMuted, fontSize = 11.sp)
 
-                            HorizontalDivider(color = DividerColor, modifier = Modifier.padding(vertical = 12.dp))
+                                HorizontalDivider(color = DividerColor, modifier = Modifier.padding(vertical = 12.dp))
 
-                            // 1. Starting Balance
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text("🏦 Starting Bank / Accounts Balance", color = TextSecondary, fontSize = 12.sp)
-                                Text("৳${currencyFormat.format(startingBalance)}", color = TextPrimary, fontSize = 13.sp, fontWeight = FontWeight.Bold)
-                            }
-
-                            Spacer(modifier = Modifier.height(8.dp))
-
-                            // 2. Total Income
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text("📈 Total Income (+)", color = TextSecondary, fontSize = 12.sp)
-                                Text("+৳${currencyFormat.format(totalIncome)}", color = IncomeGreen, fontSize = 13.sp, fontWeight = FontWeight.Bold)
-                            }
-
-                            Spacer(modifier = Modifier.height(8.dp))
-
-                            // 3. Total Expense
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text("📉 Total Expense (-)", color = TextSecondary, fontSize = 12.sp)
-                                Text("-৳${currencyFormat.format(totalExpense)}", color = ExpenseRed, fontSize = 13.sp, fontWeight = FontWeight.Bold)
-                            }
-
-                            HorizontalDivider(color = DividerColor, modifier = Modifier.padding(vertical = 10.dp))
-
-                            // 4. Remaining Balance
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text("💳 Remaining Balance (Closing)", color = TextPrimary, fontSize = 13.sp, fontWeight = FontWeight.Bold)
-                                Text(
-                                    text = "৳${currencyFormat.format(remainingBalance)}",
-                                    color = AccentTeal,
-                                    fontSize = 15.sp,
-                                    fontWeight = FontWeight.ExtraBold
-                                )
+                                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                                    Text("🏦 Year-Start Opening Balance", color = TextSecondary, fontSize = 12.sp)
+                                    Text("৳${currencyFormat.format(annualStartingBalance)}", color = TextPrimary, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                                }
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                                    Text("📈 Total Annual Income (+)", color = TextSecondary, fontSize = 12.sp)
+                                    Text("+৳${currencyFormat.format(totalAnnualIncome)}", color = IncomeGreen, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                                }
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                                    Text("📉 Total Annual Expenses (-)", color = TextSecondary, fontSize = 12.sp)
+                                    Text("-৳${currencyFormat.format(totalAnnualExpense)}", color = ExpenseRed, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                                }
+                                HorizontalDivider(color = DividerColor, modifier = Modifier.padding(vertical = 10.dp))
+                                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                                    Text("💳 Year-End Closing Balance", color = TextPrimary, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                                    Text("৳${currencyFormat.format(annualRemainingBalance)}", color = AccentTeal, fontSize = 15.sp, fontWeight = FontWeight.ExtraBold)
+                                }
                             }
                         }
                     }
                 }
             }
 
-            // ─── Export as PDF Button (Bottom Sticky Action Bar) ─────────
+            // ─── Export as PDF Button (Bottom Action Bar) ────────────────
             Surface(
                 color = CardDarker,
                 tonalElevation = 8.dp,
@@ -510,17 +621,29 @@ fun ReportsScreen(
                 ) {
                     Button(
                         onClick = {
-                            PdfReportGenerator.exportMonthlyReportPdf(
-                                context = context,
-                                monthName = monthName,
-                                year = year,
-                                transactions = monthTransactions,
-                                accountsMap = accountsMap,
-                                startingBalance = startingBalance,
-                                totalIncome = totalIncome,
-                                totalExpense = totalExpense,
-                                remainingBalance = remainingBalance
-                            )
+                            if (selectedReportType == "MONTHLY") {
+                                PdfReportGenerator.exportMonthlyReportPdf(
+                                    context = context,
+                                    monthName = monthName,
+                                    year = year,
+                                    transactions = monthTransactions,
+                                    accountsMap = accountsMap,
+                                    startingBalance = startingBalance,
+                                    totalIncome = totalIncome,
+                                    totalExpense = totalExpense,
+                                    remainingBalance = remainingBalance
+                                )
+                            } else {
+                                PdfReportGenerator.exportYearlyReportPdf(
+                                    context = context,
+                                    year = year,
+                                    monthlySummaries = yearlyMonthlySummaries,
+                                    annualStartingBalance = annualStartingBalance,
+                                    totalAnnualIncome = totalAnnualIncome,
+                                    totalAnnualExpense = totalAnnualExpense,
+                                    annualRemainingBalance = annualRemainingBalance
+                                )
+                            }
                         },
                         colors = ButtonDefaults.buttonColors(containerColor = AccentTeal),
                         shape = RoundedCornerShape(12.dp),
@@ -536,7 +659,7 @@ fun ReportsScreen(
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            text = "Export Statement as PDF",
+                            text = if (selectedReportType == "MONTHLY") "Export Monthly Statement as PDF" else "Export Annual Report as PDF",
                             color = Color.Black,
                             fontSize = 14.sp,
                             fontWeight = FontWeight.Bold

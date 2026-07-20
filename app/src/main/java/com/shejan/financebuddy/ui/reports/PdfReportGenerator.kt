@@ -286,6 +286,198 @@ object PdfReportGenerator {
         }
     }
 
+    fun exportYearlyReportPdf(
+        context: Context,
+        year: Int,
+        monthlySummaries: List<MonthSummaryData>,
+        annualStartingBalance: Double,
+        totalAnnualIncome: Double,
+        totalAnnualExpense: Double,
+        annualRemainingBalance: Double
+    ) {
+        try {
+            val pdfDocument = PdfDocument()
+            val currencyFormat = DecimalFormat("##,##,##0.00")
+
+            val pageWidth = 595
+            val pageHeight = 842
+            val margin = 36f
+
+            val pageInfo = PdfDocument.PageInfo.Builder(pageWidth, pageHeight, 1).create()
+            val page = pdfDocument.startPage(pageInfo)
+            val canvas = page.canvas
+
+            val titlePaint = Paint().apply {
+                isAntiAlias = true
+                textSize = 18f
+                color = Color.parseColor("#0F172A")
+                isFakeBoldText = true
+            }
+
+            val subtitlePaint = Paint().apply {
+                isAntiAlias = true
+                textSize = 11f
+                color = Color.parseColor("#64748B")
+            }
+
+            val headerBgPaint = Paint().apply {
+                color = Color.parseColor("#F1F5F9")
+            }
+
+            val headerTextPaint = Paint().apply {
+                isAntiAlias = true
+                textSize = 10f
+                color = Color.parseColor("#334155")
+                isFakeBoldText = true
+            }
+
+            val bodyTextPaint = Paint().apply {
+                isAntiAlias = true
+                textSize = 9.5f
+                color = Color.parseColor("#1E293B")
+            }
+
+            val linePaint = Paint().apply {
+                color = Color.parseColor("#E2E8F0")
+                strokeWidth = 1f
+            }
+
+            var currentY = margin
+
+            // ─── Header ──────────────────────────────────────────────
+            canvas.drawText("FinanceBuddy — Annual Financial Report", margin, currentY + 16f, titlePaint)
+            currentY += 24f
+
+            canvas.drawText(
+                "Statement Period: Calendar Year $year | Generated: ${SimpleDateFormat("dd MMM yyyy, hh:mm a", Locale.getDefault()).format(Date())}",
+                margin,
+                currentY + 12f,
+                subtitlePaint
+            )
+            currentY += 24f
+
+            canvas.drawLine(margin, currentY, pageWidth - margin, currentY, linePaint)
+            currentY += 16f
+
+            // ─── Table Headers ───────────────────────────────────────
+            val colXMonth = margin + 8f
+            val colXStart = margin + 90f
+            val colXIncome = margin + 200f
+            val colXExpense = margin + 310f
+            val colXRemaining = pageWidth - margin - 8f
+
+            val rect = RectF(margin, currentY, pageWidth - margin, currentY + 24f)
+            canvas.drawRoundRect(rect, 4f, 4f, headerBgPaint)
+
+            canvas.drawText("Month", colXMonth, currentY + 16f, headerTextPaint)
+            canvas.drawText("Starting Bal (৳)", colXStart, currentY + 16f, headerTextPaint)
+            canvas.drawText("Income (৳)", colXIncome, currentY + 16f, headerTextPaint)
+            canvas.drawText("Expense (৳)", colXExpense, currentY + 16f, headerTextPaint)
+
+            val rightHeaderPaint = Paint(headerTextPaint).apply { textAlign = Paint.Align.RIGHT }
+            canvas.drawText("Closing Bal (৳)", colXRemaining, currentY + 16f, rightHeaderPaint)
+
+            currentY += 28f
+
+            // ─── Monthly Rows ────────────────────────────────────────
+            val rowHeight = 22f
+            val incomeTextPaint = Paint(bodyTextPaint).apply { color = Color.parseColor("#16A34A"); isFakeBoldText = true }
+            val expenseTextPaint = Paint(bodyTextPaint).apply { color = Color.parseColor("#DC2626"); isFakeBoldText = true }
+            val rightValPaint = Paint(bodyTextPaint).apply { textAlign = Paint.Align.RIGHT; isFakeBoldText = true }
+
+            for (summary in monthlySummaries) {
+                canvas.drawText(summary.monthName, colXMonth, currentY + 14f, bodyTextPaint)
+                canvas.drawText("৳${currencyFormat.format(summary.startingBalance)}", colXStart, currentY + 14f, bodyTextPaint)
+                canvas.drawText("+৳${currencyFormat.format(summary.totalIncome)}", colXIncome, currentY + 14f, incomeTextPaint)
+                canvas.drawText("-৳${currencyFormat.format(summary.totalExpense)}", colXExpense, currentY + 14f, expenseTextPaint)
+                canvas.drawText("৳${currencyFormat.format(summary.remainingBalance)}", colXRemaining, currentY + 14f, rightValPaint)
+
+                currentY += rowHeight
+                canvas.drawLine(margin, currentY, pageWidth - margin, currentY, linePaint)
+                currentY += 4f
+            }
+
+            currentY += 16f
+
+            // ─── Annual Summary Box ──────────────────────────────────
+            val summaryBoxHeight = 120f
+            val boxRect = RectF(margin, currentY, pageWidth - margin, currentY + summaryBoxHeight)
+            val boxBgPaint = Paint().apply { color = Color.parseColor("#F8FAFC") }
+            val boxBorderPaint = Paint().apply {
+                color = Color.parseColor("#CBD5E1")
+                style = Paint.Style.STROKE
+                strokeWidth = 1.2f
+            }
+
+            canvas.drawRoundRect(boxRect, 8f, 8f, boxBgPaint)
+            canvas.drawRoundRect(boxRect, 8f, 8f, boxBorderPaint)
+
+            val boxTitlePaint = Paint().apply {
+                isAntiAlias = true
+                textSize = 12f
+                color = Color.parseColor("#0F172A")
+                isFakeBoldText = true
+            }
+
+            val boxLabelPaint = Paint().apply {
+                isAntiAlias = true
+                textSize = 10f
+                color = Color.parseColor("#475569")
+            }
+
+            val boxValPaint = Paint().apply {
+                isAntiAlias = true
+                textSize = 10.5f
+                color = Color.parseColor("#0F172A")
+                isFakeBoldText = true
+                textAlign = Paint.Align.RIGHT
+            }
+
+            var boxY = currentY + 22f
+            canvas.drawText("Annual Financial Summary ($year)", margin + 16f, boxY, boxTitlePaint)
+            boxY += 8f
+            canvas.drawLine(margin + 16f, boxY, pageWidth - margin - 16f, boxY, linePaint)
+            boxY += 18f
+
+            canvas.drawText("Year-Start Opening Balance:", margin + 16f, boxY, boxLabelPaint)
+            canvas.drawText("৳${currencyFormat.format(annualStartingBalance)}", pageWidth - margin - 16f, boxY, boxValPaint)
+            boxY += 16f
+
+            val incBoxPaint = Paint(boxValPaint).apply { color = Color.parseColor("#16A34A") }
+            canvas.drawText("Total Annual Income (+):", margin + 16f, boxY, boxLabelPaint)
+            canvas.drawText("+৳${currencyFormat.format(totalAnnualIncome)}", pageWidth - margin - 16f, boxY, incBoxPaint)
+            boxY += 16f
+
+            val expBoxPaint = Paint(boxValPaint).apply { color = Color.parseColor("#DC2626") }
+            canvas.drawText("Total Annual Expenses (-):", margin + 16f, boxY, boxLabelPaint)
+            canvas.drawText("-৳${currencyFormat.format(totalAnnualExpense)}", pageWidth - margin - 16f, boxY, expBoxPaint)
+            boxY += 18f
+
+            val remBoxPaint = Paint(boxValPaint).apply {
+                textSize = 11.5f
+                color = Color.parseColor("#0284C7")
+            }
+            canvas.drawText("Year-End Closing Balance:", margin + 16f, boxY, boxTitlePaint)
+            canvas.drawText("৳${currencyFormat.format(annualRemainingBalance)}", pageWidth - margin - 16f, boxY, remBoxPaint)
+
+            pdfDocument.finishPage(page)
+
+            val fileName = "FinanceBuddy_Annual_Report_$year.pdf"
+            val uri = savePdfToDownloads(context, pdfDocument, fileName)
+            pdfDocument.close()
+
+            if (uri != null) {
+                Toast.makeText(context, "Annual PDF Report exported successfully to Downloads!", Toast.LENGTH_LONG).show()
+                openPdfViewer(context, uri)
+            } else {
+                Toast.makeText(context, "Failed to save PDF Report.", Toast.LENGTH_SHORT).show()
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+            Toast.makeText(context, "Error exporting PDF: ${e.localizedMessage}", Toast.LENGTH_LONG).show()
+        }
+    }
+
     private fun savePdfToDownloads(context: Context, pdfDocument: PdfDocument, fileName: String): Uri? {
         return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             val contentValues = ContentValues().apply {
@@ -325,3 +517,12 @@ object PdfReportGenerator {
         }
     }
 }
+
+data class MonthSummaryData(
+    val monthName: String,
+    val startingBalance: Double,
+    val totalIncome: Double,
+    val totalExpense: Double,
+    val remainingBalance: Double
+)
+

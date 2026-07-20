@@ -602,6 +602,21 @@ fun HomeScreen(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .background(
+                        Brush.verticalGradient(
+                            colors = listOf(
+                                // Match the page top: BackgroundDark + AccentTeal at 8% — same as ambient glow
+                                Color(0xFF0B0E1A).copy(alpha = 1f).let {
+                                    Color(
+                                        red   = it.red   * 0.92f + AccentTeal.red   * 0.08f,
+                                        green = it.green * 0.92f + AccentTeal.green * 0.08f,
+                                        blue  = it.blue  * 0.92f + AccentTeal.blue  * 0.08f,
+                                    )
+                                },
+                                BackgroundDark
+                            )
+                        )
+                    )
                     .statusBarsPadding()
                     .padding(horizontal = 16.dp, vertical = 12.dp),
                 verticalAlignment = Alignment.CenterVertically,
