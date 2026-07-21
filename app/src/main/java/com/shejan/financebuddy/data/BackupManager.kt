@@ -137,7 +137,7 @@ object BackupManager {
         })
 
         // Pending SMS Transactions
-        val pendingSms = database.pendingSmsDao().getAllPending().first()
+        val pendingSms = database.pendingSmsDao().getAllForBackup().first()
         root.put(KEY_PENDING_SMS, JSONArray().apply {
             pendingSms.forEach { p ->
                 put(JSONObject().apply {
@@ -153,6 +153,7 @@ object BackupManager {
                     put("toAccountId", p.toAccountId ?: JSONObject.NULL)
                     put("timestamp", p.timestamp)
                     put("receivedAt", p.receivedAt)
+                    put("status", p.status)
                 })
             }
         })
@@ -365,7 +366,8 @@ object BackupManager {
                     fromAccountId = p.getInt("fromAccountId"),
                     toAccountId = if (p.isNull("toAccountId")) null else p.getInt("toAccountId"),
                     timestamp = p.getLong("timestamp"),
-                    receivedAt = p.getLong("receivedAt")
+                    receivedAt = p.getLong("receivedAt"),
+                    status = p.optString("status", "PENDING")
                 )
             )
         }

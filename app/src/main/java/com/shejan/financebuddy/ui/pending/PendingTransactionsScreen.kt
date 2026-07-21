@@ -67,6 +67,8 @@ private val CATEGORIES = listOf(
 @Composable
 fun PendingTransactionsScreen(
     pendingList: List<PendingSmsTransactionEntity>,
+    confirmedList: List<PendingSmsTransactionEntity> = emptyList(),
+    dismissedList: List<PendingSmsTransactionEntity> = emptyList(),
     accounts: List<AccountEntity>,
     database: com.shejan.financebuddy.data.db.FinanceDatabase,
     mappingsList: List<com.shejan.financebuddy.data.db.SmsSenderMappingEntity>,
@@ -77,6 +79,8 @@ fun PendingTransactionsScreen(
     onSyncSenderHistory: (String, Int, (Int) -> Unit) -> Unit,
     onConfirm: (PendingSmsTransactionEntity, PendingSmsTransactionEntity) -> Unit,
     onDismiss: (PendingSmsTransactionEntity) -> Unit,
+    onRestore: (PendingSmsTransactionEntity) -> Unit = {},
+    onDeletePermanently: (PendingSmsTransactionEntity) -> Unit = {},
     onUpdate: (PendingSmsTransactionEntity) -> Unit,
     onDismissAll: () -> Unit,
     onBack: () -> Unit
@@ -130,6 +134,15 @@ fun PendingTransactionsScreen(
     var showDismissAllDialog by remember { mutableStateOf(false) }
     var showMappingConfigSheet by remember { mutableStateOf(false) }
     val configSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+
+    // Filter tab selection: "PENDING", "CONFIRMED", "DISMISSED"
+    var selectedFilterTab by remember { mutableStateOf("PENDING") }
+
+    val activeList = when (selectedFilterTab) {
+        "CONFIRMED" -> confirmedList
+        "DISMISSED" -> dismissedList
+        else        -> pendingList
+    }
 
     // Edit bottom sheet state
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
@@ -239,30 +252,127 @@ fun PendingTransactionsScreen(
 
             HorizontalDivider(color = DividerColor, modifier = Modifier.padding(horizontal = 16.dp))
 
-            // ── Scrollable list with entrance animations ──────────────────────
-            if (pendingList.isEmpty()) {
-                EmptyState(
-                    isScanning = isScanning,
-                    onScanHistory = { checkPermissionAndShowSyncDialog() }
+            // ── Filter Selector Tabs (Pending / Confirmed / Dismissed) ────────
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 10.dp)
+                    .clip(RoundedCornerShape(14.dp))
+                    .background(CardDarker)
+                    .padding(4.dp),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                val tabs = listOf(
+                    Triple("PENDING", "Pending", pendingList.size),
+                    Triple("CONFIRMED", "Confirmed", confirmedList.size),
+                    Triple("DISMISSED", "Dismissed", dismissedList.size)
                 )
+                tabs.forEach { (tabKey, label, count) ->
+                    val isSelected = selectedFilterTab == tabKey
+                    val tabColor = when (tabKey) {
+                        "CONFIRMED" -> IncomeGreen
+                        "DISMISSED" -> ExpenseRed
+                        else        -> TransferYellow
+                    }
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(if (isSelected) tabColor.copy(alpha = 0.18f) else Color.Transparent)
+                            .border(
+                                width = if (isSelected) 1.dp else 0.dp,
+                                color = if (isSelected) tabColor.copy(alpha = 0.5f) else Color.Transparent,
+                                shape = RoundedCornerShape(10.dp)
+                            )
+                            .clickable { selectedFilterTab = tabKey }
+                            .padding(vertical = 8.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.Center
+                        ) {
+                            Text(
+                                text = label,
+                                color = if (isSelected) tabColor else TextSecondary,
+                                fontSize = 12.sp,
+                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
+                            )
+                            if (count > 0) {
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Box(
+                                    modifier = Modifier
+                                        .clip(CircleShape)
+                                        .background(if (isSelected) tabColor else DividerColor)
+                                        .padding(horizontal = 6.dp, vertical = 2.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        text = count.toString(),
+                                        color = if (isSelected) BackgroundDark else TextPrimary,
+                                        fontSize = 10.sp,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // ── Scrollable list with entrance animations ──────────────────────
+            if (activeList.isEmpty()) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(24.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Icon(
+                            imageVector = when (selectedFilterTab) {
+                                "CONFIRMED" -> Icons.Default.CheckCircle
+                                "DISMISSED" -> Icons.Default.Close
+                                else        -> Icons.Default.Sms
+                            },
+                            contentDescription = null,
+                            tint = TextMuted,
+                            modifier = Modifier.size(48.dp)
+                        )
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Text(
+                            text = when (selectedFilterTab) {
+                                "CONFIRMED" -> "No confirmed SMS transactions yet."
+                                "DISMISSED" -> "No dismissed SMS transactions."
+                                else        -> "No pending SMS transactions to review!"
+                            },
+                            color = TextSecondary,
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Medium,
+                            textAlign = TextAlign.Center
+                        )
+                    }
+                }
             } else {
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 16.dp),
+                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    items(pendingList, key = { it.id }) { pending ->
+                    items(activeList, key = { it.id }) { pending ->
                         AnimatedVisibility(
                             visible = true,
                             enter = fadeIn() + expandVertically(),
                             exit = fadeOut() + shrinkVertically()
                         ) {
                             PendingTransactionCard(
-                                pending   = pending,
-                                accounts  = accounts,
+                                pending = pending,
+                                accounts = accounts,
                                 onConfirm = { onConfirm(pending, it) },
                                 onDismiss = { onDismiss(pending) },
-                                onEdit    = { editTarget = pending }
+                                onRestore = { onRestore(pending) },
+                                onDeletePermanently = { onDeletePermanently(pending) },
+                                onEdit = { editTarget = pending }
                             )
                         }
                     }
@@ -452,6 +562,8 @@ private fun PendingTransactionCard(
     accounts: List<AccountEntity>,
     onConfirm: (PendingSmsTransactionEntity) -> Unit,
     onDismiss: () -> Unit,
+    onRestore: () -> Unit = {},
+    onDeletePermanently: () -> Unit = {},
     onEdit: () -> Unit
 ) {
     val matchedAccount = accounts.firstOrNull { it.id == pending.fromAccountId }
@@ -540,18 +652,40 @@ private fun PendingTransactionCard(
                         letterSpacing = (-0.5).sp
                     )
                     Spacer(modifier = Modifier.height(2.dp))
-                    Box(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(6.dp))
-                            .background(typeColor.copy(alpha = 0.12f))
-                            .padding(horizontal = 6.dp, vertical = 2.dp)
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text(
-                            text = typeLabel,
-                            color = typeColor,
-                            fontSize = 9.sp,
-                            fontWeight = FontWeight.ExtraBold
-                        )
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(6.dp))
+                                .background(typeColor.copy(alpha = 0.12f))
+                                .padding(horizontal = 6.dp, vertical = 2.dp)
+                        ) {
+                            Text(
+                                text = typeLabel,
+                                color = typeColor,
+                                fontSize = 9.sp,
+                                fontWeight = FontWeight.ExtraBold
+                            )
+                        }
+
+                        if (pending.status != "PENDING") {
+                            val badgeColor = if (pending.status == "CONFIRMED") IncomeGreen else ExpenseRed
+                            Box(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(6.dp))
+                                    .background(badgeColor.copy(alpha = 0.15f))
+                                    .padding(horizontal = 6.dp, vertical = 2.dp)
+                            ) {
+                                Text(
+                                    text = pending.status,
+                                    color = badgeColor,
+                                    fontSize = 9.sp,
+                                    fontWeight = FontWeight.ExtraBold
+                                )
+                            }
+                        }
                     }
                 }
             }
@@ -559,7 +693,7 @@ private fun PendingTransactionCard(
             Spacer(modifier = Modifier.height(14.dp))
 
             // Unmatched Warning Banner
-            if (pending.fromAccountId == -1) {
+            if (pending.fromAccountId == -1 && pending.status == "PENDING") {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -590,7 +724,7 @@ private fun PendingTransactionCard(
             val isInsufficient = (pending.type == "EXPENSE" || pending.type == "TRANSFER") &&
                     sourceAccount != null && pending.amount > sourceAccount.balance
 
-            if (pending.fromAccountId != -1 && isInsufficient) {
+            if (pending.fromAccountId != -1 && isInsufficient && pending.status == "PENDING") {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -695,109 +829,269 @@ private fun PendingTransactionCard(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Action Buttons
+            // Action Buttons based on status
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Dismiss Button
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    modifier = Modifier.weight(1f)
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(46.dp)
-                            .clip(RoundedCornerShape(6.dp))
-                            .background(ExpenseRed.copy(alpha = 0.08f))
-                            .border(1.dp, ExpenseRed.copy(alpha = 0.25f), RoundedCornerShape(6.dp))
-                            .clickable { onDismiss() },
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Close,
-                            contentDescription = "Dismiss",
-                            tint = ExpenseRed,
-                            modifier = Modifier.size(20.dp)
-                        )
-                    }
-                    Spacer(modifier = Modifier.height(5.dp))
-                    Text(
-                        text = "Dismiss",
-                        color = ExpenseRed,
-                        fontSize = 10.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-
-                // Edit Button
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    modifier = Modifier.weight(1f)
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(46.dp)
-                            .clip(RoundedCornerShape(6.dp))
-                            .background(CardDarker)
-                            .border(1.dp, DividerColor, RoundedCornerShape(6.dp))
-                            .clickable { onEdit() },
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Edit,
-                            contentDescription = "Edit",
-                            tint = TextSecondary,
-                            modifier = Modifier.size(20.dp)
-                        )
-                    }
-                    Spacer(modifier = Modifier.height(5.dp))
-                    Text(
-                        text = "Edit",
-                        color = TextSecondary,
-                        fontSize = 10.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-
-                // Confirm Button
-                val sourceAccount = accounts.find { it.id == pending.fromAccountId }
-                val isInsufficient = (pending.type == "EXPENSE" || pending.type == "TRANSFER") &&
-                        sourceAccount != null && pending.amount > sourceAccount.balance
-                val canConfirm = pending.fromAccountId != -1 && !isInsufficient
-
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    modifier = Modifier.weight(1f)
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(46.dp)
-                            .clip(RoundedCornerShape(6.dp))
-                            .background(if (canConfirm) IncomeGreen else IncomeGreen.copy(alpha = 0.12f))
-                            .border(
-                                width = 1.dp,
-                                color = if (canConfirm) IncomeGreen else DividerColor.copy(alpha = 0.5f),
-                                shape = RoundedCornerShape(6.dp)
+                when (pending.status) {
+                    "DISMISSED" -> {
+                        // Delete permanently button
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(46.dp)
+                                    .clip(RoundedCornerShape(6.dp))
+                                    .background(ExpenseRed.copy(alpha = 0.08f))
+                                    .border(1.dp, ExpenseRed.copy(alpha = 0.25f), RoundedCornerShape(6.dp))
+                                    .clickable { onDeletePermanently() },
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Delete,
+                                    contentDescription = "Delete Permanently",
+                                    tint = ExpenseRed,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
+                            Spacer(modifier = Modifier.height(5.dp))
+                            Text(
+                                text = "Delete",
+                                color = ExpenseRed,
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold
                             )
-                            .clickable(enabled = canConfirm) { onConfirm(pending) },
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Check,
-                            contentDescription = "Confirm",
-                            tint = if (canConfirm) BackgroundDark else TextMuted,
-                            modifier = Modifier.size(20.dp)
-                        )
+                        }
+
+                        // Restore to Pending button
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(46.dp)
+                                    .clip(RoundedCornerShape(6.dp))
+                                    .background(TransferYellow.copy(alpha = 0.12f))
+                                    .border(1.dp, TransferYellow.copy(alpha = 0.3f), RoundedCornerShape(6.dp))
+                                    .clickable { onRestore() },
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.History,
+                                    contentDescription = "Restore to Pending",
+                                    tint = TransferYellow,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
+                            Spacer(modifier = Modifier.height(5.dp))
+                            Text(
+                                text = "Restore",
+                                color = TransferYellow,
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+
+                        // Confirm button
+                        val canConfirm = pending.fromAccountId != -1 && !isInsufficient
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(46.dp)
+                                    .clip(RoundedCornerShape(6.dp))
+                                    .background(if (canConfirm) IncomeGreen else IncomeGreen.copy(alpha = 0.12f))
+                                    .border(
+                                        width = 1.dp,
+                                        color = if (canConfirm) IncomeGreen else DividerColor.copy(alpha = 0.5f),
+                                        shape = RoundedCornerShape(6.dp)
+                                    )
+                                    .clickable(enabled = canConfirm) { onConfirm(pending) },
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Check,
+                                    contentDescription = "Confirm",
+                                    tint = if (canConfirm) BackgroundDark else TextMuted,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
+                            Spacer(modifier = Modifier.height(5.dp))
+                            Text(
+                                text = "Confirm",
+                                color = if (canConfirm) IncomeGreen else TextMuted,
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
                     }
-                    Spacer(modifier = Modifier.height(5.dp))
-                    Text(
-                        text = "Confirm",
-                        color = if (canConfirm) IncomeGreen else TextMuted,
-                        fontSize = 10.sp,
-                        fontWeight = FontWeight.Bold
-                    )
+
+                    "CONFIRMED" -> {
+                        // Restore to Pending button
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(46.dp)
+                                    .clip(RoundedCornerShape(6.dp))
+                                    .background(TransferYellow.copy(alpha = 0.12f))
+                                    .border(1.dp, TransferYellow.copy(alpha = 0.3f), RoundedCornerShape(6.dp))
+                                    .clickable { onRestore() },
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.History,
+                                    contentDescription = "Restore to Pending",
+                                    tint = TransferYellow,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
+                            Spacer(modifier = Modifier.height(5.dp))
+                            Text(
+                                text = "Move to Pending",
+                                color = TransferYellow,
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+
+                        // Edit Button
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(46.dp)
+                                    .clip(RoundedCornerShape(6.dp))
+                                    .background(CardDarker)
+                                    .border(1.dp, DividerColor, RoundedCornerShape(6.dp))
+                                    .clickable { onEdit() },
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Edit,
+                                    contentDescription = "Edit",
+                                    tint = TextSecondary,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
+                            Spacer(modifier = Modifier.height(5.dp))
+                            Text(
+                                text = "Edit",
+                                color = TextSecondary,
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+
+                    else -> {
+                        // PENDING status buttons
+                        // Dismiss Button
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(46.dp)
+                                    .clip(RoundedCornerShape(6.dp))
+                                    .background(ExpenseRed.copy(alpha = 0.08f))
+                                    .border(1.dp, ExpenseRed.copy(alpha = 0.25f), RoundedCornerShape(6.dp))
+                                    .clickable { onDismiss() },
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Close,
+                                    contentDescription = "Dismiss",
+                                    tint = ExpenseRed,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
+                            Spacer(modifier = Modifier.height(5.dp))
+                            Text(
+                                text = "Dismiss",
+                                color = ExpenseRed,
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+
+                        // Edit Button
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(46.dp)
+                                    .clip(RoundedCornerShape(6.dp))
+                                    .background(CardDarker)
+                                    .border(1.dp, DividerColor, RoundedCornerShape(6.dp))
+                                    .clickable { onEdit() },
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Edit,
+                                    contentDescription = "Edit",
+                                    tint = TextSecondary,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
+                            Spacer(modifier = Modifier.height(5.dp))
+                            Text(
+                                text = "Edit",
+                                color = TextSecondary,
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+
+                        // Confirm Button
+                        val canConfirm = pending.fromAccountId != -1 && !isInsufficient
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(46.dp)
+                                    .clip(RoundedCornerShape(6.dp))
+                                    .background(if (canConfirm) IncomeGreen else IncomeGreen.copy(alpha = 0.12f))
+                                    .border(
+                                        width = 1.dp,
+                                        color = if (canConfirm) IncomeGreen else DividerColor.copy(alpha = 0.5f),
+                                        shape = RoundedCornerShape(6.dp)
+                                    )
+                                    .clickable(enabled = canConfirm) { onConfirm(pending) },
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Check,
+                                    contentDescription = "Confirm",
+                                    tint = if (canConfirm) BackgroundDark else TextMuted,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
+                            Spacer(modifier = Modifier.height(5.dp))
+                            Text(
+                                text = "Confirm",
+                                color = if (canConfirm) IncomeGreen else TextMuted,
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
                 }
             }
         }

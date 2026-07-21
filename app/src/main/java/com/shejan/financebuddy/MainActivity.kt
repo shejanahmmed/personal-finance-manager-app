@@ -455,26 +455,32 @@ fun AppNavigation(
             composable("pending_transactions") {
                 val viewModel = remember { PendingTransactionsViewModel(database) }
                 val pendingList by viewModel.pendingList.collectAsState()
+                val confirmedList by viewModel.confirmedList.collectAsState()
+                val dismissedList by viewModel.dismissedList.collectAsState()
                 val mappingsList by viewModel.mappingsList.collectAsState()
                 val potentialSenders by viewModel.potentialSenders.collectAsState()
                 val context = androidx.compose.ui.platform.LocalContext.current
                 PendingTransactionsScreen(
-                    pendingList  = pendingList,
-                    accounts     = accounts,
-                    database     = database,
-                    mappingsList = mappingsList,
+                    pendingList   = pendingList,
+                    confirmedList = confirmedList,
+                    dismissedList = dismissedList,
+                    accounts      = accounts,
+                    database      = database,
+                    mappingsList  = mappingsList,
                     potentialSenders = potentialSenders,
-                    onAddMapping = { sender, accountId -> viewModel.addMapping(sender, accountId) },
+                    onAddMapping  = { sender, accountId -> viewModel.addMapping(sender, accountId) },
                     onDeleteMapping = { viewModel.deleteMapping(it) },
                     onLoadPotentialSenders = { viewModel.loadPotentialSenders(context) },
                     onSyncSenderHistory = { sender, accountId, onComplete ->
                         viewModel.syncSenderHistory(context, sender, accountId, onComplete)
                     },
-                    onConfirm    = { pending, edited -> viewModel.confirm(pending, edited) },
-                    onDismiss    = { viewModel.dismiss(it) },
-                    onUpdate     = { viewModel.update(it) },
-                    onDismissAll = { viewModel.dismissAll() },
-                    onBack       = { navController.popBackStack() }
+                    onConfirm     = { pending, edited -> viewModel.confirm(pending, edited) },
+                    onDismiss     = { viewModel.dismiss(it) },
+                    onRestore     = { viewModel.restore(it) },
+                    onDeletePermanently = { viewModel.deletePermanently(it) },
+                    onUpdate      = { viewModel.update(it) },
+                    onDismissAll  = { viewModel.dismissAll() },
+                    onBack        = { navController.popBackStack() }
                 )
             }
         }

@@ -46,5 +46,8 @@ data class PendingSmsTransactionEntity(
     val timestamp: Long,
 
     /** When this SMS was received by the BroadcastReceiver. */
-    val receivedAt: Long
+    val receivedAt: Long,
+
+    /** Status of detection: "PENDING", "CONFIRMED", or "DISMISSED". Defaults to "PENDING". */
+    val status: String = "PENDING"
 )

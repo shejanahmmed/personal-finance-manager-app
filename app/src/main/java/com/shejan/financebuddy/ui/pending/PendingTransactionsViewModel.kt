@@ -17,14 +17,34 @@ class PendingTransactionsViewModel(private val database: FinanceDatabase) : View
     private val pendingSmsDao  = database.pendingSmsDao()
     private val transactionDao = database.transactionDao()
 
-    /** All pending SMS-detected transactions, ordered newest first. */
+    /** All pending SMS-detected transactions (status = PENDING), ordered newest first. */
     val pendingList: StateFlow<List<PendingSmsTransactionEntity>> =
         pendingSmsDao.getAllPending()
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
-    /** Badge count for the bottom nav / notification dot. */
+    /** Confirmed SMS transactions (status = CONFIRMED). */
+    val confirmedList: StateFlow<List<PendingSmsTransactionEntity>> =
+        pendingSmsDao.getConfirmedList()
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    /** Dismissed SMS transactions (status = DISMISSED). */
+    val dismissedList: StateFlow<List<PendingSmsTransactionEntity>> =
+        pendingSmsDao.getDismissedList()
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    /** Badge count for pending items. */
     val pendingCount: StateFlow<Int> =
         pendingSmsDao.getPendingCount()
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 0)
+
+    /** Count for confirmed items. */
+    val confirmedCount: StateFlow<Int> =
+        pendingSmsDao.getConfirmedCount()
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 0)
+
+    /** Count for dismissed items. */
+    val dismissedCount: StateFlow<Int> =
+        pendingSmsDao.getDismissedCount()
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 0)
 
     /** SMS Sender Mappings flow */
@@ -70,38 +90,54 @@ class PendingTransactionsViewModel(private val database: FinanceDatabase) : View
 
     /**
      * Confirms a pending entry: inserts it as a real transaction (updating balances)
-     * and removes it from the pending queue.
-     *
-     * @param pending     The pending entry to confirm (possibly with user edits already applied).
-     * @param edited      An optional override of the pending entry if the user edited it in the sheet.
+     * and updates its status to "CONFIRMED".
      */
     fun confirm(pending: PendingSmsTransactionEntity, edited: PendingSmsTransactionEntity = pending) {
         viewModelScope.launch(Dispatchers.IO) {
+            val updatedPending = edited.copy(status = "CONFIRMED")
             val transaction = TransactionEntity(
-                amount        = edited.amount,
-                type          = edited.type,
-                category      = edited.category,
-                timestamp     = edited.timestamp,
-                fromAccountId = edited.fromAccountId,
-                toAccountId   = edited.toAccountId,
-                note          = edited.note
+                amount        = updatedPending.amount,
+                type          = updatedPending.type,
+                category      = updatedPending.category,
+                timestamp     = updatedPending.timestamp,
+                fromAccountId = updatedPending.fromAccountId,
+                toAccountId   = updatedPending.toAccountId,
+                note          = updatedPending.note
             )
             transactionDao.insertTransaction(transaction)  // also adjusts account balances
-            pendingSmsDao.deletePending(pending)
+            pendingSmsDao.updatePending(updatedPending)
         }
     }
 
     /**
-     * Dismisses a pending entry without saving anything.
+     * Dismisses a pending entry by marking status = "DISMISSED".
      */
     fun dismiss(pending: PendingSmsTransactionEntity) {
+        viewModelScope.launch(Dispatchers.IO) {
+            pendingSmsDao.updateStatus(pending.id, "DISMISSED")
+        }
+    }
+
+    /**
+     * Restores a dismissed or confirmed entry back to "PENDING".
+     */
+    fun restore(pending: PendingSmsTransactionEntity) {
+        viewModelScope.launch(Dispatchers.IO) {
+            pendingSmsDao.updateStatus(pending.id, "PENDING")
+        }
+    }
+
+    /**
+     * Permanently deletes a pending entry.
+     */
+    fun deletePermanently(pending: PendingSmsTransactionEntity) {
         viewModelScope.launch(Dispatchers.IO) {
             pendingSmsDao.deletePending(pending)
         }
     }
 
     /**
-     * Saves edits the user made to a pending entry (before confirming).
+     * Saves edits the user made to a pending entry.
      */
     fun update(updated: PendingSmsTransactionEntity) {
         viewModelScope.launch(Dispatchers.IO) {
@@ -110,11 +146,11 @@ class PendingTransactionsViewModel(private val database: FinanceDatabase) : View
     }
 
     /**
-     * Dismiss all pending entries at once.
+     * Marks all currently pending entries as DISMISSED.
      */
     fun dismissAll() {
         viewModelScope.launch(Dispatchers.IO) {
-            pendingSmsDao.clearAll()
+            pendingSmsDao.dismissAllPending()
         }
     }
 }
