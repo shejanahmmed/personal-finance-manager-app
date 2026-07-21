@@ -26,4 +26,7 @@ interface GoalDao {
     /** Increment savedAmount by [amount] for a specific goal */
     @Query("UPDATE goals SET savedAmount = savedAmount + :amount WHERE id = :id")
     suspend fun depositToGoal(id: Int, amount: Double)
+
+    @Query("DELETE FROM goals")
+    suspend fun deleteAll()
 }

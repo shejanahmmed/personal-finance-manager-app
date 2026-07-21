@@ -3,6 +3,7 @@ package com.shejan.financebuddy.data.db
 import androidx.room.Dao
 import androidx.room.Delete
 import androidx.room.Insert
+import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Update
 import kotlinx.coroutines.flow.Flow
@@ -19,7 +20,7 @@ interface AccountDao {
     @Query("SELECT * FROM accounts WHERE id = :id")
     suspend fun getAccountById(id: Int): AccountEntity?
 
-    @Insert
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertAccount(account: AccountEntity): Long
 
     @Update
@@ -30,4 +31,7 @@ interface AccountDao {
 
     @Query("UPDATE accounts SET balance = balance + :amount WHERE id = :id")
     suspend fun adjustBalance(id: Int, amount: Double)
+
+    @Query("DELETE FROM accounts")
+    suspend fun deleteAll()
 }

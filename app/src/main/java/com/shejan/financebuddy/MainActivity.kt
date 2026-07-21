@@ -423,6 +423,7 @@ fun AppNavigation(
             composable("settings") {
                 SettingsScreen(
                     preferencesManager = preferencesManager,
+                    database = database,
                     onBack = { navController.popBackStack() }
                 )
             }

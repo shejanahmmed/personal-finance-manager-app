@@ -14,7 +14,7 @@ interface PayeeDao {
     @Query("SELECT * FROM payees WHERE id = :id")
     suspend fun getPayeeById(id: Int): PayeeEntity?
 
-    @Insert
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertPayee(payee: PayeeEntity): Long
 
     @Update
@@ -32,7 +32,7 @@ interface PayeeDao {
     @Query("SELECT * FROM payee_accounts WHERE payeeId = :payeeId")
     suspend fun getAccountsForPayeeOnce(payeeId: Int): List<PayeeAccountEntity>
 
-    @Insert
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertPayeeAccount(account: PayeeAccountEntity): Long
 
     @Update
@@ -40,4 +40,10 @@ interface PayeeDao {
 
     @Delete
     suspend fun deletePayeeAccount(account: PayeeAccountEntity)
+
+    @Query("DELETE FROM payee_accounts")
+    suspend fun deleteAllPayeeAccounts()
+
+    @Query("DELETE FROM payees")
+    suspend fun deleteAllPayees()
 }

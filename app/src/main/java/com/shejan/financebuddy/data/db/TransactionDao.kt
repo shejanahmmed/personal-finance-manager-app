@@ -3,6 +3,7 @@ package com.shejan.financebuddy.data.db
 import androidx.room.Dao
 import androidx.room.Delete
 import androidx.room.Insert
+import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Transaction
 import kotlinx.coroutines.flow.Flow
@@ -73,4 +74,11 @@ abstract class TransactionDao {
             }
         }
     }
+
+    /** Raw insert without balance adjustment — used by backup restore where balances are already set. */
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    abstract suspend fun insertTransactionDirect(transaction: TransactionEntity): Long
+
+    @Query("DELETE FROM transactions")
+    abstract suspend fun deleteAll()
 }

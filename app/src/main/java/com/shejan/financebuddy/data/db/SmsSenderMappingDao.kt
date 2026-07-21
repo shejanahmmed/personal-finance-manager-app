@@ -27,4 +27,7 @@ interface SmsSenderMappingDao {
 
     @Delete
     suspend fun deleteMapping(mapping: SmsSenderMappingEntity)
+
+    @Query("DELETE FROM sms_sender_mappings")
+    suspend fun deleteAll()
 }

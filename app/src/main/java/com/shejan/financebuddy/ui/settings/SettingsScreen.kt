@@ -1,6 +1,9 @@
 package com.shejan.financebuddy.ui.settings
 
+import android.widget.Toast
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -12,11 +15,17 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material.icons.filled.Devices
+import androidx.compose.material.icons.filled.FileDownload
+import androidx.compose.material.icons.filled.FileUpload
+import androidx.compose.material.icons.filled.Fingerprint
+import androidx.compose.material.icons.filled.Key
 import androidx.compose.material.icons.filled.LightMode
+import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.PhoneAndroid
 import androidx.compose.material.icons.filled.Shield
 import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material.icons.filled.SyncDisabled
+import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -25,27 +34,29 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.shejan.financebuddy.data.PreferencesManager
-import com.shejan.financebuddy.ui.theme.*
-import kotlinx.coroutines.launch
-
-import android.widget.Toast
-import androidx.compose.material.icons.filled.Fingerprint
-import androidx.compose.material.icons.filled.Key
-import androidx.compose.material.icons.filled.Lock
-import androidx.compose.material.icons.filled.Timer
-import androidx.compose.ui.platform.LocalContext
 import androidx.fragment.app.FragmentActivity
+import com.shejan.financebuddy.data.BackupManager
+import com.shejan.financebuddy.data.PreferencesManager
+import com.shejan.financebuddy.data.db.FinanceDatabase
 import com.shejan.financebuddy.security.BiometricHelper
 import com.shejan.financebuddy.ui.security.PinSetupDialog
+import com.shejan.financebuddy.ui.theme.*
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 @Composable
 fun SettingsScreen(
     preferencesManager: PreferencesManager,
+    database: FinanceDatabase,
     onBack: () -> Unit
 ) {
     // Hardware back press handler
@@ -67,6 +78,47 @@ fun SettingsScreen(
     var showPinSetupDialog by remember { mutableStateOf(false) }
     var showVerifyDialog by remember { mutableStateOf(false) }
     var pendingSecurityAction by remember { mutableStateOf<(() -> Unit)?>(null) }
+
+    // ─── Backup & Restore State ─────────────────────────────────
+    var isExporting by remember { mutableStateOf(false) }
+    var isImporting by remember { mutableStateOf(false) }
+    var showImportConfirmDialog by remember { mutableStateOf(false) }
+    var pendingImportUri by remember { mutableStateOf<android.net.Uri?>(null) }
+
+    // SAF launcher for creating a backup file
+    // Using "*/*" MIME type to avoid ActivityNotFoundException on devices
+    // that don't recognize custom file extensions like .financebuddy
+    val exportLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.CreateDocument("*/*")
+    ) { uri ->
+        if (uri != null) {
+            isExporting = true
+            scope.launch {
+                try {
+                    withContext(Dispatchers.IO) {
+                        context.contentResolver.openOutputStream(uri)?.use { outputStream ->
+                            BackupManager.exportData(context, outputStream, database, preferencesManager)
+                        } ?: throw Exception("Could not open output stream")
+                    }
+                    Toast.makeText(context, "Backup exported successfully \u2705", Toast.LENGTH_SHORT).show()
+                } catch (e: Exception) {
+                    Toast.makeText(context, "Export failed: ${e.message}", Toast.LENGTH_LONG).show()
+                } finally {
+                    isExporting = false
+                }
+            }
+        }
+    }
+
+    // SAF launcher for opening a backup file
+    val importLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocument()
+    ) { uri ->
+        if (uri != null) {
+            pendingImportUri = uri
+            showImportConfirmDialog = true
+        }
+    }
 
     fun verifyUserBeforeAction(onVerifiedAction: () -> Unit) {
         if (!isAppLockEnabled) {
@@ -551,9 +603,130 @@ fun SettingsScreen(
                     }
                 }
 
+                Spacer(modifier = Modifier.height(24.dp))
+
+                // ─── SECTION 5: DATA BACKUP ─────────────────────────────
+                Text(
+                    text = "Data Backup",
+                    color = AccentTeal,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(bottom = 8.dp)
+                )
+
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(CardDark)
+                        .border(1.dp, DividerColor, RoundedCornerShape(16.dp))
+                        .padding(4.dp)
+                ) {
+                    // Export Row
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable(enabled = !isExporting) {
+                                val dateStr = SimpleDateFormat("yyyy-MM-dd", Locale.US).format(Date())
+                                exportLauncher.launch("FinanceBuddy_Backup_$dateStr.json")
+                            }
+                            .padding(horizontal = 16.dp, vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(38.dp)
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(AccentTeal.copy(alpha = 0.15f)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            if (isExporting) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(20.dp),
+                                    color = AccentTeal,
+                                    strokeWidth = 2.dp
+                                )
+                            } else {
+                                Icon(
+                                    imageVector = Icons.Default.FileUpload,
+                                    contentDescription = null,
+                                    tint = AccentTeal,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
+                        }
+                        Spacer(modifier = Modifier.width(16.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = if (isExporting) "Exporting…" else "Export All Data",
+                                color = TextPrimary,
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                            Text(
+                                text = "Save all accounts, transactions, budgets, goals and loans to a backup file",
+                                color = TextSecondary,
+                                fontSize = 11.sp,
+                                lineHeight = 14.sp
+                            )
+                        }
+                    }
+
+                    HorizontalDivider(color = DividerColor, modifier = Modifier.padding(horizontal = 16.dp))
+
+                    // Import Row
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable(enabled = !isImporting) {
+                                importLauncher.launch(arrayOf("*/*"))
+                            }
+                            .padding(horizontal = 16.dp, vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(38.dp)
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(AccentBlue.copy(alpha = 0.15f)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            if (isImporting) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(20.dp),
+                                    color = AccentBlue,
+                                    strokeWidth = 2.dp
+                                )
+                            } else {
+                                Icon(
+                                    imageVector = Icons.Default.FileDownload,
+                                    contentDescription = null,
+                                    tint = AccentBlue,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
+                        }
+                        Spacer(modifier = Modifier.width(16.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = if (isImporting) "Importing…" else "Import Backup",
+                                color = TextPrimary,
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                            Text(
+                                text = "Restore data from a previous FinanceBuddy backup file",
+                                color = TextSecondary,
+                                fontSize = 11.sp,
+                                lineHeight = 14.sp
+                            )
+                        }
+                    }
+                }
+
                 Spacer(modifier = Modifier.height(32.dp))
 
-                // ─── SECTION 4: APP INFO (LOCALIZED) ──────────────────────
+                // ─── SECTION 6: APP INFO (LOCALIZED) ──────────────────────
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -634,6 +807,69 @@ fun SettingsScreen(
                     showVerifyDialog = false
                     pendingSecurityAction?.invoke()
                     pendingSecurityAction = null
+                }
+            )
+        }
+
+        // Confirmation dialog before import
+        if (showImportConfirmDialog) {
+            AlertDialog(
+                onDismissRequest = {
+                    showImportConfirmDialog = false
+                    pendingImportUri = null
+                },
+                containerColor = CardDark,
+                titleContentColor = TextPrimary,
+                textContentColor = TextSecondary,
+                title = {
+                    Text(
+                        text = "Replace All Data?",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 18.sp
+                    )
+                },
+                text = {
+                    Text(
+                        text = "Importing a backup will permanently replace all current accounts, transactions, budgets, goals, and loans with the data from the backup file.\n\nApp lock will be disabled after import. You will need to set up a new PIN.",
+                        fontSize = 13.sp,
+                        lineHeight = 18.sp
+                    )
+                },
+                confirmButton = {
+                    TextButton(
+                        onClick = {
+                            showImportConfirmDialog = false
+                            val uri = pendingImportUri ?: return@TextButton
+                            pendingImportUri = null
+                            isImporting = true
+                            scope.launch {
+                                try {
+                                    withContext(Dispatchers.IO) {
+                                        context.contentResolver.openInputStream(uri)?.use { inputStream ->
+                                            BackupManager.importData(context, inputStream, database, preferencesManager)
+                                        } ?: throw Exception("Could not open backup file")
+                                    }
+                                    Toast.makeText(context, "Backup restored successfully ✅", Toast.LENGTH_SHORT).show()
+                                } catch (e: Exception) {
+                                    Toast.makeText(context, "Import failed: ${e.message}", Toast.LENGTH_LONG).show()
+                                } finally {
+                                    isImporting = false
+                                }
+                            }
+                        }
+                    ) {
+                        Text("Replace & Restore", color = ExpenseRed, fontWeight = FontWeight.Bold)
+                    }
+                },
+                dismissButton = {
+                    TextButton(
+                        onClick = {
+                            showImportConfirmDialog = false
+                            pendingImportUri = null
+                        }
+                    ) {
+                        Text("Cancel", color = TextSecondary)
+                    }
                 }
             )
         }
