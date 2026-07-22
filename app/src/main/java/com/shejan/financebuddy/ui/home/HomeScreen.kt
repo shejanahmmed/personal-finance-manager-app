@@ -643,6 +643,7 @@ fun HomeScreen(
                                 ) {
                                     Text(
                                         text = if (unreadNotificationsCount > 9) "9+" else unreadNotificationsCount.toString(),
+                                        color = Color.White,
                                         fontSize = 10.sp,
                                         fontWeight = FontWeight.Bold
                                     )

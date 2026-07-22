@@ -2,10 +2,18 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
-    <!-- SMS permission: used only to detect incoming bank/MFS transactions in real-time.
-         No SMS data is ever uploaded or stored permanently — only parsed on-device. -->
-    <uses-permission android:name="android.permission.RECEIVE_SMS" />
-    <uses-permission android:name="android.permission.READ_SMS" />
+    <!-- Declare telephony hardware as optional so non-cellular devices (tablets/Wi-Fi devices) can install the app -->
+    <uses-feature
+        android:name="android.hardware.telephony"
+        android:required="false" />
+
+    <!-- SMS permission: used to detect incoming bank/MFS transactions in real-time on-device. -->
+    <uses-permission
+        android:name="android.permission.RECEIVE_SMS"
+        tools:ignore="ProtectedPermissions" />
+    <uses-permission
+        android:name="android.permission.READ_SMS"
+        tools:ignore="ProtectedPermissions" />
 
     <application
         android:allowBackup="true"
@@ -19,7 +27,6 @@
         <activity
             android:name=".MainActivity"
             android:exported="true"
-            android:label="@string/app_name"
             android:theme="@style/Theme.FinanceBuddy"
             android:windowSoftInputMode="adjustResize">
             <intent-filter>

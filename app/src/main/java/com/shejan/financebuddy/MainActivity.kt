@@ -1,7 +1,6 @@
 package com.shejan.financebuddy
 
 import android.os.Bundle
-import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.animation.core.animateDpAsState
@@ -25,11 +24,11 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.blur
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Inbox
 import androidx.compose.material.icons.filled.History
@@ -43,11 +42,8 @@ import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.ModalDrawerSheet
 import androidx.compose.material3.ModalNavigationDrawer
-import androidx.compose.material3.NavigationDrawerItem
-import androidx.compose.material3.NavigationDrawerItemDefaults
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBarItem
@@ -59,6 +55,7 @@ import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -83,12 +80,10 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.Brush
-import com.shejan.financebuddy.R
 import com.shejan.financebuddy.data.PreferencesManager
 import com.shejan.financebuddy.data.db.FinanceDatabase
 import com.shejan.financebuddy.data.db.AccountEntity
 import com.shejan.financebuddy.data.db.TransactionEntity
-import com.shejan.financebuddy.data.db.BudgetEntity
 import com.shejan.financebuddy.ui.budget.BudgetScreen
 import com.shejan.financebuddy.ui.goals.GoalsScreen
 import com.shejan.financebuddy.ui.home.HomeScreen
@@ -118,7 +113,6 @@ import com.shejan.financebuddy.data.db.PayeeEntity
 import com.shejan.financebuddy.data.db.PayeeAccountEntity
 import com.shejan.financebuddy.sms.SmsPermissionHandler
 import com.shejan.financebuddy.ui.profile.EditProfileDialog
-import com.shejan.financebuddy.data.db.LoanEntity
 import com.shejan.financebuddy.ui.loans.LoansScreen
 import com.shejan.financebuddy.ui.notifications.NotificationHelper
 import androidx.compose.ui.layout.ContentScale
@@ -155,7 +149,7 @@ class MainActivity : FragmentActivity() {
             val autoLockTimeout by preferencesManager.autoLockTimeout.collectAsState(initial = "IMMEDIATELY")
 
             var isAppUnlocked by remember { mutableStateOf(false) }
-            var lastBackgroundTime by remember { mutableStateOf(0L) }
+            var lastBackgroundTime by remember { mutableLongStateOf(0L) }
             val lifecycleOwner = LocalLifecycleOwner.current
 
             DisposableEffect(lifecycleOwner, isAppLockEnabled, autoLockTimeout) {
@@ -305,7 +299,7 @@ fun AppNavigation(
                     accounts = accounts,
                     onBack = { navController.popBackStack() },
                     onAddLoan = { loan, accountId ->
-                        scope.launch(kotlinx.coroutines.Dispatchers.IO) {
+                        scope.launch(Dispatchers.IO) {
                             loanDao.insertLoan(loan)
                             val (txType, txNote) = if (loan.isLent) {
                                 Pair("EXPENSE", "Lent money to ${loan.lenderName}")
@@ -325,10 +319,10 @@ fun AppNavigation(
                         }
                     },
                     onDeleteLoan = { loan ->
-                        scope.launch(kotlinx.coroutines.Dispatchers.IO) { loanDao.deleteLoan(loan) }
+                        scope.launch(Dispatchers.IO) { loanDao.deleteLoan(loan) }
                     },
                     onRepayLoan = { loan, repayAmount, accountId ->
-                        scope.launch(kotlinx.coroutines.Dispatchers.IO) {
+                        scope.launch(Dispatchers.IO) {
                             val updatedLoan = loan.copy(repaidAmount = loan.repaidAmount + repayAmount)
                             loanDao.insertLoan(updatedLoan)
                             val (txType, txNote) = if (loan.isLent) {
@@ -361,13 +355,13 @@ fun AppNavigation(
                     accounts = accounts,
                     onBack = { navController.popBackStack() },
                     onAddAccount = { acc ->
-                        scope.launch(kotlinx.coroutines.Dispatchers.IO) { accountDao.insertAccount(acc) }
+                        scope.launch(Dispatchers.IO) { accountDao.insertAccount(acc) }
                     },
                     onUpdateAccount = { acc ->
-                        scope.launch(kotlinx.coroutines.Dispatchers.IO) { accountDao.updateAccount(acc) }
+                        scope.launch(Dispatchers.IO) { accountDao.updateAccount(acc) }
                     },
                     onDeleteAccount = { acc ->
-                        scope.launch(kotlinx.coroutines.Dispatchers.IO) { accountDao.deleteAccount(acc) }
+                        scope.launch(Dispatchers.IO) { accountDao.deleteAccount(acc) }
                     }
                 )
             }
@@ -381,7 +375,7 @@ fun AppNavigation(
                     onBack = { navController.popBackStack() },
                     onPayeeClick = { payee -> navController.navigate("payee_detail/${payee.id}") },
                     onAddPayee = { payee, accountsList ->
-                        scope.launch(kotlinx.coroutines.Dispatchers.IO) {
+                        scope.launch(Dispatchers.IO) {
                             val payeeId = payeeDao.insertPayee(payee)
                             accountsList.forEach { acc ->
                                 payeeDao.insertPayeeAccount(acc.copy(payeeId = payeeId.toInt()))
@@ -403,19 +397,19 @@ fun AppNavigation(
                     accounts = currentAccounts,
                     onBack = { navController.popBackStack() },
                     onDeletePayee = {
-                        scope.launch(kotlinx.coroutines.Dispatchers.IO) {
+                        scope.launch(Dispatchers.IO) {
                             payee?.let { payeeDao.deletePayee(it) }
                         }
                         navController.popBackStack()
                     },
                     onAddAccount = { acc ->
-                        scope.launch(kotlinx.coroutines.Dispatchers.IO) { payeeDao.insertPayeeAccount(acc.copy(payeeId = payeeId)) }
+                        scope.launch(Dispatchers.IO) { payeeDao.insertPayeeAccount(acc.copy(payeeId = payeeId)) }
                     },
                     onUpdateAccount = { acc ->
-                        scope.launch(kotlinx.coroutines.Dispatchers.IO) { payeeDao.updatePayeeAccount(acc.copy(payeeId = payeeId)) }
+                        scope.launch(Dispatchers.IO) { payeeDao.updatePayeeAccount(acc.copy(payeeId = payeeId)) }
                     },
                     onDeleteAccount = { acc ->
-                        scope.launch(kotlinx.coroutines.Dispatchers.IO) { payeeDao.deletePayeeAccount(acc) }
+                        scope.launch(Dispatchers.IO) { payeeDao.deletePayeeAccount(acc) }
                     }
                 )
             }
@@ -548,7 +542,6 @@ fun MainDashboardContainer(
     val pendingSmsDao   = remember { database.pendingSmsDao() }
     val pendingCount    by pendingSmsDao.getPendingCount().collectAsState(initial = 0)
 
-    val accountDao     = remember { database.accountDao() }
     val transactionDao = remember { database.transactionDao() }
     val budgetDao      = remember { database.budgetDao() }
     val goalDao        = remember { database.goalDao() }
@@ -687,7 +680,7 @@ fun MainDashboardContainer(
                                         if (file.exists()) {
                                             android.graphics.BitmapFactory.decodeFile(file.absolutePath)
                                         } else null
-                                    } catch (e: Exception) {
+                                    } catch (_: Exception) {
                                         null
                                     }
                                 } else null
@@ -838,21 +831,21 @@ fun MainDashboardContainer(
                         onClick  = { currentTab = "home" },
                         icon     = { Icon(imageVector = Icons.Default.Home, contentDescription = "Home") },
                         label    = { Text("Home") },
-                        colors   = NavigationBarItemColors()
+                        colors   = navigationBarItemColors()
                     )
                     NavigationBarItem(
                         selected = currentTab == "budget",
                         onClick  = { currentTab = "budget" },
-                        icon     = { Icon(imageVector = Icons.Default.List, contentDescription = "Budget") },
+                        icon     = { Icon(imageVector = Icons.AutoMirrored.Filled.List, contentDescription = "Budget") },
                         label    = { Text("Budget") },
-                        colors   = NavigationBarItemColors()
+                        colors   = navigationBarItemColors()
                     )
                     NavigationBarItem(
                         selected = currentTab == "goals",
                         onClick  = { currentTab = "goals" },
                         icon     = { Icon(imageVector = Icons.Default.Star, contentDescription = "Goals") },
                         label    = { Text("Goals") },
-                        colors   = NavigationBarItemColors()
+                        colors   = navigationBarItemColors()
                     )
                     // Pending SMS/Inbox tab with live badge
                     NavigationBarItem(
@@ -865,8 +858,9 @@ fun MainDashboardContainer(
                                         Badge(containerColor = ExpenseRed) {
                                             Text(
                                                 text = if (pendingCount > 99) "99+" else pendingCount.toString(),
-                                                color = TextPrimary,
-                                                fontSize = 9.sp
+                                                color = Color.White,
+                                                fontSize = 9.sp,
+                                                fontWeight = FontWeight.Bold
                                             )
                                         }
                                     }
@@ -879,7 +873,7 @@ fun MainDashboardContainer(
                             }
                         },
                         label    = { Text("Inbox") },
-                        colors   = NavigationBarItemColors()
+                        colors   = navigationBarItemColors()
                     )
                 }
             }
@@ -917,15 +911,15 @@ fun MainDashboardContainer(
                             scope.launch(Dispatchers.IO) {
                                 val payeeDao = database.payeeDao()
                                 val existingPayees = payeeDao.getAllPayeesOnce()
-                                var payee = existingPayees.firstOrNull { it.name.equals(name, ignoreCase = true) }
+                                val payee = existingPayees.firstOrNull { it.name.equals(name, ignoreCase = true) }
                                 val payeeId = if (payee == null) {
                                     val uniqueId = "PAY-" + java.util.UUID.randomUUID().toString().take(4).uppercase(java.util.Locale.ROOT)
                                     payeeDao.insertPayee(PayeeEntity(name = name, uniqueId = uniqueId)).toInt()
                                 } else {
                                     payee.id
                                 }
-                                val existingAccs = payeeDao.getAccountsForPayeeOnce(payeeId)
-                                val hasAccount = existingAccs.any { it.accountNumber == accountNumber && it.bankName == bankName }
+                                val existingAccounts = payeeDao.getAccountsForPayeeOnce(payeeId)
+                                val hasAccount = existingAccounts.any { it.accountNumber == accountNumber && it.bankName == bankName }
                                 if (!hasAccount) {
                                     payeeDao.insertPayeeAccount(
                                         PayeeAccountEntity(
@@ -989,30 +983,13 @@ fun MainDashboardContainer(
 // ─── Navigation Helper Custom Colors ─────────────────────────
 
 @Composable
-private fun NavigationBarItemColors() = NavigationBarItemDefaults.colors(
+private fun navigationBarItemColors() = NavigationBarItemDefaults.colors(
     selectedIconColor = AccentTeal,
     selectedTextColor = AccentTeal,
     unselectedIconColor = TextSecondary,
     unselectedTextColor = TextSecondary,
     indicatorColor = CardDark
 )
-
-@Composable
-fun PageStub(title: String) {
-    Box(
-        modifier         = Modifier
-            .fillMaxSize()
-            .background(BackgroundDark),
-        contentAlignment = Alignment.Center,
-    ) {
-        Text(
-            text      = title,
-            color     = TextPrimary,
-            fontSize  = 20.sp,
-            textAlign = TextAlign.Center,
-        )
-    }
-}
 
 // ─── Timestamp Helper ────────────────────────────────────────
 
