@@ -100,6 +100,9 @@ fun BankAccountsScreen(
     val currencyFormat = remember { DecimalFormat("##,##,##0.00") }
     val banks = remember(accounts) { accounts.filter { it.type == "BANK" && it.accountSubtype.isNotBlank() } }
     val mfs   = remember(accounts) { accounts.filter { it.type == "MFS"  && it.accountSubtype.isNotBlank() } }
+    val totalBalance = remember(accounts) { accounts.sumOf { it.balance } }
+    val totalBankBalance = remember(banks) { banks.sumOf { it.balance } }
+    val totalMfsBalance = remember(mfs) { mfs.sumOf { it.balance } }
 
     var showAddSheet by remember { mutableStateOf(false) }
     var editingAccount by remember { mutableStateOf<AccountEntity?>(null) }
@@ -132,88 +135,166 @@ fun BankAccountsScreen(
     }
 
     Box(modifier = Modifier.fillMaxSize().background(BackgroundDark)) {
+        // Ambient background glow
         Box(
-            modifier = Modifier.fillMaxWidth().height(250.dp)
-                .background(Brush.verticalGradient(colors = listOf(AccentTeal.copy(alpha = 0.07f), Color.Transparent)))
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(280.dp)
+                .background(
+                    Brush.verticalGradient(
+                        colors = listOf(AccentTeal.copy(alpha = 0.08f), Color.Transparent)
+                    )
+                )
         )
 
         Column(modifier = Modifier.fillMaxSize()) {
+            // Clean Top Bar without clutter
             Row(
-                modifier = Modifier.fillMaxWidth().statusBarsPadding()
-                    .padding(horizontal = 8.dp, vertical = 8.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .statusBarsPadding()
+                    .padding(horizontal = 12.dp, vertical = 12.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 IconButton(
                     onClick = { onBack() },
-                    modifier = Modifier.size(36.dp)
+                    modifier = Modifier
+                        .size(40.dp)
+                        .clip(CircleShape)
+                        .background(CardDarker)
+                        .border(1.dp, DividerColor, CircleShape)
                 ) {
                     Icon(
                         imageVector = Icons.AutoMirrored.Filled.KeyboardArrowLeft,
                         contentDescription = "Back",
                         tint = TextPrimary,
-                        modifier = Modifier.size(22.dp)
+                        modifier = Modifier.size(24.dp)
                     )
                 }
-                Spacer(modifier = Modifier.width(8.dp))
-                Column(modifier = Modifier.weight(1f)) {
-                    Text("Bank Accounts", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = TextPrimary)
-                    Text("Manage your wallets & accounts", fontSize = 12.sp, color = TextMuted)
+                Spacer(modifier = Modifier.width(14.dp))
+                Column {
+                    Text(
+                        text = "Bank Accounts",
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = TextPrimary
+                    )
+                    Text(
+                        text = "Manage your wallets & accounts",
+                        fontSize = 12.sp,
+                        color = TextMuted
+                    )
                 }
-                Column(horizontalAlignment = Alignment.End) {
-                    Text("Total", fontSize = 10.sp, color = TextMuted)
-                    Text("৳${currencyFormat.format(accounts.sumOf { it.balance })}", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = AccentTeal)
-                }
-                Spacer(modifier = Modifier.width(8.dp))
             }
 
-            HorizontalDivider(color = DividerColor, modifier = Modifier.padding(horizontal = 16.dp))
-
             if (accounts.isEmpty()) {
-                Box(modifier = Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxWidth(),
+                    contentAlignment = Alignment.Center
+                ) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Icon(Icons.Default.AccountBalance, null, tint = TextMuted, modifier = Modifier.size(56.dp))
+                        Box(
+                            modifier = Modifier
+                                .size(80.dp)
+                                .clip(CircleShape)
+                                .background(CardDarker)
+                                .border(1.dp, DividerColor, CircleShape),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.AccountBalance,
+                                contentDescription = null,
+                                tint = AccentTeal.copy(alpha = 0.7f),
+                                modifier = Modifier.size(36.dp)
+                            )
+                        }
                         Spacer(modifier = Modifier.height(16.dp))
-                        Text("No accounts yet", color = TextMuted, fontSize = 16.sp, fontWeight = FontWeight.Medium)
+                        Text(
+                            text = "No accounts linked yet",
+                            color = TextPrimary,
+                            fontSize = 17.sp,
+                            fontWeight = FontWeight.Bold
+                        )
                         Spacer(modifier = Modifier.height(6.dp))
-                        Text("Tap + to add your first account", color = TextMuted.copy(alpha = 0.6f), fontSize = 13.sp)
+                        Text(
+                            text = "Tap + below to add your first Bank or MFS",
+                            color = TextMuted,
+                            fontSize = 13.sp
+                        )
                     }
                 }
             } else {
                 LazyColumn(
                     contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                    verticalArrangement = Arrangement.spacedBy(14.dp),
                     modifier = Modifier.weight(1f)
                 ) {
+                    // Hero Total Balance Summary Card
+                    item {
+                        AccountsHeroCard(
+                            totalBalance = totalBalance,
+                            bankBalance = totalBankBalance,
+                            mfsBalance = totalMfsBalance,
+                            bankCount = banks.size,
+                            mfsCount = mfs.size,
+                            currencyFormat = currencyFormat
+                        )
+                    }
+
                     if (banks.isNotEmpty()) {
                         item { SectionGroupHeader(title = "Banks", count = banks.size) }
                         items(banks, key = { it.id }) { account ->
-                            AccountManageCard(account, currencyFormat,
+                            AccountManageCard(
+                                account = account,
+                                currencyFormat = currencyFormat,
                                 onEdit = { editingAccount = account; showAddSheet = true },
-                                onDelete = { deletingAccount = account })
+                                onDelete = { deletingAccount = account }
+                            )
                         }
                     }
+
                     if (mfs.isNotEmpty()) {
-                        item { Spacer(Modifier.height(4.dp)); SectionGroupHeader("Mobile Financial Services (MFS)", mfs.size) }
+                        item {
+                            Spacer(Modifier.height(4.dp))
+                            SectionGroupHeader(title = "Mobile Financial Services", count = mfs.size)
+                        }
                         items(mfs, key = { it.id }) { account ->
-                            AccountManageCard(account, currencyFormat,
+                            AccountManageCard(
+                                account = account,
+                                currencyFormat = currencyFormat,
                                 onEdit = { editingAccount = account; showAddSheet = true },
-                                onDelete = { deletingAccount = account })
+                                onDelete = { deletingAccount = account }
+                            )
                         }
                     }
+
                     item { Spacer(Modifier.height(80.dp)) }
                 }
             }
         }
 
+        // Modern Floating Add Button
         FloatingActionButton(
             onClick = { editingAccount = null; showAddSheet = true },
-            modifier = Modifier.align(Alignment.BottomEnd).navigationBarsPadding().padding(20.dp).size(56.dp),
-            containerColor = Color.Transparent, contentColor = BackgroundDark, shape = CircleShape
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .navigationBarsPadding()
+                .padding(20.dp)
+                .size(56.dp),
+            containerColor = Color.Transparent,
+            contentColor = BackgroundDark,
+            shape = CircleShape
         ) {
             Box(
-                modifier = Modifier.fillMaxSize().background(Brush.linearGradient(listOf(AccentTeal, AccentBlue))),
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Brush.linearGradient(listOf(AccentTeal, AccentBlue))),
                 contentAlignment = Alignment.Center
-            ) { Icon(Icons.Default.Add, "Add Account", tint = BackgroundDark) }
+            ) {
+                Icon(Icons.Default.Add, "Add Account", tint = BackgroundDark, modifier = Modifier.size(26.dp))
+            }
         }
     }
 
@@ -231,14 +312,206 @@ fun BankAccountsScreen(
 }
 
 @Composable
+private fun AccountsHeroCard(
+    totalBalance: Double,
+    bankBalance: Double,
+    mfsBalance: Double,
+    bankCount: Int,
+    mfsCount: Int,
+    currencyFormat: DecimalFormat
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = CardDark),
+        border = BorderStroke(
+            1.dp,
+            Brush.horizontalGradient(
+                listOf(AccentTeal.copy(alpha = 0.35f), AccentBlue.copy(alpha = 0.15f))
+            )
+        )
+    ) {
+        Box(modifier = Modifier.fillMaxWidth()) {
+            Box(
+                modifier = Modifier
+                    .matchParentSize()
+                    .background(
+                        Brush.linearGradient(
+                            colors = listOf(
+                                AccentTeal.copy(alpha = 0.08f),
+                                AccentPurple.copy(alpha = 0.04f),
+                                Color.Transparent
+                            )
+                        )
+                    )
+            )
+
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(20.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Box(
+                            modifier = Modifier
+                                .size(28.dp)
+                                .clip(CircleShape)
+                                .background(AccentTeal.copy(alpha = 0.15f)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.AccountBalanceWallet,
+                                contentDescription = null,
+                                tint = AccentTeal,
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "TOTAL NET BALANCE",
+                            color = TextSecondary,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = 0.8.sp
+                        )
+                    }
+
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(20.dp))
+                            .background(CardDarker)
+                            .border(1.dp, DividerColor, RoundedCornerShape(20.dp))
+                            .padding(horizontal = 10.dp, vertical = 4.dp)
+                    ) {
+                        Text(
+                            text = "${bankCount + mfsCount} Linked",
+                            color = TextSecondary,
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(10.dp))
+
+                Text(
+                    text = "৳${currencyFormat.format(totalBalance)}",
+                    fontSize = 28.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = TextPrimary
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+                HorizontalDivider(color = DividerColor.copy(alpha = 0.6f))
+                Spacer(modifier = Modifier.height(14.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(32.dp)
+                                .clip(CircleShape)
+                                .background(AccentBlue.copy(alpha = 0.12f)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.AccountBalance,
+                                contentDescription = null,
+                                tint = AccentBlue,
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Column {
+                            Text("Banks ($bankCount)", fontSize = 11.sp, color = TextMuted)
+                            Text("৳${currencyFormat.format(bankBalance)}", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = TextPrimary)
+                        }
+                    }
+
+                    Box(
+                        modifier = Modifier
+                            .width(1.dp)
+                            .height(28.dp)
+                            .background(DividerColor)
+                    )
+
+                    Spacer(modifier = Modifier.width(12.dp))
+
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(32.dp)
+                                .clip(CircleShape)
+                                .background(ExpenseRed.copy(alpha = 0.12f)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.PhoneAndroid,
+                                contentDescription = null,
+                                tint = ExpenseRed,
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Column {
+                            Text("MFS ($mfsCount)", fontSize = 11.sp, color = TextMuted)
+                            Text("৳${currencyFormat.format(mfsBalance)}", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = TextPrimary)
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
 private fun SectionGroupHeader(title: String, count: Int) {
-    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(vertical = 6.dp)) {
-        Box(modifier = Modifier.size(4.dp, 16.dp).clip(RoundedCornerShape(2.dp)).background(AccentTeal))
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier.padding(top = 8.dp, bottom = 4.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .size(4.dp, 16.dp)
+                .clip(RoundedCornerShape(2.dp))
+                .background(AccentTeal)
+        )
         Spacer(Modifier.width(10.dp))
-        Text(title, color = TextSecondary, fontSize = 12.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.5.sp)
+        Text(
+            text = title,
+            color = TextSecondary,
+            fontSize = 12.sp,
+            fontWeight = FontWeight.Bold,
+            letterSpacing = 0.5.sp
+        )
         Spacer(Modifier.width(8.dp))
-        Box(modifier = Modifier.clip(RoundedCornerShape(6.dp)).background(AccentTeal.copy(alpha = 0.12f)).padding(horizontal = 6.dp, vertical = 2.dp)) {
-            Text(count.toString(), color = AccentTeal, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+        Box(
+            modifier = Modifier
+                .clip(RoundedCornerShape(6.dp))
+                .background(AccentTeal.copy(alpha = 0.12f))
+                .padding(horizontal = 7.dp, vertical = 2.dp)
+        ) {
+            Text(
+                text = count.toString(),
+                color = AccentTeal,
+                fontSize = 10.sp,
+                fontWeight = FontWeight.Bold
+            )
         }
     }
 }
@@ -259,50 +532,75 @@ private fun AccountManageCard(
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .height(IntrinsicSize.Min) // Force minimum intrinsic height of content
+            .height(IntrinsicSize.Min)
             .clip(RoundedCornerShape(16.dp))
             .background(CardDark)
-            .border(1.dp, cardColor.copy(alpha = 0.15f), RoundedCornerShape(16.dp))
+            .border(1.dp, cardColor.copy(alpha = 0.20f), RoundedCornerShape(16.dp))
             .combinedClickable(
                 onClick = { if (showActions) showActions = false },
                 onLongClick = { showActions = true }
             )
     ) {
-        // Content container that gets blurred/dimmed
         val blurRadius = if (showActions) 8.dp else 0.dp
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .blur(blurRadius)
-                .padding(start = 16.dp, top = 12.dp, end = 12.dp, bottom = 12.dp),
+                .padding(start = 14.dp, top = 14.dp, end = 12.dp, bottom = 14.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Box(
                 modifier = Modifier
-                    .size(42.dp)
+                    .size(44.dp)
                     .clip(CircleShape)
-                    .background(cardColor.copy(alpha = 0.08f))
-                    .border(1.dp, cardColor.copy(alpha = 0.15f), CircleShape),
+                    .background(cardColor.copy(alpha = 0.12f))
+                    .border(1.dp, cardColor.copy(alpha = 0.25f), CircleShape),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
                     imageVector = if (account.type == "MFS") Icons.Default.PhoneAndroid else Icons.Default.AccountBalance,
                     contentDescription = null,
                     tint = cardColor,
-                    modifier = Modifier.size(20.dp)
+                    modifier = Modifier.size(22.dp)
                 )
             }
-            Spacer(Modifier.width(12.dp))
+
+            Spacer(Modifier.width(14.dp))
+
             Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = account.name,
-                    color = TextPrimary,
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Text(
+                        text = account.name,
+                        color = TextPrimary,
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f, fill = false)
+                    )
+
+                    if (account.accountSubtype.isNotBlank()) {
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(6.dp))
+                                .background(cardColor.copy(alpha = 0.14f))
+                                .padding(horizontal = 6.dp, vertical = 2.dp)
+                        ) {
+                            Text(
+                                text = account.accountSubtype,
+                                color = cardColor,
+                                fontSize = 9.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+                }
+
                 Spacer(Modifier.height(4.dp))
+
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
                         text = "Balance: ",
@@ -317,8 +615,9 @@ private fun AccountManageCard(
                         fontWeight = FontWeight.Bold
                     )
                 }
+
                 if (account.accountNumber.isNotBlank() || account.showAs.isNotBlank()) {
-                    Spacer(Modifier.height(2.dp))
+                    Spacer(Modifier.height(3.dp))
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(6.dp)
@@ -352,27 +651,22 @@ private fun AccountManageCard(
                     }
                 }
             }
-            
-            // Subtype Tag aligned to the far right corner
-            if (account.accountSubtype.isNotBlank()) {
-                Spacer(Modifier.width(12.dp))
-                Box(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(5.dp))
-                        .background(cardColor.copy(alpha = 0.12f))
-                        .padding(horizontal = 5.dp, vertical = 2.dp)
-                ) {
-                    Text(
-                        text = account.accountSubtype,
-                        color = cardColor,
-                        fontSize = 9.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
+
+            // Quick Menu Button
+            IconButton(
+                onClick = { showActions = true },
+                modifier = Modifier.size(32.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.MoreVert,
+                    contentDescription = "Account Options",
+                    tint = TextMuted,
+                    modifier = Modifier.size(18.dp)
+                )
             }
         }
 
-        // Animated overlay for Edit & Delete actions
+        // Animated action overlay for Edit & Delete
         AnimatedVisibility(
             visible = showActions,
             enter = fadeIn(),
@@ -382,12 +676,12 @@ private fun AccountManageCard(
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(BackgroundDark.copy(alpha = 0.88f))
+                    .background(BackgroundDark.copy(alpha = 0.90f))
                     .clickable { showActions = false },
                 contentAlignment = Alignment.Center
             ) {
                 Row(
-                    horizontalArrangement = Arrangement.spacedBy(16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(14.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Button(
@@ -400,8 +694,8 @@ private fun AccountManageCard(
                         ),
                         shape = RoundedCornerShape(10.dp),
                         border = BorderStroke(1.dp, DividerColor),
-                        contentPadding = PaddingValues(horizontal = 8.dp),
-                        modifier = Modifier.width(110.dp).height(40.dp)
+                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
+                        modifier = Modifier.height(38.dp)
                     ) {
                         Icon(
                             imageVector = Icons.Default.Edit,
@@ -409,8 +703,8 @@ private fun AccountManageCard(
                             tint = AccentTeal,
                             modifier = Modifier.size(16.dp)
                         )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text("Edit", color = TextPrimary, fontSize = 13.sp, fontWeight = FontWeight.Bold, maxLines = 1)
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text("Edit", color = TextPrimary, fontSize = 12.sp, fontWeight = FontWeight.Bold)
                     }
 
                     Button(
@@ -419,12 +713,12 @@ private fun AccountManageCard(
                             onDelete()
                         },
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = ExpenseRed.copy(alpha = 0.12f)
+                            containerColor = ExpenseRed.copy(alpha = 0.15f)
                         ),
                         shape = RoundedCornerShape(10.dp),
-                        border = BorderStroke(1.dp, ExpenseRed.copy(alpha = 0.3f)),
-                        contentPadding = PaddingValues(horizontal = 8.dp),
-                        modifier = Modifier.width(110.dp).height(40.dp)
+                        border = BorderStroke(1.dp, ExpenseRed.copy(alpha = 0.35f)),
+                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
+                        modifier = Modifier.height(38.dp)
                     ) {
                         Icon(
                             imageVector = Icons.Default.Delete,
@@ -432,8 +726,8 @@ private fun AccountManageCard(
                             tint = ExpenseRed,
                             modifier = Modifier.size(16.dp)
                         )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text("Delete", color = ExpenseRed, fontSize = 13.sp, fontWeight = FontWeight.Bold, maxLines = 1)
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text("Delete", color = ExpenseRed, fontSize = 12.sp, fontWeight = FontWeight.Bold)
                     }
                 }
             }
