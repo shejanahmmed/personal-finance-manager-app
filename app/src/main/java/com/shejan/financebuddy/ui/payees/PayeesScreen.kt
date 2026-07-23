@@ -15,11 +15,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.People
-import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.*
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.material3.*
@@ -81,39 +77,41 @@ fun PayeesScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .statusBarsPadding()
-                    .padding(horizontal = 8.dp, vertical = 8.dp),
+                    .padding(horizontal = 12.dp, vertical = 12.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 IconButton(
                     onClick = { onBack() },
-                    modifier = Modifier.size(36.dp)
+                    modifier = Modifier
+                        .size(40.dp)
+                        .clip(CircleShape)
+                        .background(CardDarker)
+                        .border(1.dp, DividerColor, CircleShape)
                 ) {
                     Icon(
                         imageVector = Icons.AutoMirrored.Filled.KeyboardArrowLeft,
                         contentDescription = "Back",
                         tint = TextPrimary,
-                        modifier = Modifier.size(22.dp)
+                        modifier = Modifier.size(24.dp)
                     )
                 }
-                Spacer(modifier = Modifier.width(8.dp))
+                Spacer(modifier = Modifier.width(14.dp))
                 Column(modifier = Modifier.weight(1f)) {
                     Text("Recipient Profiles", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = TextPrimary)
                     Text("Manage contacts and payment accounts", fontSize = 12.sp, color = TextMuted)
                 }
             }
 
-            HorizontalDivider(color = DividerColor, modifier = Modifier.padding(horizontal = 16.dp))
-
             // -- Search Bar ---------------------------------------
             OutlinedTextField(
                 value = searchQuery,
                 onValueChange = { searchQuery = it },
                 placeholder = { Text("Search by name...", color = TextMuted) },
-                leadingIcon = { Icon(Icons.Default.Search, null, tint = TextMuted) },
+                leadingIcon = { Icon(Icons.Default.Search, null, tint = AccentBlue, modifier = Modifier.size(20.dp)) },
                 trailingIcon = {
                     if (searchQuery.isNotEmpty()) {
                         IconButton(onClick = { searchQuery = "" }) {
-                            Icon(Icons.Default.Close, null, tint = TextMuted)
+                            Icon(Icons.Default.Close, null, tint = TextMuted, modifier = Modifier.size(18.dp))
                         }
                     }
                 },
@@ -122,29 +120,38 @@ fun PayeesScreen(
                 shape = RoundedCornerShape(14.dp),
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 12.dp)
+                    .padding(horizontal = 16.dp, vertical = 8.dp)
             )
 
             // -- Payees List --------------------------------------
             if (filteredPayees.isEmpty()) {
                 Box(modifier = Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Icon(Icons.Default.People, null, tint = TextMuted, modifier = Modifier.size(56.dp))
+                        Box(
+                            modifier = Modifier
+                                .size(72.dp)
+                                .clip(CircleShape)
+                                .background(CardDarker)
+                                .border(1.dp, DividerColor, CircleShape),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(Icons.Default.People, null, tint = AccentBlue.copy(alpha = 0.7f), modifier = Modifier.size(34.dp))
+                        }
                         Spacer(modifier = Modifier.height(16.dp))
                         Text(
                             if (searchQuery.isEmpty()) "No recipients yet" else "No matching profiles",
-                            color = TextMuted, fontSize = 16.sp, fontWeight = FontWeight.Medium
+                            color = TextPrimary, fontSize = 16.sp, fontWeight = FontWeight.Bold
                         )
                         Spacer(modifier = Modifier.height(6.dp))
                         Text(
                             if (searchQuery.isEmpty()) "Create profiles to quickly transfer funds" else "Try searching for another name",
-                            color = TextMuted.copy(alpha = 0.6f), fontSize = 13.sp
+                            color = TextMuted, fontSize = 13.sp
                         )
                     }
                 }
             } else {
                 LazyColumn(
-                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp),
+                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
                     verticalArrangement = Arrangement.spacedBy(10.dp),
                     modifier = Modifier.weight(1f)
                 ) {
@@ -170,7 +177,7 @@ fun PayeesScreen(
             Box(
                 modifier = Modifier.fillMaxSize().background(Brush.linearGradient(listOf(AccentBlue, AccentTeal))),
                 contentAlignment = Alignment.Center
-            ) { Icon(Icons.Default.Add, "Add Recipient", tint = BackgroundDark) }
+            ) { Icon(Icons.Default.Add, "Add Recipient", tint = BackgroundDark, modifier = Modifier.size(26.dp)) }
         }
     }
 
@@ -217,7 +224,8 @@ private fun PayeeCard(
                 modifier = Modifier
                     .size(46.dp)
                     .clip(CircleShape)
-                    .background(avatarBg.copy(alpha = 0.12f)),
+                    .background(avatarBg.copy(alpha = 0.12f))
+                    .border(1.dp, avatarBg.copy(alpha = 0.25f), CircleShape),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
@@ -235,23 +243,35 @@ private fun PayeeCard(
                     text = payee.name,
                     color = TextPrimary,
                     fontSize = 15.sp,
-                    fontWeight = FontWeight.SemiBold,
+                    fontWeight = FontWeight.Bold,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
-                Spacer(Modifier.height(2.dp))
+                Spacer(Modifier.height(3.dp))
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(6.dp))
+                            .background(CardDarker)
+                            .padding(horizontal = 6.dp, vertical = 2.dp)
+                    ) {
+                        Text(
+                            text = payee.uniqueId,
+                            color = TextMuted,
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
                     Text(
-                        text = payee.uniqueId,
-                        color = TextMuted,
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Medium
-                    )
-                    Box(modifier = Modifier.size(3.dp).clip(CircleShape).background(TextMuted))
-                    Text(
-                        text = if (accountCount == 1) "1 account" else "$accountCount accounts",
+                        text = "•",
                         color = TextMuted,
                         fontSize = 11.sp
+                    )
+                    Text(
+                        text = if (accountCount == 1) "1 account" else "$accountCount accounts",
+                        color = AccentBlue,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.SemiBold
                     )
                 }
             }
@@ -259,9 +279,8 @@ private fun PayeeCard(
             Box(
                 modifier = Modifier
                     .clip(RoundedCornerShape(8.dp))
-                    .background(CardDarker)
-                    .padding(horizontal = 8.dp, vertical = 6.dp)
-                    .border(1.dp, DividerColor, RoundedCornerShape(8.dp))
+                    .background(AccentBlue.copy(alpha = 0.12f))
+                    .padding(horizontal = 10.dp, vertical = 6.dp)
             ) {
                 Text("View Profile", color = AccentBlue, fontSize = 11.sp, fontWeight = FontWeight.Bold)
             }
@@ -284,30 +303,61 @@ private fun AddPayeeSheet(
     val isValid = isMainNameValid && areAccountsValid
 
     ModalBottomSheet(
-        onDismissRequest = onDismiss, sheetState = sheetState,
-        containerColor = CardDark, shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
+        onDismissRequest = onDismiss,
+        sheetState = sheetState,
+        containerColor = CardDark,
+        shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
+        dragHandle = { BottomSheetDefaults.DragHandle(color = DividerColor) }
     ) {
-        Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp).verticalScroll(rememberScrollState()).navigationBarsPadding()) {
-            Row(modifier = Modifier.fillMaxWidth().padding(bottom = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp)
+                .verticalScroll(rememberScrollState())
+                .navigationBarsPadding()
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(44.dp)
+                        .clip(CircleShape)
+                        .background(AccentBlue.copy(alpha = 0.15f))
+                        .border(1.dp, AccentBlue.copy(alpha = 0.3f), CircleShape),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.PersonAdd,
+                        contentDescription = null,
+                        tint = AccentBlue,
+                        modifier = Modifier.size(22.dp)
+                    )
+                }
+
+                Spacer(modifier = Modifier.width(14.dp))
+
                 Column(modifier = Modifier.weight(1f)) {
                     Text("Add Recipient", color = TextPrimary, fontSize = 20.sp, fontWeight = FontWeight.Bold)
                     Text("Create a new recipient profile", color = TextMuted, fontSize = 12.sp)
                 }
-                Box(modifier = Modifier.size(34.dp).clip(RoundedCornerShape(8.dp)).background(CardDarker)
-                    .border(1.dp, DividerColor, RoundedCornerShape(8.dp)).clickable { onDismiss() }, contentAlignment = Alignment.Center) {
-                    Icon(Icons.Default.Close, null, tint = TextPrimary, modifier = Modifier.size(18.dp))
-                }
             }
 
-            Spacer(Modifier.height(20.dp))
+            Spacer(Modifier.height(18.dp))
 
             OutlinedTextField(
                 value = name,
                 onValueChange = { name = it },
                 label = { Text("Recipient Name *", color = TextSecondary) },
                 placeholder = { Text("e.g. Shejan Ahmmed", color = TextMuted) },
+                leadingIcon = {
+                    Icon(Icons.Default.Person, null, tint = AccentBlue, modifier = Modifier.size(20.dp))
+                },
                 singleLine = true,
-                shape = RoundedCornerShape(12.dp),
+                shape = RoundedCornerShape(14.dp),
                 colors = formTextFieldColors(),
                 modifier = Modifier.fillMaxWidth()
             )
@@ -323,54 +373,57 @@ private fun AddPayeeSheet(
                         .border(1.dp, DividerColor, RoundedCornerShape(16.dp))
                         .padding(14.dp)
                 ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text("Account #${index + 1}", color = AccentBlue, fontSize = 13.sp, fontWeight = FontWeight.Bold)
-                        IconButton(
-                            onClick = {
-                                accountsList = accountsList.toMutableList().apply { removeAt(index) }
-                            },
-                            modifier = Modifier.size(24.dp)
-                        ) {
-                            Icon(Icons.Default.Delete, "Remove Account", tint = ExpenseRed, modifier = Modifier.size(16.dp))
-                        }
-                    }
+                    Text("Account #${index + 1}", color = AccentBlue, fontSize = 13.sp, fontWeight = FontWeight.Bold)
 
                     Spacer(Modifier.height(10.dp))
 
-                    // Type Toggle (Bank / MFS)
+                    // Type Toggle (Bank / MFS with vector icons)
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clip(RoundedCornerShape(10.dp))
+                            .clip(RoundedCornerShape(12.dp))
                             .background(CardDark)
-                            .padding(3.dp),
+                            .border(1.dp, DividerColor, RoundedCornerShape(12.dp))
+                            .padding(4.dp),
                         horizontalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
                         listOf("BANK", "MFS").forEach { t ->
                             val selected = account.type == t
+                            val itemColor = if (selected) BackgroundDark else Color.White
+                            val icon = if (t == "BANK") Icons.Default.AccountBalance else Icons.Default.PhoneAndroid
+                            val label = if (t == "BANK") "Bank" else "MFS"
+
                             Box(
                                 modifier = Modifier
                                     .weight(1f)
-                                    .clip(RoundedCornerShape(8.dp))
+                                    .clip(RoundedCornerShape(10.dp))
                                     .background(if (selected) AccentBlue else Color.Transparent)
                                     .clickable {
                                         accountsList = accountsList.toMutableList().apply {
                                             this[index] = account.copy(type = t, bankName = "")
                                         }
                                     }
-                                    .padding(vertical = 8.dp),
+                                    .padding(vertical = 9.dp),
                                 contentAlignment = Alignment.Center
                             ) {
-                                Text(
-                                    text = if (t == "BANK") "🏦  Bank" else "📱  MFS",
-                                    color = if (selected) BackgroundDark else TextSecondary,
-                                    fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
-                                    fontSize = 12.sp
-                                )
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.Center
+                                ) {
+                                    Icon(
+                                        imageVector = icon,
+                                        contentDescription = null,
+                                        tint = itemColor,
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text(
+                                        text = label,
+                                        color = itemColor,
+                                        fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
+                                        fontSize = 12.sp
+                                    )
+                                }
                             }
                         }
                     }
@@ -396,9 +449,17 @@ private fun AddPayeeSheet(
                             },
                             label = { Text(if (account.type == "BANK") "Bank Name *" else "MFS Name *", color = TextSecondary) },
                             placeholder = { Text("Type or select…", color = TextMuted) },
+                            leadingIcon = {
+                                Icon(
+                                    imageVector = if (account.type == "BANK") Icons.Default.AccountBalance else Icons.Default.PhoneAndroid,
+                                    contentDescription = null,
+                                    tint = AccentBlue,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            },
                             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = nameExpanded) },
                             singleLine = true,
-                            shape = RoundedCornerShape(10.dp),
+                            shape = RoundedCornerShape(12.dp),
                             colors = formTextFieldColors(),
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -408,7 +469,9 @@ private fun AddPayeeSheet(
                             ExposedDropdownMenu(
                                 expanded = nameExpanded,
                                 onDismissRequest = { nameExpanded = false },
-                                modifier = Modifier.background(CardDarker)
+                                modifier = Modifier
+                                    .background(CardDarker)
+                                    .border(1.dp, DividerColor, RoundedCornerShape(12.dp))
                             ) {
                                 filteredPresets.forEach { preset ->
                                     DropdownMenuItem(
@@ -437,9 +500,12 @@ private fun AddPayeeSheet(
                         },
                         label = { Text(if (account.type == "BANK") "Account Number *" else "Mobile Number *", color = TextSecondary) },
                         placeholder = { Text(if (account.type == "BANK") "e.g. 120409..." else "e.g. 017...", color = TextMuted) },
+                        leadingIcon = {
+                            Icon(Icons.Default.CreditCard, null, tint = AccentBlue, modifier = Modifier.size(18.dp))
+                        },
                         singleLine = true,
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                        shape = RoundedCornerShape(10.dp),
+                        shape = RoundedCornerShape(12.dp),
                         colors = formTextFieldColors(),
                         modifier = Modifier.fillMaxWidth()
                     )
@@ -458,8 +524,11 @@ private fun AddPayeeSheet(
                         },
                         label = { Text("Nickname (Optional)", color = TextSecondary) },
                         placeholder = { Text("e.g. Personal, Salary", color = TextMuted) },
+                        leadingIcon = {
+                            Icon(Icons.Default.Badge, null, tint = AccentBlue, modifier = Modifier.size(18.dp))
+                        },
                         singleLine = true,
-                        shape = RoundedCornerShape(10.dp),
+                        shape = RoundedCornerShape(12.dp),
                         colors = formTextFieldColors(),
                         modifier = Modifier.fillMaxWidth()
                     )
@@ -475,9 +544,12 @@ private fun AddPayeeSheet(
                             }
                         },
                         label = { Text("Account Holder Name", color = TextSecondary) },
+                        leadingIcon = {
+                            Icon(Icons.Default.PersonOutline, null, tint = AccentBlue, modifier = Modifier.size(18.dp))
+                        },
                         singleLine = true,
                         keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Words),
-                        shape = RoundedCornerShape(10.dp),
+                        shape = RoundedCornerShape(12.dp),
                         colors = formTextFieldColors(),
                         modifier = Modifier.fillMaxWidth()
                     )
@@ -486,19 +558,50 @@ private fun AddPayeeSheet(
 
             Spacer(Modifier.height(16.dp))
 
-            // Add Account Button
-            OutlinedButton(
-                onClick = {
-                    accountsList = accountsList + PayeeAccountDraft()
-                },
+            // Add Account Button Row with Square Red Delete Button on right side
+            Row(
                 modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp),
-                border = BorderStroke(1.dp, AccentBlue.copy(alpha = 0.5f)),
-                colors = ButtonDefaults.outlinedButtonColors(contentColor = AccentBlue)
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Icon(Icons.Default.Add, null, modifier = Modifier.size(16.dp))
-                Spacer(Modifier.width(8.dp))
-                Text("Add Bank/MFS Account", fontWeight = FontWeight.Bold)
+                OutlinedButton(
+                    onClick = {
+                        accountsList = accountsList + PayeeAccountDraft()
+                    },
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(48.dp),
+                    shape = RoundedCornerShape(14.dp),
+                    border = BorderStroke(1.dp, AccentBlue.copy(alpha = 0.5f)),
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = AccentBlue)
+                ) {
+                    Icon(Icons.Default.Add, null, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text("Add Bank/MFS Account", fontWeight = FontWeight.Bold)
+                }
+
+                if (accountsList.isNotEmpty()) {
+                    Box(
+                        modifier = Modifier
+                            .size(48.dp)
+                            .clip(RoundedCornerShape(14.dp))
+                            .background(ExpenseRed.copy(alpha = 0.12f))
+                            .border(1.dp, ExpenseRed.copy(alpha = 0.35f), RoundedCornerShape(14.dp))
+                            .clickable {
+                                if (accountsList.isNotEmpty()) {
+                                    accountsList = accountsList.toMutableList().apply { removeAt(lastIndex) }
+                                }
+                            },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Delete,
+                            contentDescription = "Remove Account",
+                            tint = ExpenseRed,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+                }
             }
 
             Spacer(Modifier.height(24.dp))
@@ -507,7 +610,7 @@ private fun AddPayeeSheet(
                 onClick = {
                     val accountsToSave = accountsList.map { draft ->
                         PayeeAccountEntity(
-                            payeeId = 0, // Assigned in parent
+                            payeeId = 0,
                             bankName = draft.bankName.trim(),
                             accountNumber = draft.accountNumber.trim(),
                             recipientName = if (draft.recipientName.isBlank()) name.trim() else draft.recipientName.trim(),
@@ -517,16 +620,45 @@ private fun AddPayeeSheet(
                     }
                     onSave(name, accountsToSave)
                 },
-                enabled = isValid, modifier = Modifier.fillMaxWidth().height(52.dp),
+                enabled = isValid,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(52.dp),
                 shape = RoundedCornerShape(14.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = AccentBlue, disabledContainerColor = CardDarker)
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Color.Transparent,
+                    disabledContainerColor = CardDarker
+                ),
+                contentPadding = PaddingValues(0.dp)
             ) {
-                Icon(Icons.Default.Add, null, tint = if (isValid) BackgroundDark else TextMuted)
-                Spacer(Modifier.width(8.dp))
-                Text("Create Profile", color = if (isValid) BackgroundDark else TextMuted, fontWeight = FontWeight.Bold)
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(
+                            if (isValid) Brush.linearGradient(listOf(AccentBlue, AccentTeal))
+                            else Brush.linearGradient(listOf(CardDarker, CardDarker))
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            imageVector = Icons.Default.Add,
+                            contentDescription = null,
+                            tint = if (isValid) BackgroundDark else TextMuted,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        Text(
+                            text = "Create Profile",
+                            color = if (isValid) BackgroundDark else TextMuted,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 15.sp
+                        )
+                    }
+                }
             }
 
-            Spacer(Modifier.height(16.dp))
+            Spacer(Modifier.height(20.dp))
         }
     }
 }

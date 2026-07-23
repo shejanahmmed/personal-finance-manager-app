@@ -153,23 +153,34 @@ fun PayeeDetailScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .statusBarsPadding()
-                    .padding(horizontal = 8.dp, vertical = 8.dp),
+                    .padding(horizontal = 12.dp, vertical = 12.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 IconButton(
                     onClick = { onBack() },
-                    modifier = Modifier.size(36.dp)
+                    modifier = Modifier
+                        .size(40.dp)
+                        .clip(CircleShape)
+                        .background(CardDarker)
+                        .border(1.dp, DividerColor, CircleShape)
                 ) {
                     Icon(
                         imageVector = Icons.AutoMirrored.Filled.KeyboardArrowLeft,
                         contentDescription = "Back",
                         tint = TextPrimary,
-                        modifier = Modifier.size(22.dp)
+                        modifier = Modifier.size(24.dp)
                     )
                 }
                 Spacer(modifier = Modifier.weight(1f))
-                IconButton(onClick = { showDeleteConfirm = true }) {
-                    Icon(Icons.Default.Delete, "Delete Payee", tint = ExpenseRed)
+                IconButton(
+                    onClick = { showDeleteConfirm = true },
+                    modifier = Modifier
+                        .size(40.dp)
+                        .clip(CircleShape)
+                        .background(ExpenseRed.copy(alpha = 0.12f))
+                        .border(1.dp, ExpenseRed.copy(alpha = 0.25f), CircleShape)
+                ) {
+                    Icon(Icons.Default.Delete, "Delete Payee", tint = ExpenseRed, modifier = Modifier.size(20.dp))
                 }
             }
 
@@ -182,21 +193,22 @@ fun PayeeDetailScreen(
             ) {
                 Box(
                     modifier = Modifier
-                        .size(76.dp)
+                        .size(80.dp)
                         .clip(CircleShape)
-                        .background(avatarBg.copy(alpha = 0.12f)),
+                        .background(avatarBg.copy(alpha = 0.14f))
+                        .border(2.dp, avatarBg.copy(alpha = 0.35f), CircleShape),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text(payee.name.take(1).uppercase(Locale.ROOT), color = avatarBg, fontSize = 32.sp, fontWeight = FontWeight.Bold)
+                    Text(payee.name.take(1).uppercase(Locale.ROOT), color = avatarBg, fontSize = 34.sp, fontWeight = FontWeight.Bold)
                 }
                 Spacer(Modifier.height(12.dp))
                 Text(payee.name, color = TextPrimary, fontSize = 22.sp, fontWeight = FontWeight.Bold)
-                Spacer(Modifier.height(4.dp))
+                Spacer(Modifier.height(6.dp))
                 Box(
                     modifier = Modifier
                         .clip(RoundedCornerShape(8.dp))
                         .background(CardDarker)
-                        .padding(horizontal = 8.dp, vertical = 3.dp)
+                        .padding(horizontal = 10.dp, vertical = 4.dp)
                         .border(1.dp, DividerColor, RoundedCornerShape(8.dp))
                 ) {
                     Text(payee.uniqueId, color = TextMuted, fontSize = 11.sp, fontWeight = FontWeight.Bold)
@@ -217,10 +229,10 @@ fun PayeeDetailScreen(
                 Text("Saved Accounts", color = TextSecondary, fontSize = 13.sp, fontWeight = FontWeight.Bold)
                 Box(
                     modifier = Modifier
-                        .clip(RoundedCornerShape(8.dp))
+                        .clip(RoundedCornerShape(10.dp))
                         .background(AccentBlue.copy(alpha = 0.12f))
                         .clickable { editingAccount = null; showAddSheet = true }
-                        .padding(horizontal = 8.dp, vertical = 4.dp),
+                        .padding(horizontal = 10.dp, vertical = 5.dp),
                     contentAlignment = Alignment.Center
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
@@ -235,9 +247,18 @@ fun PayeeDetailScreen(
             if (accounts.isEmpty()) {
                 Box(modifier = Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Icon(Icons.Default.AccountBalanceWallet, null, tint = TextMuted.copy(alpha = 0.5f), modifier = Modifier.size(44.dp))
+                        Box(
+                            modifier = Modifier
+                                .size(64.dp)
+                                .clip(CircleShape)
+                                .background(CardDarker)
+                                .border(1.dp, DividerColor, CircleShape),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(Icons.Default.AccountBalanceWallet, null, tint = TextMuted.copy(alpha = 0.6f), modifier = Modifier.size(30.dp))
+                        }
                         Spacer(modifier = Modifier.height(12.dp))
-                        Text("No saved accounts for this person", color = TextMuted, fontSize = 13.sp)
+                        Text("No saved accounts for this recipient", color = TextMuted, fontSize = 13.sp)
                     }
                 }
             } else {
@@ -290,35 +311,52 @@ private fun PayeeAccountCard(
     Card(
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = CardDark),
-        modifier = Modifier.fillMaxWidth().border(1.dp, DividerColor, RoundedCornerShape(16.dp))
+        modifier = Modifier
+            .fillMaxWidth()
+            .border(1.dp, cardColor.copy(alpha = 0.20f), RoundedCornerShape(16.dp))
     ) {
         Row(
-            modifier = Modifier.fillMaxWidth().padding(14.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(14.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Box(
-                modifier = Modifier.size(40.dp).clip(CircleShape).background(cardColor.copy(alpha = 0.12f)),
+                modifier = Modifier
+                    .size(44.dp)
+                    .clip(CircleShape)
+                    .background(cardColor.copy(alpha = 0.12f))
+                    .border(1.dp, cardColor.copy(alpha = 0.25f), CircleShape),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
                     imageVector = if (account.type == "MFS") Icons.Default.PhoneAndroid else Icons.Default.AccountBalance,
-                    contentDescription = null, tint = cardColor, modifier = Modifier.size(20.dp)
+                    contentDescription = null,
+                    tint = cardColor,
+                    modifier = Modifier.size(22.dp)
                 )
             }
-            Spacer(Modifier.width(12.dp))
+            Spacer(Modifier.width(14.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Text(account.bankName, color = TextPrimary, fontSize = 14.sp, fontWeight = FontWeight.SemiBold,
-                        maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text(
+                        text = account.bankName,
+                        color = TextPrimary,
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
                     if (account.nickname.isNotBlank()) {
-                        Box(modifier = Modifier.clip(RoundedCornerShape(5.dp)).background(AccentTeal.copy(alpha = 0.15f)).padding(horizontal = 5.dp, vertical = 2.dp)) {
-                            Text(account.nickname, color = AccentTeal, fontSize = 8.sp, fontWeight = FontWeight.Bold)
+                        Box(modifier = Modifier.clip(RoundedCornerShape(6.dp)).background(AccentTeal.copy(alpha = 0.14f)).padding(horizontal = 6.dp, vertical = 2.dp)) {
+                            Text(account.nickname, color = AccentTeal, fontSize = 9.sp, fontWeight = FontWeight.Bold)
                         }
                     }
-                    Box(modifier = Modifier.clip(RoundedCornerShape(5.dp)).background(cardColor.copy(alpha = 0.15f)).padding(horizontal = 5.dp, vertical = 2.dp)) {
-                        Text(account.type, color = cardColor, fontSize = 8.sp, fontWeight = FontWeight.Bold)
+                    Box(modifier = Modifier.clip(RoundedCornerShape(6.dp)).background(cardColor.copy(alpha = 0.14f)).padding(horizontal = 6.dp, vertical = 2.dp)) {
+                        Text(account.type, color = cardColor, fontSize = 9.sp, fontWeight = FontWeight.Bold)
                     }
                 }
+                Spacer(Modifier.height(3.dp))
                 val maskedNumber = if (account.accountNumber.length > 4) {
                     val last4 = account.accountNumber.takeLast(4)
                     when (account.accountNumber.length) {
@@ -335,14 +373,28 @@ private fun PayeeAccountCard(
                     Text("Name: ${account.recipientName}", color = TextMuted, fontSize = 11.sp)
                 }
             }
-            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                Box(modifier = Modifier.size(28.dp).clip(RoundedCornerShape(6.dp)).background(CardDarker)
-                    .border(1.dp, DividerColor, RoundedCornerShape(6.dp)).clickable { onEdit() }, contentAlignment = Alignment.Center) {
-                    Icon(Icons.Default.Edit, "Edit", tint = AccentTeal, modifier = Modifier.size(12.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                Box(
+                    modifier = Modifier
+                        .size(32.dp)
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(CardDarker)
+                        .border(1.dp, DividerColor, RoundedCornerShape(8.dp))
+                        .clickable { onEdit() },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(Icons.Default.Edit, "Edit", tint = AccentBlue, modifier = Modifier.size(14.dp))
                 }
-                Box(modifier = Modifier.size(28.dp).clip(RoundedCornerShape(6.dp)).background(ExpenseRed.copy(alpha = 0.1f))
-                    .border(1.dp, ExpenseRed.copy(alpha = 0.3f), RoundedCornerShape(6.dp)).clickable { onDelete() }, contentAlignment = Alignment.Center) {
-                    Icon(Icons.Default.Delete, "Delete", tint = ExpenseRed, modifier = Modifier.size(12.dp))
+                Box(
+                    modifier = Modifier
+                        .size(32.dp)
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(ExpenseRed.copy(alpha = 0.12f))
+                        .border(1.dp, ExpenseRed.copy(alpha = 0.3f), RoundedCornerShape(8.dp))
+                        .clickable { onDelete() },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(Icons.Default.Delete, "Delete", tint = ExpenseRed, modifier = Modifier.size(14.dp))
                 }
             }
         }
@@ -374,92 +426,203 @@ private fun PayeeAccountFormSheet(
     val isValid = bankName.trim().isNotBlank() && accountNumber.trim().isNotBlank()
 
     ModalBottomSheet(
-        onDismissRequest = onDismiss, sheetState = sheetState,
-        containerColor = CardDark, shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
+        onDismissRequest = onDismiss,
+        sheetState = sheetState,
+        containerColor = CardDark,
+        shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
+        dragHandle = { BottomSheetDefaults.DragHandle(color = DividerColor) }
     ) {
-        Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp).verticalScroll(rememberScrollState()).navigationBarsPadding()) {
-            Row(modifier = Modifier.fillMaxWidth().padding(bottom = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(if (isEditing) "Edit Account" else "Add Saved Account", color = TextPrimary, fontSize = 20.sp, fontWeight = FontWeight.Bold)
-                    Text(if (isEditing) "Update bank details" else "Link a banking details to this profile", color = TextMuted, fontSize = 12.sp)
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp)
+                .verticalScroll(rememberScrollState())
+                .navigationBarsPadding()
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(44.dp)
+                        .clip(CircleShape)
+                        .background(AccentBlue.copy(alpha = 0.15f))
+                        .border(1.dp, AccentBlue.copy(alpha = 0.3f), CircleShape),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = if (isEditing) Icons.Default.Edit else Icons.Default.AddCard,
+                        contentDescription = null,
+                        tint = AccentBlue,
+                        modifier = Modifier.size(22.dp)
+                    )
                 }
-                Box(modifier = Modifier.size(34.dp).clip(RoundedCornerShape(8.dp)).background(CardDarker)
-                    .border(1.dp, DividerColor, RoundedCornerShape(8.dp)).clickable { onDismiss() }, contentAlignment = Alignment.Center) {
-                    Icon(Icons.Default.Close, null, tint = TextPrimary, modifier = Modifier.size(18.dp))
+
+                Spacer(modifier = Modifier.width(14.dp))
+
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = if (isEditing) "Edit Account" else "Add Saved Account",
+                        color = TextPrimary,
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        text = if (isEditing) "Update bank details" else "Link banking details to this profile",
+                        color = TextMuted,
+                        fontSize = 12.sp
+                    )
                 }
             }
 
-            Spacer(Modifier.height(20.dp))
+            Spacer(Modifier.height(18.dp))
 
-            // Type Toggle (Bank / MFS)
-            Row(modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(CardDarker).padding(4.dp),
-                horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+            // Type Toggle (Bank / MFS with vector icons)
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(14.dp))
+                    .background(CardDarker)
+                    .border(1.dp, DividerColor, RoundedCornerShape(14.dp))
+                    .padding(4.dp),
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
                 listOf("BANK", "MFS").forEach { t ->
                     val selected = type == t
-                    Box(modifier = Modifier.weight(1f).clip(RoundedCornerShape(10.dp))
-                        .background(if (selected) AccentBlue else Color.Transparent)
-                        .clickable { type = t; bankName = ""; nameExpanded = false }.padding(vertical = 10.dp),
-                        contentAlignment = Alignment.Center) {
-                        Text(if (t == "BANK") "\uD83C\uDFE6  Bank" else "\uD83D\uDCF1  MFS",
-                            color = if (selected) BackgroundDark else TextSecondary,
-                            fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal, fontSize = 13.sp)
+                    val itemColor = if (selected) BackgroundDark else Color.White
+                    val icon = if (t == "BANK") Icons.Default.AccountBalance else Icons.Default.PhoneAndroid
+                    val label = if (t == "BANK") "Bank" else "MFS"
+
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(if (selected) AccentBlue else Color.Transparent)
+                            .clickable { type = t; bankName = ""; nameExpanded = false }
+                            .padding(vertical = 11.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.Center
+                        ) {
+                            Icon(
+                                imageVector = icon,
+                                contentDescription = null,
+                                tint = itemColor,
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = label,
+                                color = itemColor,
+                                fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
+                                fontSize = 13.sp
+                            )
+                        }
                     }
                 }
             }
 
             Spacer(Modifier.height(16.dp))
 
-            // Bank NameAutocomplete
-            ExposedDropdownMenuBox(expanded = nameExpanded, onExpandedChange = { nameExpanded = it }) {
+            // Bank Name Autocomplete
+            ExposedDropdownMenuBox(
+                expanded = nameExpanded,
+                onExpandedChange = { nameExpanded = it }
+            ) {
                 OutlinedTextField(
-                    value = bankName, onValueChange = { bankName = it; nameExpanded = true },
+                    value = bankName,
+                    onValueChange = { bankName = it; nameExpanded = true },
                     label = { Text(if (type == "BANK") "Bank Name" else "MFS Name", color = TextSecondary) },
                     placeholder = { Text("Type or select\u2026", color = TextMuted) },
+                    leadingIcon = {
+                        Icon(
+                            imageVector = if (type == "BANK") Icons.Default.AccountBalance else Icons.Default.PhoneAndroid,
+                            contentDescription = null,
+                            tint = AccentBlue,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    },
                     trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = nameExpanded) },
-                    singleLine = true, shape = RoundedCornerShape(12.dp), colors = formTextFieldColors(),
-                    modifier = Modifier.fillMaxWidth().menuAnchor(ExposedDropdownMenuAnchorType.PrimaryEditable)
+                    singleLine = true,
+                    shape = RoundedCornerShape(14.dp),
+                    colors = formTextFieldColors(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryEditable)
                 )
                 if (filteredPresets.isNotEmpty()) {
-                    ExposedDropdownMenu(expanded = nameExpanded, onDismissRequest = { nameExpanded = false },
-                        modifier = Modifier.background(CardDarker)) {
+                    ExposedDropdownMenu(
+                        expanded = nameExpanded,
+                        onDismissRequest = { nameExpanded = false },
+                        modifier = Modifier
+                            .background(CardDarker)
+                            .border(1.dp, DividerColor, RoundedCornerShape(12.dp))
+                    ) {
                         filteredPresets.forEach { preset ->
-                            DropdownMenuItem(text = { Text(preset, color = TextPrimary, fontSize = 13.sp) },
-                                onClick = { bankName = preset; nameExpanded = false })
+                            DropdownMenuItem(
+                                text = { Text(preset, color = TextPrimary, fontSize = 13.sp) },
+                                onClick = { bankName = preset; nameExpanded = false }
+                            )
                         }
                     }
                 }
             }
 
-            Spacer(Modifier.height(12.dp))
+            Spacer(Modifier.height(14.dp))
 
             // Account Number / Wallet Number
             OutlinedTextField(
-                value = accountNumber, onValueChange = { accountNumber = it },
+                value = accountNumber,
+                onValueChange = { accountNumber = it },
                 label = { Text(if (type == "BANK") "Account Number" else "Mobile Number", color = TextSecondary) },
                 placeholder = { Text(if (type == "BANK") "e.g. 12040921..." else "e.g. 01712...", color = TextMuted) },
-                singleLine = true, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                shape = RoundedCornerShape(12.dp), colors = formTextFieldColors(), modifier = Modifier.fillMaxWidth()
+                leadingIcon = {
+                    Icon(Icons.Default.CreditCard, null, tint = AccentBlue, modifier = Modifier.size(20.dp))
+                },
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                shape = RoundedCornerShape(14.dp),
+                colors = formTextFieldColors(),
+                modifier = Modifier.fillMaxWidth()
             )
 
-            Spacer(Modifier.height(12.dp))
+            Spacer(Modifier.height(14.dp))
 
             // Recipient Name on the account
             OutlinedTextField(
-                value = recipientName, onValueChange = { recipientName = it },
+                value = recipientName,
+                onValueChange = { recipientName = it },
                 label = { Text("Account Holder Name", color = TextSecondary) },
-                singleLine = true, keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Words),
-                shape = RoundedCornerShape(12.dp), colors = formTextFieldColors(), modifier = Modifier.fillMaxWidth()
+                leadingIcon = {
+                    Icon(Icons.Default.PersonOutline, null, tint = AccentBlue, modifier = Modifier.size(20.dp))
+                },
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Words),
+                shape = RoundedCornerShape(14.dp),
+                colors = formTextFieldColors(),
+                modifier = Modifier.fillMaxWidth()
             )
 
-            Spacer(Modifier.height(12.dp))
+            Spacer(Modifier.height(14.dp))
 
             // Nickname / Alias
             OutlinedTextField(
-                value = nickname, onValueChange = { if (it.length <= 20) nickname = it },
+                value = nickname,
+                onValueChange = { if (it.length <= 20) nickname = it },
                 label = { Text("Nickname (Optional)", color = TextSecondary) },
-                placeholder = { Text("e.g. Personal, Business (max 20 letters)", color = TextMuted) },
+                placeholder = { Text("e.g. Personal, Business", color = TextMuted) },
+                leadingIcon = {
+                    Icon(Icons.Default.Badge, null, tint = AccentBlue, modifier = Modifier.size(20.dp))
+                },
                 singleLine = true,
-                shape = RoundedCornerShape(12.dp), colors = formTextFieldColors(), modifier = Modifier.fillMaxWidth()
+                shape = RoundedCornerShape(14.dp),
+                colors = formTextFieldColors(),
+                modifier = Modifier.fillMaxWidth()
             )
 
             Spacer(Modifier.height(24.dp))
@@ -468,7 +631,7 @@ private fun PayeeAccountFormSheet(
                 onClick = {
                     onSave(
                         PayeeAccountEntity(
-                            payeeId = 0, // Filled in parent
+                            payeeId = 0,
                             bankName = bankName.trim(),
                             accountNumber = accountNumber.trim(),
                             recipientName = recipientName.trim(),
@@ -477,18 +640,45 @@ private fun PayeeAccountFormSheet(
                         )
                     )
                 },
-                enabled = isValid, modifier = Modifier.fillMaxWidth().height(52.dp),
+                enabled = isValid,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(52.dp),
                 shape = RoundedCornerShape(14.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = AccentBlue, disabledContainerColor = CardDarker)
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Color.Transparent,
+                    disabledContainerColor = CardDarker
+                ),
+                contentPadding = PaddingValues(0.dp)
             ) {
-                Icon(if (isEditing) Icons.Default.Check else Icons.Default.Add, null,
-                    tint = if (isValid) BackgroundDark else TextMuted)
-                Spacer(Modifier.width(8.dp))
-                Text(if (isEditing) "Save Changes" else "Add Account",
-                    color = if (isValid) BackgroundDark else TextMuted, fontWeight = FontWeight.Bold)
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(
+                            if (isValid) Brush.linearGradient(listOf(AccentBlue, AccentTeal))
+                            else Brush.linearGradient(listOf(CardDarker, CardDarker))
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            imageVector = if (isEditing) Icons.Default.Check else Icons.Default.Add,
+                            contentDescription = null,
+                            tint = if (isValid) BackgroundDark else TextMuted,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        Text(
+                            text = if (isEditing) "Save Changes" else "Add Account",
+                            color = if (isValid) BackgroundDark else TextMuted,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 15.sp
+                        )
+                    }
+                }
             }
 
-            Spacer(Modifier.height(16.dp))
+            Spacer(Modifier.height(20.dp))
         }
     }
 }
