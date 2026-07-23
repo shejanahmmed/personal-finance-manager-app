@@ -768,153 +768,239 @@ private fun AccountFormSheet(
             (isEditing || initialBalance.trim().isNotBlank())
 
     ModalBottomSheet(
-        onDismissRequest = onDismiss, sheetState = sheetState,
-        containerColor = CardDark, shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
-        dragHandle = {
-            var isPressed by remember { mutableStateOf(false) }
-            val density = LocalDensity.current
-            val targetOffsetPx = remember(density) { with(density) { 4.dp.toPx() } }
-            val arrowOffsetPx by animateFloatAsState(
-                targetValue = if (isPressed) targetOffsetPx else 0f,
-                animationSpec = spring(stiffness = Spring.StiffnessMediumLow),
-                label = "arrowOffset"
-            )
-
-            Box(
+        onDismissRequest = onDismiss,
+        sheetState = sheetState,
+        containerColor = CardDark,
+        shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
+        dragHandle = { BottomSheetDefaults.DragHandle(color = DividerColor) }
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp)
+                .verticalScroll(rememberScrollState())
+                .navigationBarsPadding()
+        ) {
+            Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(vertical = 12.dp)
-                    .clickable(
-                        interactionSource = remember { MutableInteractionSource() },
-                        indication = null
-                    ) {}
-                    .pointerInput(Unit) {
-                        awaitPointerEventScope {
-                            while (true) {
-                                val down = awaitFirstDown(requireUnconsumed = false)
-                                isPressed = true
-                                waitForUpOrCancellation()
-                                isPressed = false
-                            }
-                        }
-                    },
-                contentAlignment = Alignment.Center
+                    .padding(bottom = 8.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Canvas(modifier = Modifier.size(width = 36.dp, height = 10.dp)) {
-                    val width = size.width
-                    val height = size.height
-                    val centerY = height / 2f
-                    val strokeWidth = 4.dp.toPx()
+                Box(
+                    modifier = Modifier
+                        .size(44.dp)
+                        .clip(CircleShape)
+                        .background(AccentTeal.copy(alpha = 0.15f))
+                        .border(1.dp, AccentTeal.copy(alpha = 0.3f), CircleShape),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = if (isEditing) Icons.Default.Edit else Icons.Default.AddCard,
+                        contentDescription = null,
+                        tint = AccentTeal,
+                        modifier = Modifier.size(22.dp)
+                    )
+                }
 
-                    val path = Path().apply {
-                        moveTo(0f, centerY - arrowOffsetPx)
-                        lineTo(width / 2f, centerY + arrowOffsetPx)
-                        lineTo(width, centerY - arrowOffsetPx)
-                    }
+                Spacer(modifier = Modifier.width(14.dp))
 
-                    drawPath(
-                        path = path,
-                        color = DividerColor.copy(alpha = 0.8f),
-                        style = Stroke(
-                            width = strokeWidth,
-                            cap = StrokeCap.Round,
-                            join = StrokeJoin.Round
-                        )
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = if (isEditing) "Edit Account" else "Add New Account",
+                        color = TextPrimary,
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        text = if (isEditing) "Update account details" else "Link a bank or MFS to track your money",
+                        color = TextMuted,
+                        fontSize = 12.sp
                     )
                 }
             }
-        }
-    ) {
-        Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp).verticalScroll(rememberScrollState()).navigationBarsPadding()) {
-            Row(modifier = Modifier.fillMaxWidth().padding(bottom = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(if (isEditing) "Edit Account" else "Add New Account", color = TextPrimary, fontSize = 20.sp, fontWeight = FontWeight.Bold)
-                    Text(if (isEditing) "Update account details" else "Link a bank or MFS to track your money", color = TextMuted, fontSize = 12.sp)
-                }
-            }
 
-            Spacer(Modifier.height(20.dp))
+            Spacer(Modifier.height(18.dp))
 
             // Type toggle
-            Row(modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(CardDarker).padding(4.dp),
-                horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(14.dp))
+                    .background(CardDarker)
+                    .border(1.dp, DividerColor, RoundedCornerShape(14.dp))
+                    .padding(4.dp),
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
                 listOf("BANK", "MFS").forEach { t ->
                     val selected = accountType == t
-                    Box(modifier = Modifier.weight(1f).clip(RoundedCornerShape(10.dp))
-                        .background(if (selected) AccentTeal else Color.Transparent)
-                        .clickable { accountType = t; accountName = TextFieldValue(""); nameExpanded = false }.padding(vertical = 10.dp),
-                        contentAlignment = Alignment.Center) {
-                        Text(if (t == "BANK") "\uD83C\uDFE6  Bank" else "\uD83D\uDCF1  MFS",
-                            color = if (selected) BackgroundDark else TextSecondary,
-                            fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal, fontSize = 13.sp)
+                    val itemColor = if (selected) BackgroundDark else Color.White
+                    val icon = if (t == "BANK") Icons.Default.AccountBalance else Icons.Default.PhoneAndroid
+                    val label = if (t == "BANK") "Bank" else "MFS"
+
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(if (selected) AccentTeal else Color.Transparent)
+                            .clickable {
+                                accountType = t
+                                accountName = TextFieldValue("")
+                                nameExpanded = false
+                            }
+                            .padding(vertical = 11.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.Center
+                        ) {
+                            Icon(
+                                imageVector = icon,
+                                contentDescription = null,
+                                tint = itemColor,
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = label,
+                                color = itemColor,
+                                fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
+                                fontSize = 13.sp
+                            )
+                        }
                     }
                 }
             }
 
             Spacer(Modifier.height(16.dp))
 
-            // Account name autocomplete
-            ExposedDropdownMenuBox(expanded = nameExpanded, onExpandedChange = { nameExpanded = it }) {
+            // Account name autocomplete (Opens keyboard + suggestions on tap)
+            ExposedDropdownMenuBox(
+                expanded = nameExpanded,
+                onExpandedChange = { nameExpanded = it }
+            ) {
                 OutlinedTextField(
-                    value = accountName, onValueChange = { accountName = it; nameExpanded = true },
+                    value = accountName,
+                    onValueChange = {
+                        accountName = it
+                        nameExpanded = true
+                    },
                     label = { Text(if (accountType == "BANK") "Bank Name" else "MFS Name") },
                     placeholder = { Text("Type or select\u2026", color = TextMuted) },
+                    leadingIcon = {
+                        Icon(
+                            imageVector = if (accountType == "BANK") Icons.Default.AccountBalance else Icons.Default.PhoneAndroid,
+                            contentDescription = null,
+                            tint = AccentTeal,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    },
                     trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = nameExpanded) },
-                    singleLine = true, shape = RoundedCornerShape(12.dp), colors = formTextFieldColors(accountName.text.isEmpty()),
-                    modifier = Modifier.fillMaxWidth().menuAnchor(ExposedDropdownMenuAnchorType.PrimaryEditable)
+                    singleLine = true,
+                    shape = RoundedCornerShape(14.dp),
+                    colors = formTextFieldColors(accountName.text.isEmpty()),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .menuAnchor(
+                            type = ExposedDropdownMenuAnchorType.PrimaryEditable,
+                            enabled = true
+                        )
                 )
                 if (filteredPresets.isNotEmpty()) {
-                    ExposedDropdownMenu(expanded = nameExpanded, onDismissRequest = { nameExpanded = false },
-                        modifier = Modifier.background(CardDarker)) {
+                    ExposedDropdownMenu(
+                        expanded = nameExpanded,
+                        onDismissRequest = { nameExpanded = false },
+                        modifier = Modifier
+                            .background(CardDarker)
+                            .border(1.dp, DividerColor, RoundedCornerShape(12.dp))
+                    ) {
                         filteredPresets.forEach { preset ->
-                            DropdownMenuItem(text = { Text(preset, color = TextPrimary, fontSize = 13.sp) },
+                            DropdownMenuItem(
+                                text = { Text(preset, color = TextPrimary, fontSize = 13.sp) },
                                 onClick = {
                                     accountName = TextFieldValue(
                                         text = preset,
                                         selection = TextRange(preset.length)
                                     )
                                     nameExpanded = false
-                                })
+                                }
+                            )
                         }
                     }
                 }
             }
 
-            Spacer(Modifier.height(12.dp))
+            Spacer(Modifier.height(14.dp))
 
             // Account subtype (Banks only)
             if (accountType == "BANK") {
-                ExposedDropdownMenuBox(expanded = subtypeExpanded, onExpandedChange = { subtypeExpanded = it }) {
+                ExposedDropdownMenuBox(
+                    expanded = subtypeExpanded,
+                    onExpandedChange = { subtypeExpanded = it }
+                ) {
                     OutlinedTextField(
-                        value = accountSubtype, onValueChange = {},
+                        value = accountSubtype,
+                        onValueChange = {},
                         label = { Text("Account Type") },
                         placeholder = { Text("e.g. Savings, Current\u2026", color = TextMuted) },
+                        leadingIcon = {
+                            Icon(
+                                imageVector = Icons.Default.Tune,
+                                contentDescription = null,
+                                tint = AccentTeal,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        },
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = subtypeExpanded) },
-                        readOnly = true, singleLine = true, shape = RoundedCornerShape(12.dp), colors = formTextFieldColors(accountSubtype.isEmpty()),
-                        modifier = Modifier.fillMaxWidth().menuAnchor(ExposedDropdownMenuAnchorType.PrimaryEditable)
+                        readOnly = true,
+                        singleLine = true,
+                        shape = RoundedCornerShape(14.dp),
+                        colors = formTextFieldColors(accountSubtype.isEmpty()),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryEditable)
                     )
-                    ExposedDropdownMenu(expanded = subtypeExpanded, onDismissRequest = { subtypeExpanded = false },
-                        modifier = Modifier.background(CardDarker)) {
+                    ExposedDropdownMenu(
+                        expanded = subtypeExpanded,
+                        onDismissRequest = { subtypeExpanded = false },
+                        modifier = Modifier
+                            .background(CardDarker)
+                            .border(1.dp, DividerColor, RoundedCornerShape(12.dp))
+                    ) {
                         ACCOUNT_SUBTYPES.forEach { sub ->
-                            DropdownMenuItem(text = { Text(sub, color = TextPrimary, fontSize = 13.sp) },
-                                onClick = { accountSubtype = sub; subtypeExpanded = false })
+                            DropdownMenuItem(
+                                text = { Text(sub, color = TextPrimary, fontSize = 13.sp) },
+                                onClick = { accountSubtype = sub; subtypeExpanded = false }
+                            )
                         }
                     }
                 }
-                Spacer(Modifier.height(12.dp))
+                Spacer(Modifier.height(14.dp))
             }
 
             // Initial balance (new accounts only)
             if (!isEditing) {
                 OutlinedTextField(
-                    value = initialBalance, onValueChange = { if (it.isEmpty() || it.toDoubleOrNull() != null) initialBalance = it },
+                    value = initialBalance,
+                    onValueChange = { if (it.isEmpty() || it.toDoubleOrNull() != null) initialBalance = it },
                     label = { Text("Initial Balance (\u09f3)") },
                     prefix = { Text("\u09f3 ", color = AccentTeal, fontWeight = FontWeight.Bold) },
+                    leadingIcon = {
+                        Icon(
+                            imageVector = Icons.Default.AccountBalanceWallet,
+                            contentDescription = null,
+                            tint = AccentTeal,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                    singleLine = true, shape = RoundedCornerShape(12.dp), colors = formTextFieldColors(initialBalance.isEmpty()),
+                    singleLine = true,
+                    shape = RoundedCornerShape(14.dp),
+                    colors = formTextFieldColors(initialBalance.isEmpty()),
                     modifier = Modifier.fillMaxWidth()
                 )
-                Spacer(Modifier.height(12.dp))
+                Spacer(Modifier.height(14.dp))
             }
 
             // Account Number (digits only)
@@ -927,14 +1013,22 @@ private fun AccountFormSheet(
                 },
                 label = { Text("Account Number") },
                 placeholder = { Text("Digits only", color = TextMuted) },
+                leadingIcon = {
+                    Icon(
+                        imageVector = Icons.Default.CreditCard,
+                        contentDescription = null,
+                        tint = AccentTeal,
+                        modifier = Modifier.size(20.dp)
+                    )
+                },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                 singleLine = true,
-                shape = RoundedCornerShape(12.dp),
+                shape = RoundedCornerShape(14.dp),
                 colors = formTextFieldColors(accountNumber.isEmpty()),
                 modifier = Modifier.fillMaxWidth()
             )
 
-            Spacer(Modifier.height(12.dp))
+            Spacer(Modifier.height(14.dp))
 
             // Nickname (max 20 chars)
             OutlinedTextField(
@@ -946,8 +1040,16 @@ private fun AccountFormSheet(
                 },
                 label = { Text("Nickname") },
                 placeholder = { Text("Nickname (max 20 letters)", color = TextMuted) },
+                leadingIcon = {
+                    Icon(
+                        imageVector = Icons.Default.Badge,
+                        contentDescription = null,
+                        tint = AccentTeal,
+                        modifier = Modifier.size(20.dp)
+                    )
+                },
                 singleLine = true,
-                shape = RoundedCornerShape(12.dp),
+                shape = RoundedCornerShape(14.dp),
                 colors = formTextFieldColors(showAs.isEmpty()),
                 modifier = Modifier.fillMaxWidth()
             )
@@ -958,31 +1060,70 @@ private fun AccountFormSheet(
                 onClick = {
                     val colorHex = BANK_COLOR_MAP[accountName.text] ?: if (accountType == "MFS") "#FF5C7C" else "#0096FF"
                     val saved = if (isEditing) {
-                        existingAccount!!.copy(name = accountName.text.trim(), type = accountType, 
+                        existingAccount!!.copy(
+                            name = accountName.text.trim(),
+                            type = accountType,
                             accountSubtype = if (accountType == "BANK") accountSubtype else "",
-                            isManaged = false, holderName = "",
-                            accountNumber = accountNumber.trim(), showAs = showAs.trim(), colorHex = colorHex)
-                    } else {
-                        AccountEntity(name = accountName.text.trim(), type = accountType,
-                            balance = initialBalance.toDoubleOrNull() ?: 0.0, colorHex = colorHex,
-                            accountSubtype = if (accountType == "BANK") accountSubtype else "", isManaged = false,
+                            isManaged = false,
                             holderName = "",
-                            accountNumber = accountNumber.trim(), showAs = showAs.trim())
+                            accountNumber = accountNumber.trim(),
+                            showAs = showAs.trim(),
+                            colorHex = colorHex
+                        )
+                    } else {
+                        AccountEntity(
+                            name = accountName.text.trim(),
+                            type = accountType,
+                            balance = initialBalance.toDoubleOrNull() ?: 0.0,
+                            colorHex = colorHex,
+                            accountSubtype = if (accountType == "BANK") accountSubtype else "",
+                            isManaged = false,
+                            holderName = "",
+                            accountNumber = accountNumber.trim(),
+                            showAs = showAs.trim()
+                        )
                     }
                     onSave(saved)
                 },
-                enabled = isValid, modifier = Modifier.fillMaxWidth().height(52.dp),
+                enabled = isValid,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(52.dp),
                 shape = RoundedCornerShape(14.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = AccentTeal, disabledContainerColor = CardDarker)
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Color.Transparent,
+                    disabledContainerColor = CardDarker
+                ),
+                contentPadding = PaddingValues(0.dp)
             ) {
-                Icon(if (isEditing) Icons.Default.Check else Icons.Default.Add, null,
-                    tint = if (isValid) BackgroundDark else TextMuted)
-                Spacer(Modifier.width(8.dp))
-                Text(if (isEditing) "Save Changes" else "Add Account",
-                    color = if (isValid) BackgroundDark else TextMuted, fontWeight = FontWeight.Bold)
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(
+                            if (isValid) Brush.linearGradient(listOf(AccentTeal, AccentBlue))
+                            else Brush.linearGradient(listOf(CardDarker, CardDarker))
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            imageVector = if (isEditing) Icons.Default.Check else Icons.Default.Add,
+                            contentDescription = null,
+                            tint = if (isValid) BackgroundDark else TextMuted,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        Text(
+                            text = if (isEditing) "Save Changes" else "Add Account",
+                            color = if (isValid) BackgroundDark else TextMuted,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 15.sp
+                        )
+                    }
+                }
             }
 
-            Spacer(Modifier.height(16.dp))
+            Spacer(Modifier.height(20.dp))
         }
     }
 }
