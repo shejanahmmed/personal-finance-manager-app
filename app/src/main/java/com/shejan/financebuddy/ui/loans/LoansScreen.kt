@@ -253,36 +253,47 @@ fun LoansScreen(
                     .fillMaxSize()
                     .padding(bottom = innerPadding.calculateBottomPadding())
             ) {
-                // ─── Screen Header ──────────────────────────────────────
+                // ─── Screen Header (Matching Bank Accounts Page Design) ──
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
                         .statusBarsPadding()
-                        .padding(horizontal = 8.dp, vertical = 8.dp),
+                        .padding(horizontal = 12.dp, vertical = 12.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     IconButton(
                         onClick = { onBack() },
-                        modifier = Modifier.size(36.dp)
+                        modifier = Modifier
+                            .size(40.dp)
+                            .clip(CircleShape)
+                            .background(CardDarker)
+                            .border(1.dp, DividerColor, CircleShape)
                     ) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.KeyboardArrowLeft,
                             contentDescription = "Back",
                             tint = TextPrimary,
-                            modifier = Modifier.size(22.dp)
+                            modifier = Modifier.size(24.dp)
                         )
                     }
-                    Spacer(modifier = Modifier.width(8.dp))
+                    Spacer(modifier = Modifier.width(12.dp))
                     Column(modifier = Modifier.weight(1f)) {
-                        Text("My Loans", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = TextPrimary)
-                        Text("Track borrowed funds & EMI details", fontSize = 12.sp, color = TextMuted)
+                        Text(
+                            text = "Loans & Debts",
+                            fontSize = 20.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = TextPrimary
+                        )
+                        Text(
+                            text = "Track money lent, borrowed & EMI details",
+                            fontSize = 12.sp,
+                            color = TextMuted
+                        )
                     }
                 }
 
-                HorizontalDivider(color = DividerColor, modifier = Modifier.padding(horizontal = 16.dp))
-
                 LazyColumn(
-                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 16.dp),
+                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
                     verticalArrangement = Arrangement.spacedBy(14.dp),
                     modifier = Modifier.weight(1f)
                 ) {
@@ -640,7 +651,6 @@ fun LoansScreen(
     }
 }
 
-// ─── Composable: Summary Overview Card ────────────────────────
 @Composable
 fun LoanSummaryOverview(
     totalPrincipal: Double,
@@ -652,29 +662,77 @@ fun LoanSummaryOverview(
 ) {
     Card(
         shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.Transparent),
+        colors = CardDefaults.cardColors(containerColor = CardDark),
+        border = BorderStroke(1.dp, AccentBlue.copy(alpha = 0.25f)),
         modifier = Modifier.fillMaxWidth()
     ) {
         Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .background(
-                    Brush.linearGradient(colors = listOf(AccentBlue.copy(alpha = 0.95f), AccentPurple.copy(alpha = 0.95f)))
+                    Brush.linearGradient(
+                        colors = listOf(
+                            AccentBlue.copy(alpha = 0.12f),
+                            AccentPurple.copy(alpha = 0.08f),
+                            CardDark
+                        )
+                    )
                 )
                 .padding(20.dp)
         ) {
             Column {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Box(
+                            modifier = Modifier
+                                .size(8.dp)
+                                .clip(CircleShape)
+                                .background(AccentBlue)
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = "TOTAL LIABILITIES & ASSETS",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = AccentBlue,
+                            letterSpacing = 0.5.sp
+                        )
+                    }
+
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(CardDarker)
+                            .border(1.dp, DividerColor, RoundedCornerShape(8.dp))
+                            .padding(horizontal = 8.dp, vertical = 3.dp)
+                    ) {
+                        Text(
+                            text = "BDT ৳",
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = TextMuted
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(14.dp))
+
                 // Top row: Liabilities vs Assets
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
                     // Left — What I owe
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
                             text = "I Owe (Borrowed)",
                             fontSize = 11.sp,
-                            color = Color.White.copy(alpha = 0.7f),
+                            color = TextSecondary,
                             fontWeight = FontWeight.Medium
                         )
                         Spacer(modifier = Modifier.height(4.dp))
@@ -682,15 +740,16 @@ fun LoanSummaryOverview(
                             text = "৳${currencyFormat.format(totalPrincipal)}",
                             fontSize = 24.sp,
                             fontWeight = FontWeight.Bold,
-                            color = Color.White
+                            color = TextPrimary
                         )
                     }
+
                     // Right — What's owed to me
                     Column(modifier = Modifier.weight(1f), horizontalAlignment = Alignment.End) {
                         Text(
                             text = "Owed to Me (Lent)",
                             fontSize = 11.sp,
-                            color = Color.White.copy(alpha = 0.7f),
+                            color = TextSecondary,
                             fontWeight = FontWeight.Medium
                         )
                         Spacer(modifier = Modifier.height(4.dp))
@@ -704,59 +763,81 @@ fun LoanSummaryOverview(
                 }
 
                 Spacer(modifier = Modifier.height(18.dp))
+                HorizontalDivider(color = DividerColor, modifier = Modifier.fillMaxWidth())
+                Spacer(modifier = Modifier.height(16.dp))
 
-                // Divider
-                HorizontalDivider(color = Color.White.copy(alpha = 0.15f))
-
-                Spacer(modifier = Modifier.height(14.dp))
-
+                // 3 Stat Pills Row
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Column(modifier = Modifier.weight(1.2f)) {
-                        Text(
-                            text = "Remaining Payable",
-                            fontSize = 11.sp,
-                            color = Color.White.copy(alpha = 0.7f)
-                        )
-                        Spacer(modifier = Modifier.height(2.dp))
-                        Text(
-                            text = "৳${currencyFormat.format(totalRepayable)}",
-                            fontSize = 14.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            color = Color.White
-                        )
+                    // Stat 1: Remaining Payable
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(CardDarker)
+                            .border(1.dp, DividerColor, RoundedCornerShape(12.dp))
+                            .padding(10.dp)
+                    ) {
+                        Column {
+                            Text("Remaining Payable", fontSize = 10.sp, color = TextMuted, maxLines = 1)
+                            Spacer(Modifier.height(2.dp))
+                            Text(
+                                "৳${currencyFormat.format(totalRepayable)}",
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = TextPrimary,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
                     }
 
-                    Column(modifier = Modifier.weight(1.2f), horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text(
-                            text = "Remaining Interest",
-                            fontSize = 11.sp,
-                            color = Color.White.copy(alpha = 0.7f)
-                        )
-                        Spacer(modifier = Modifier.height(2.dp))
-                        Text(
-                            text = "৳${currencyFormat.format(totalInterest)}",
-                            fontSize = 14.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            color = Color.White.copy(alpha = 0.9f)
-                        )
+                    // Stat 2: Remaining Interest
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(CardDarker)
+                            .border(1.dp, DividerColor, RoundedCornerShape(12.dp))
+                            .padding(10.dp)
+                    ) {
+                        Column {
+                            Text("Remaining Interest", fontSize = 10.sp, color = TextMuted, maxLines = 1)
+                            Spacer(Modifier.height(2.dp))
+                            Text(
+                                "৳${currencyFormat.format(totalInterest)}",
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = ExpenseRed,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
                     }
 
-                    Column(modifier = Modifier.weight(1f), horizontalAlignment = Alignment.End) {
-                        Text(
-                            text = "Total Repaid",
-                            fontSize = 11.sp,
-                            color = Color.White.copy(alpha = 0.7f)
-                        )
-                        Spacer(modifier = Modifier.height(2.dp))
-                        Text(
-                            text = "৳${currencyFormat.format(totalRepaid)}",
-                            fontSize = 14.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            color = AccentTeal
-                        )
+                    // Stat 3: Total Repaid
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(CardDarker)
+                            .border(1.dp, DividerColor, RoundedCornerShape(12.dp))
+                            .padding(10.dp)
+                    ) {
+                        Column {
+                            Text("Total Repaid", fontSize = 10.sp, color = TextMuted, maxLines = 1)
+                            Spacer(Modifier.height(2.dp))
+                            Text(
+                                "৳${currencyFormat.format(totalRepaid)}",
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = AccentTeal,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
                     }
                 }
             }
@@ -850,6 +931,7 @@ fun LoanCardItem(
     Card(
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = CardDark),
+        border = BorderStroke(1.dp, bankColor.copy(alpha = 0.25f)),
         modifier = Modifier
             .fillMaxWidth()
             .animateContentSize()
@@ -891,15 +973,20 @@ fun LoanCardItem(
                         )
                     }
 
-                    IconButton(
-                        onClick = onDeleteClick,
-                        modifier = Modifier.size(36.dp)
+                    Box(
+                        modifier = Modifier
+                            .size(32.dp)
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(ExpenseRed.copy(alpha = 0.12f))
+                            .border(1.dp, ExpenseRed.copy(alpha = 0.25f), RoundedCornerShape(8.dp))
+                            .clickable { onDeleteClick() },
+                        contentAlignment = Alignment.Center
                     ) {
                         Icon(
                             imageVector = Icons.Default.Delete,
                             contentDescription = "Delete Loan",
-                            tint = ExpenseRed.copy(alpha = 0.7f),
-                            modifier = Modifier.size(18.dp)
+                            tint = ExpenseRed,
+                            modifier = Modifier.size(15.dp)
                         )
                     }
                 }
@@ -1103,6 +1190,7 @@ fun PersonalLoanCardItem(
     Card(
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = CardDark),
+        border = BorderStroke(1.dp, personalColor.copy(alpha = 0.25f)),
         modifier = Modifier
             .fillMaxWidth()
             .animateContentSize()
@@ -1144,15 +1232,20 @@ fun PersonalLoanCardItem(
                         )
                     }
 
-                    IconButton(
-                        onClick = onDeleteClick,
-                        modifier = Modifier.size(36.dp)
+                    Box(
+                        modifier = Modifier
+                            .size(32.dp)
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(ExpenseRed.copy(alpha = 0.12f))
+                            .border(1.dp, ExpenseRed.copy(alpha = 0.25f), RoundedCornerShape(8.dp))
+                            .clickable { onDeleteClick() },
+                        contentAlignment = Alignment.Center
                     ) {
                         Icon(
                             imageVector = Icons.Default.Delete,
                             contentDescription = "Delete Loan",
-                            tint = ExpenseRed.copy(alpha = 0.7f),
-                            modifier = Modifier.size(18.dp)
+                            tint = ExpenseRed,
+                            modifier = Modifier.size(15.dp)
                         )
                     }
                 }
@@ -1547,6 +1640,10 @@ fun AddLoanFormSheet(
                     onValueChange = {},
                     readOnly = true,
                     label = { Text("Select Account to Deposit Funds", color = TextSecondary) },
+                    leadingIcon = {
+                        Icon(Icons.Default.AccountBalance, null, tint = AccentTeal, modifier = Modifier.size(20.dp))
+                    },
+                    shape = RoundedCornerShape(14.dp),
                     colors = loanTextFieldColors(),
                     trailingIcon = {
                         IconButton(onClick = { expandedDropdown = !expandedDropdown }) {
@@ -1564,6 +1661,7 @@ fun AddLoanFormSheet(
                     modifier = Modifier
                         .fillMaxWidth()
                         .background(CardDarker)
+                        .border(1.dp, DividerColor, RoundedCornerShape(12.dp))
                 ) {
                     accounts.forEach { account ->
                         DropdownMenuItem(
@@ -1590,7 +1688,12 @@ fun AddLoanFormSheet(
                 value = amountInput,
                 onValueChange = { amountInput = it.filter { char -> char.isDigit() || char == '.' } },
                 label = { Text("Loan Amount (৳)", color = TextSecondary) },
+                leadingIcon = {
+                    Icon(Icons.Default.MonetizationOn, null, tint = AccentTeal, modifier = Modifier.size(20.dp))
+                },
+                singleLine = true,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                shape = RoundedCornerShape(14.dp),
                 colors = loanTextFieldColors(),
                 modifier = Modifier.fillMaxWidth()
             )
@@ -1600,7 +1703,12 @@ fun AddLoanFormSheet(
                 value = monthsInput,
                 onValueChange = { monthsInput = it.filter { char -> char.isDigit() } },
                 label = { Text("Repayment Period (Months)", color = TextSecondary) },
+                leadingIcon = {
+                    Icon(Icons.Default.CalendarMonth, null, tint = AccentTeal, modifier = Modifier.size(20.dp))
+                },
+                singleLine = true,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                shape = RoundedCornerShape(14.dp),
                 colors = loanTextFieldColors(),
                 modifier = Modifier.fillMaxWidth()
             )
@@ -1610,7 +1718,12 @@ fun AddLoanFormSheet(
                 value = rateInput,
                 onValueChange = { rateInput = it.filter { char -> char.isDigit() || char == '.' } },
                 label = { Text("Interest Rate (% per year)", color = TextSecondary) },
+                leadingIcon = {
+                    Icon(Icons.Default.Percent, null, tint = AccentTeal, modifier = Modifier.size(20.dp))
+                },
+                singleLine = true,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                shape = RoundedCornerShape(14.dp),
                 colors = loanTextFieldColors(),
                 modifier = Modifier.fillMaxWidth()
             )
@@ -1762,6 +1875,10 @@ fun RepayLoanFormSheet(
                 onValueChange = {},
                 readOnly = true,
                 label = { Text("Repay From Account", color = TextSecondary) },
+                leadingIcon = {
+                    Icon(Icons.Default.AccountBalance, null, tint = AccentTeal, modifier = Modifier.size(20.dp))
+                },
+                shape = RoundedCornerShape(14.dp),
                 colors = loanTextFieldColors(),
                 trailingIcon = {
                     IconButton(onClick = { expandedDropdown = !expandedDropdown }) {
@@ -1779,6 +1896,7 @@ fun RepayLoanFormSheet(
                 modifier = Modifier
                     .fillMaxWidth()
                     .background(CardDarker)
+                    .border(1.dp, DividerColor, RoundedCornerShape(12.dp))
             ) {
                 accounts.forEach { acc ->
                     DropdownMenuItem(
@@ -1845,7 +1963,12 @@ fun RepayLoanFormSheet(
                     }
                 },
                 label = { Text("Repayment Amount (৳)", color = TextSecondary) },
+                leadingIcon = {
+                    Icon(Icons.Default.MonetizationOn, null, tint = AccentTeal, modifier = Modifier.size(20.dp))
+                },
+                singleLine = true,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                shape = RoundedCornerShape(14.dp),
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedTextColor       = TextPrimary,
                     unfocusedTextColor     = TextPrimary,
@@ -2012,6 +2135,10 @@ fun AddPersonalLoanFormSheet(
                     onValueChange = {},
                     readOnly = true,
                     label = { Text(if (isLent) "Select Account to Deduct Funds From" else "Select Account to Deposit Funds", color = TextSecondary) },
+                    leadingIcon = {
+                        Icon(Icons.Default.AccountBalance, null, tint = AccentTeal, modifier = Modifier.size(20.dp))
+                    },
+                    shape = RoundedCornerShape(14.dp),
                     colors = loanTextFieldColors(),
                     trailingIcon = {
                         IconButton(onClick = { expandedDropdown = !expandedDropdown }) {
@@ -2029,6 +2156,7 @@ fun AddPersonalLoanFormSheet(
                     modifier = Modifier
                         .fillMaxWidth()
                         .background(CardDarker)
+                        .border(1.dp, DividerColor, RoundedCornerShape(12.dp))
                 ) {
                     accounts.forEach { account ->
                         DropdownMenuItem(
@@ -2055,6 +2183,11 @@ fun AddPersonalLoanFormSheet(
                 value = lenderInput,
                 onValueChange = { lenderInput = it },
                 label = { Text(if (isLent) "Borrower Name (Friend / Family)" else "Lender Name (Friend / Family)", color = TextSecondary) },
+                leadingIcon = {
+                    Icon(Icons.Default.Person, null, tint = AccentTeal, modifier = Modifier.size(20.dp))
+                },
+                singleLine = true,
+                shape = RoundedCornerShape(14.dp),
                 colors = loanTextFieldColors(),
                 modifier = Modifier.fillMaxWidth()
             )
@@ -2064,7 +2197,12 @@ fun AddPersonalLoanFormSheet(
                 value = amountInput,
                 onValueChange = { amountInput = it.filter { char -> char.isDigit() || char == '.' } },
                 label = { Text("Loan Amount (৳)", color = TextSecondary) },
+                leadingIcon = {
+                    Icon(Icons.Default.MonetizationOn, null, tint = AccentTeal, modifier = Modifier.size(20.dp))
+                },
+                singleLine = true,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                shape = RoundedCornerShape(14.dp),
                 colors = loanTextFieldColors(),
                 modifier = Modifier.fillMaxWidth()
             )
