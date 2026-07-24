@@ -47,3 +47,8 @@ val ChartSurface: Color   get() = if (isDarkModeGlobal) Color(0x0FFFFFFF) else C
 
 // === Scrim (bottom sheet / dialog overlay) ===
 val ScrimColor: Color     get() = if (isDarkModeGlobal) Color(0xA6000000) else Color(0x59000000)
+
+// === Toggle / Switch Colors ===
+val SwitchTrackUnchecked: Color  get() = if (isDarkModeGlobal) Color(0xFF1E2538) else Color(0xFFCBD5E1)
+val SwitchThumbUnchecked: Color  get() = if (isDarkModeGlobal) Color(0xFF9AA3B8) else Color(0xFF64748B)
+val SwitchBorderUnchecked: Color get() = if (isDarkModeGlobal) Color(0xFF333B54) else Color(0xFF94A3B8)

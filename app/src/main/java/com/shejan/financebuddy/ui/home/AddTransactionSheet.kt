@@ -598,10 +598,12 @@ fun AddTransactionSheet(
                         onCheckedChange = { saveToPayees = it },
                         enabled = !isAccountAlreadySaved,
                         colors = SwitchDefaults.colors(
-                            checkedThumbColor = AccentTeal,
-                            checkedTrackColor = AccentTeal.copy(alpha = 0.5f),
-                            uncheckedThumbColor = TextMuted,
-                            uncheckedTrackColor = CardDark
+                            checkedThumbColor = OnAccent,
+                            checkedTrackColor = AccentTeal,
+                            checkedBorderColor = Color.Transparent,
+                            uncheckedThumbColor = SwitchThumbUnchecked,
+                            uncheckedTrackColor = SwitchTrackUnchecked,
+                            uncheckedBorderColor = SwitchBorderUnchecked
                         )
                     )
                     Spacer(modifier = Modifier.width(10.dp))

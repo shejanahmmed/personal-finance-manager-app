@@ -424,8 +424,12 @@ fun SettingsScreen(
                                 }
                             },
                             colors = SwitchDefaults.colors(
-                                checkedThumbColor = Color.White,
-                                checkedTrackColor = AccentTeal
+                                checkedThumbColor = OnAccent,
+                                checkedTrackColor = AccentTeal,
+                                checkedBorderColor = Color.Transparent,
+                                uncheckedThumbColor = SwitchThumbUnchecked,
+                                uncheckedTrackColor = SwitchTrackUnchecked,
+                                uncheckedBorderColor = SwitchBorderUnchecked
                             )
                         )
                     }
