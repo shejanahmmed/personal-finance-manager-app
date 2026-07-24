@@ -28,6 +28,7 @@ import androidx.compose.material.icons.filled.Sms
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import kotlinx.coroutines.launch
@@ -130,6 +131,7 @@ fun PendingTransactionsScreen(
         }
     }
 
+    var showMoreMenu by remember { mutableStateOf(false) }
     var editTarget by remember { mutableStateOf<PendingSmsTransactionEntity?>(null) }
     var showDismissAllDialog by remember { mutableStateOf(false) }
     var showMappingConfigSheet by remember { mutableStateOf(false) }
@@ -161,25 +163,30 @@ fun PendingTransactionsScreen(
         )
 
         Column(modifier = Modifier.fillMaxSize()) {
+            // ── Screen Header (Matching Bank Accounts Page Design) ──────
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .statusBarsPadding()
-                    .padding(horizontal = 8.dp, vertical = 8.dp),
+                    .padding(horizontal = 12.dp, vertical = 12.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 IconButton(
                     onClick = onBack,
-                    modifier = Modifier.size(36.dp)
+                    modifier = Modifier
+                        .size(40.dp)
+                        .clip(CircleShape)
+                        .background(CardDarker)
+                        .border(1.dp, DividerColor, CircleShape)
                 ) {
                     Icon(
                         imageVector = Icons.AutoMirrored.Filled.KeyboardArrowLeft,
                         contentDescription = "Back",
                         tint = TextPrimary,
-                        modifier = Modifier.size(22.dp)
+                        modifier = Modifier.size(24.dp)
                     )
                 }
-                Spacer(modifier = Modifier.width(8.dp))
+                Spacer(modifier = Modifier.width(12.dp))
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
                         text = "Transaction Inbox",
@@ -194,46 +201,7 @@ fun PendingTransactionsScreen(
                     )
                 }
 
-                IconButton(
-                    onClick = { checkPermissionAndShowSyncDialog() },
-                    enabled = !isScanning,
-                    modifier = Modifier.size(36.dp)
-                ) {
-                    if (isScanning) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(20.dp),
-                            strokeWidth = 2.dp,
-                            color = AccentTeal
-                        )
-                    } else {
-                        Icon(
-                            imageVector = Icons.Default.History,
-                            contentDescription = "Scan SMS History",
-                            tint = AccentTeal,
-                            modifier = Modifier.size(22.dp)
-                        )
-                    }
-                }
-
-                Spacer(modifier = Modifier.width(4.dp))
-
-                IconButton(
-                    onClick = {
-                        onLoadPotentialSenders()
-                        showMappingConfigSheet = true
-                    },
-                    modifier = Modifier.size(36.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Tune,
-                        contentDescription = "SMS Sender Mapping Settings",
-                        tint = AccentTeal,
-                        modifier = Modifier.size(22.dp)
-                    )
-                }
-
                 if (pendingList.isNotEmpty()) {
-                    Spacer(modifier = Modifier.width(8.dp))
                     Button(
                         onClick = { showDismissAllDialog = true },
                         colors = ButtonDefaults.buttonColors(
@@ -241,16 +209,82 @@ fun PendingTransactionsScreen(
                             contentColor = ExpenseRed
                         ),
                         shape = RoundedCornerShape(10.dp),
-                        contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp),
-                        modifier = Modifier.height(34.dp)
+                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
+                        modifier = Modifier.height(40.dp)
                     ) {
                         Text("Dismiss All", fontSize = 11.sp, fontWeight = FontWeight.Bold)
                     }
+                    Spacer(modifier = Modifier.width(8.dp))
                 }
-                Spacer(modifier = Modifier.width(8.dp))
-            }
 
-            HorizontalDivider(color = DividerColor, modifier = Modifier.padding(horizontal = 16.dp))
+                // 3-dot More Options Dropdown
+                Box {
+                    IconButton(
+                        onClick = { showMoreMenu = true }
+                    ) {
+                        if (isScanning) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(18.dp),
+                                strokeWidth = 2.dp,
+                                color = AccentTeal
+                            )
+                        } else {
+                            Icon(
+                                imageVector = Icons.Default.MoreVert,
+                                contentDescription = "More Options",
+                                tint = TextPrimary,
+                                modifier = Modifier.size(22.dp)
+                            )
+                        }
+                    }
+
+                    DropdownMenu(
+                        expanded = showMoreMenu,
+                        onDismissRequest = { showMoreMenu = false },
+                        modifier = Modifier
+                            .background(CardDarker)
+                            .border(1.dp, DividerColor, RoundedCornerShape(12.dp))
+                    ) {
+                        DropdownMenuItem(
+                            text = {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(
+                                        imageVector = Icons.Default.History,
+                                        contentDescription = null,
+                                        tint = AccentTeal,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(10.dp))
+                                    Text("Sync SMS History", color = TextPrimary, fontSize = 14.sp)
+                                }
+                            },
+                            onClick = {
+                                showMoreMenu = false
+                                checkPermissionAndShowSyncDialog()
+                            }
+                        )
+                        DropdownMenuItem(
+                            text = {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(
+                                        imageVector = Icons.Default.Tune,
+                                        contentDescription = null,
+                                        tint = AccentTeal,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(10.dp))
+                                    Text("SMS Sender Settings", color = TextPrimary, fontSize = 14.sp)
+                                }
+                            },
+                            onClick = {
+                                showMoreMenu = false
+                                onLoadPotentialSenders()
+                                showMappingConfigSheet = true
+                            }
+                        )
+                    }
+                }
+            }
 
             // ── Filter Selector Tabs (Pending / Confirmed / Dismissed) ────────
             Row(
@@ -389,16 +423,7 @@ fun PendingTransactionsScreen(
                 containerColor   = CardDarker,
                 shape            = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
                 tonalElevation   = 8.dp,
-                dragHandle = {
-                    Box(
-                        modifier = Modifier
-                            .padding(vertical = 12.dp)
-                            .width(36.dp)
-                            .height(4.dp)
-                            .clip(CircleShape)
-                            .background(DividerColor)
-                    )
-                }
+                dragHandle = { BottomSheetDefaults.DragHandle(color = DividerColor) }
             ) {
                 EditPendingSheet(
                     pending  = target,
@@ -529,16 +554,7 @@ fun PendingTransactionsScreen(
                 containerColor   = CardDarker,
                 shape            = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
                 tonalElevation   = 8.dp,
-                dragHandle = {
-                    Box(
-                        modifier = Modifier
-                            .padding(vertical = 12.dp)
-                            .width(36.dp)
-                            .height(4.dp)
-                            .clip(CircleShape)
-                            .background(DividerColor)
-                    )
-                }
+                dragHandle = { BottomSheetDefaults.DragHandle(color = DividerColor) }
             ) {
                 SmsSenderMappingsConfigSheet(
                     accounts = accounts,
