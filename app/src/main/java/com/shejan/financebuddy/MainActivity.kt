@@ -36,6 +36,7 @@ import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.AccountBalance
 import androidx.compose.material.icons.filled.People
 import androidx.compose.material.icons.filled.MonetizationOn
+import androidx.compose.material.icons.filled.ShowChart
 import androidx.compose.material.icons.filled.Summarize
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
@@ -92,6 +93,7 @@ import com.shejan.financebuddy.ui.history.HistoryScreen
 import com.shejan.financebuddy.ui.reports.ReportsScreen
 import com.shejan.financebuddy.ui.onboarding.OnboardingScreenRoot
 import com.shejan.financebuddy.ui.statistics.StatisticsScreen
+import com.shejan.financebuddy.ui.investments.InvestmentsScreen
 import com.shejan.financebuddy.ui.pending.PendingTransactionsScreen
 import com.shejan.financebuddy.ui.pending.PendingTransactionsViewModel
 import com.shejan.financebuddy.ui.theme.AccentBlue
@@ -271,7 +273,44 @@ fun AppNavigation(
                     onNavigateToLoans = { navController.navigate("loans") },
                     onNavigateToHistory = { navController.navigate("transaction_history") },
                     onNavigateToReports = { navController.navigate("reports") },
-                    onNavigateToStatistics = { navController.navigate("statistics") }
+                    onNavigateToStatistics = { navController.navigate("statistics") },
+                    onNavigateToInvestments = { navController.navigate("investments") }
+                )
+            }
+
+            composable("investments") {
+                val scope = rememberCoroutineScope()
+                val investmentDao = remember { database.investmentDao() }
+                val transactionDao = remember { database.transactionDao() }
+                val investments by investmentDao.getAllInvestments().collectAsState(initial = emptyList())
+
+                InvestmentsScreen(
+                    investments = investments,
+                    accounts = accounts,
+                    onBack = { navController.popBackStack() },
+                    onAddInvestment = { inv ->
+                        scope.launch(Dispatchers.IO) { investmentDao.insertInvestment(inv) }
+                    },
+                    onUpdateInvestment = { inv ->
+                        scope.launch(Dispatchers.IO) { investmentDao.updateInvestment(inv) }
+                    },
+                    onDeleteInvestment = { inv ->
+                        scope.launch(Dispatchers.IO) { investmentDao.deleteInvestment(inv) }
+                    },
+                    onLogDividend = { inv, amount, accountId, note ->
+                        scope.launch(Dispatchers.IO) {
+                            transactionDao.insertTransaction(
+                                TransactionEntity(
+                                    amount = amount,
+                                    type = "INCOME",
+                                    category = "Investment Return",
+                                    timestamp = System.currentTimeMillis(),
+                                    fromAccountId = accountId,
+                                    note = note.ifBlank { "Dividend payout from ${inv.name}" }
+                                )
+                            )
+                        }
+                    }
                 )
             }
 
@@ -510,7 +549,8 @@ fun MainDashboardContainer(
     onNavigateToLoans: () -> Unit = {},
     onNavigateToHistory: () -> Unit = {},
     onNavigateToReports: () -> Unit = {},
-    onNavigateToStatistics: () -> Unit = {}
+    onNavigateToStatistics: () -> Unit = {},
+    onNavigateToInvestments: () -> Unit = {}
 ) {
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val scope       = rememberCoroutineScope()
@@ -766,9 +806,14 @@ fun MainDashboardContainer(
                         }
                     )
                     DrawerMenuItem(
-                        icon = Icons.Default.Info,
+                        icon = Icons.Default.ShowChart,
                         label = "Investment Tracker",
-                        onClick = { scope.launch { drawerState.close() } }
+                        onClick = {
+                            scope.launch {
+                                drawerState.close()
+                                onNavigateToInvestments()
+                            }
+                        }
                     )
                     DrawerMenuItem(
                         icon = Icons.Default.Inbox,
