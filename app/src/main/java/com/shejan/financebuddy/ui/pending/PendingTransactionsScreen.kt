@@ -206,14 +206,7 @@ fun PendingTransactionsScreen(
 
                 // 3-dot More Options Dropdown
                 Box {
-                    IconButton(
-                        onClick = { showMoreMenu = true },
-                        modifier = Modifier
-                            .size(40.dp)
-                            .clip(CircleShape)
-                            .background(CardDarker)
-                            .border(1.dp, DividerColor, CircleShape)
-                    ) {
+                    IconButton(onClick = { showMoreMenu = true }) {
                         if (isScanning) {
                             CircularProgressIndicator(
                                 modifier = Modifier.size(18.dp),

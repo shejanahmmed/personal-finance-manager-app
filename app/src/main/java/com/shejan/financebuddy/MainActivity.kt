@@ -622,8 +622,8 @@ fun MainDashboardContainer(
     val goals by goalDao.getAllGoals().collectAsState(initial = emptyList())
     val pendingSmsList by pendingSmsDao.getAllPending().collectAsState(initial = emptyList())
 
-    var readNotificationIds by remember { mutableStateOf(setOf<String>()) }
-    var dismissedNotificationIds by remember { mutableStateOf(setOf<String>()) }
+    val readNotificationIds by preferencesManager.readNotificationIds.collectAsState(initial = emptySet())
+    val dismissedNotificationIds by preferencesManager.dismissedNotificationIds.collectAsState(initial = emptySet())
 
     val rawNotifications = remember(pendingSmsList, loans, budgets, goals, allTransactions) {
         NotificationHelper.generateNotifications(
@@ -1016,10 +1016,13 @@ fun MainDashboardContainer(
                             }
                         },
                         onMarkAllNotificationsRead = {
-                            readNotificationIds = notifications.map { it.id }.toSet()
+                            val unreadIds = notifications.filter { !it.isRead }.map { it.id }.toSet()
+                            if (unreadIds.isNotEmpty()) {
+                                scope.launch { preferencesManager.markNotificationsAsRead(unreadIds) }
+                            }
                         },
                         onDismissNotification = { id ->
-                            dismissedNotificationIds = dismissedNotificationIds + id
+                            scope.launch { preferencesManager.dismissNotification(id) }
                         }
                     )
                     "budget" -> BudgetScreen(

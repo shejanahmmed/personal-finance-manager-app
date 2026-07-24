@@ -121,20 +121,6 @@ object NotificationHelper {
             }
         }
 
-        // 5. System Security & Privacy status
-        list.add(
-            AppNotification(
-                id = "system_security",
-                title = "Local Vault Secured",
-                message = "All financial records and SMS data are stored safely on-device with hardware-backed encryption.",
-                timestamp = System.currentTimeMillis(),
-                type = NotificationType.SYSTEM_INFO,
-                severity = NotificationSeverity.INFO,
-                actionRoute = null,
-                actionLabel = null
-            )
-        )
-
         return list.sortedByDescending { it.timestamp }
     }
 }

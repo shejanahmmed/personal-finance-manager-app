@@ -4,7 +4,9 @@ import android.content.Context
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
+import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
+import androidx.datastore.preferences.core.stringSetPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.flow.Flow
@@ -27,6 +29,9 @@ class PreferencesManager(private val context: Context) {
         private val APP_LOCK_TYPE = stringPreferencesKey("app_lock_type")
         private val APP_LOCK_PIN = stringPreferencesKey("app_lock_pin")
         private val AUTO_LOCK_TIMEOUT = stringPreferencesKey("auto_lock_timeout")
+        private val READ_NOTIFICATION_IDS = stringSetPreferencesKey("read_notification_ids")
+        private val DISMISSED_NOTIFICATION_IDS = stringSetPreferencesKey("dismissed_notification_ids")
+        private val PINNED_ACCOUNT_ID = intPreferencesKey("pinned_account_id")
     }
 
     /** Emits whether total balance should be masked with asterisks. Defaults to false. */
@@ -166,6 +171,57 @@ class PreferencesManager(private val context: Context) {
     suspend fun setHideCardBalances(hide: Boolean) {
         context.dataStore.edit { prefs ->
             prefs[HIDE_CARD_BALANCES] = hide
+        }
+    }
+
+    /** Emits set of read notification IDs. */
+    val readNotificationIds: Flow<Set<String>> = context.dataStore.data.map { prefs ->
+        prefs[READ_NOTIFICATION_IDS] ?: emptySet()
+    }
+
+    /** Emits set of dismissed notification IDs. */
+    val dismissedNotificationIds: Flow<Set<String>> = context.dataStore.data.map { prefs ->
+        prefs[DISMISSED_NOTIFICATION_IDS] ?: emptySet()
+    }
+
+    /** Marks specified notification IDs as read. */
+    suspend fun markNotificationsAsRead(ids: Set<String>) {
+        context.dataStore.edit { prefs ->
+            val current = prefs[READ_NOTIFICATION_IDS] ?: emptySet()
+            prefs[READ_NOTIFICATION_IDS] = current + ids
+        }
+    }
+
+    /** Marks a single notification ID as read. */
+    suspend fun markNotificationAsRead(id: String) {
+        context.dataStore.edit { prefs ->
+            val current = prefs[READ_NOTIFICATION_IDS] ?: emptySet()
+            prefs[READ_NOTIFICATION_IDS] = current + id
+        }
+    }
+
+    /** Dismisses a single notification ID. */
+    suspend fun dismissNotification(id: String) {
+        context.dataStore.edit { prefs ->
+            val current = prefs[DISMISSED_NOTIFICATION_IDS] ?: emptySet()
+            prefs[DISMISSED_NOTIFICATION_IDS] = current + id
+        }
+    }
+
+    /** Emits the pinned account ID (or null if none pinned). */
+    val pinnedAccountId: Flow<Int?> = context.dataStore.data.map { prefs ->
+        val id = prefs[PINNED_ACCOUNT_ID] ?: -1
+        if (id != -1) id else null
+    }
+
+    /** Sets or clears the pinned account ID. */
+    suspend fun setPinnedAccountId(id: Int?) {
+        context.dataStore.edit { prefs ->
+            if (id != null) {
+                prefs[PINNED_ACCOUNT_ID] = id
+            } else {
+                prefs.remove(PINNED_ACCOUNT_ID)
+            }
         }
     }
 }

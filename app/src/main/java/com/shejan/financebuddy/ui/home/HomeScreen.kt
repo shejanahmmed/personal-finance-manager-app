@@ -38,13 +38,18 @@ import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.filled.PushPin
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material.icons.filled.Label
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Card
@@ -68,7 +73,9 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -129,6 +136,11 @@ fun HomeScreen(
 ) {
     var showAddSheet by remember { mutableStateOf(false) }
     val sheetState   = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+
+    val context = LocalContext.current
+    val preferencesManager = remember { com.shejan.financebuddy.data.PreferencesManager(context.applicationContext) }
+    val pinnedAccountId by preferencesManager.pinnedAccountId.collectAsState(initial = null)
+    val scope = rememberCoroutineScope()
 
     var showNotificationsSheet by remember { mutableStateOf(false) }
     val notificationsSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
@@ -261,18 +273,38 @@ fun HomeScreen(
                     }
                 }
 
-                // Swipeable Account Chips (only show accounts with a non-zero balance)
-                val activeAccounts = remember(sortedAccounts) { sortedAccounts.filter { it.balance > 0 } }
+                // Swipeable Account Chips (only show accounts with a non-zero balance, with pinned card at index 0)
+                val activeAccounts = remember(sortedAccounts, pinnedAccountId) {
+                    val nonZero = sortedAccounts.filter { it.balance > 0 }
+                    if (pinnedAccountId != null) {
+                        val pinned = nonZero.filter { it.id == pinnedAccountId }
+                        val rest = nonZero.filter { it.id != pinnedAccountId }
+                        pinned + rest
+                    } else {
+                        nonZero
+                    }
+                }
+
                 if (activeAccounts.isNotEmpty()) {
                     LazyRow(
                         contentPadding        = PaddingValues(horizontal = 20.dp, vertical = 12.dp),
                         horizontalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        items(activeAccounts) { account ->
+                        items(activeAccounts, key = { it.id }) { account ->
                             AccountCardChip(
                                 account = account,
                                 currencyFormat = currencyFormat,
-                                hideBalancesPref = hideBalancesPref
+                                hideBalancesPref = hideBalancesPref,
+                                isPinned = account.id == pinnedAccountId,
+                                onPinToggle = {
+                                    scope.launch {
+                                        if (account.id == pinnedAccountId) {
+                                            preferencesManager.setPinnedAccountId(null)
+                                        } else {
+                                            preferencesManager.setPinnedAccountId(account.id)
+                                        }
+                                    }
+                                }
                             )
                         }
                     }
@@ -733,14 +765,18 @@ fun HomeScreen(
 // Components & Stubs
 // ─────────────────────────────────────────────────────────────
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun AccountCardChip(
     account: AccountEntity,
     currencyFormat: DecimalFormat,
-    hideBalancesPref: Boolean = false
+    hideBalancesPref: Boolean = false,
+    isPinned: Boolean = false,
+    onPinToggle: () -> Unit = {}
 ) {
     val cardColor = remember { Color(android.graphics.Color.parseColor(account.colorHex)) }
     var isBalanceVisible by remember(hideBalancesPref) { mutableStateOf(!hideBalancesPref) }
+    var showMenu by remember { mutableStateOf(false) }
 
     // Card flip animation state
     var isFlipped by remember { mutableStateOf(false) }
@@ -757,48 +793,58 @@ fun AccountCardChip(
         }
     }
 
-    Card(
-        shape   = RoundedCornerShape(16.dp),
-        colors  = CardDefaults.cardColors(containerColor = cardColor.copy(alpha = 0.12f)),
-        border  = androidx.compose.foundation.BorderStroke(1.dp, cardColor.copy(alpha = 0.4f)),
-        modifier = Modifier
-            .width(165.dp)
-            .height(95.dp)
-            .graphicsLayer {
-                rotationY = rotation
-                cameraDistance = 12f * density
-            }
-            .clickable(
-                interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
-                indication = null
-            ) {
-                isFlipped = !isFlipped
-            }
-    ) {
-        if (rotation <= 90f) {
-            // Front side of card
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(horizontal = 12.dp, vertical = 8.dp),
-                verticalArrangement = Arrangement.SpaceBetween
-            ) {
-                // Top Row: Bank name only (removed account type badge)
-                Row(
-                    modifier              = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment     = Alignment.Top
-                ) {
-                    Text(
-                        text = account.name,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 11.sp,
-                        color = TextPrimary,
-                        modifier = Modifier.weight(1f).padding(end = 4.dp),
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
+    Box {
+        Card(
+            shape   = RoundedCornerShape(16.dp),
+            colors  = CardDefaults.cardColors(containerColor = cardColor.copy(alpha = 0.12f)),
+            border  = androidx.compose.foundation.BorderStroke(1.dp, cardColor.copy(alpha = 0.4f)),
+            modifier = Modifier
+                .width(165.dp)
+                .height(95.dp)
+                .graphicsLayer {
+                    rotationY = rotation
+                    cameraDistance = 12f * density
                 }
+                .combinedClickable(
+                    interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
+                    indication = null,
+                    onClick = { isFlipped = !isFlipped },
+                    onLongClick = { showMenu = true }
+                )
+        ) {
+            if (rotation <= 90f) {
+                // Front side of card
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(horizontal = 12.dp, vertical = 8.dp),
+                    verticalArrangement = Arrangement.SpaceBetween
+                ) {
+                    // Top Row: Bank name and pin indicator
+                    Row(
+                        modifier              = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment     = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = account.name,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 11.sp,
+                            color = TextPrimary,
+                            modifier = Modifier.weight(1f).padding(end = 4.dp),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+
+                        if (isPinned) {
+                            Icon(
+                                imageVector = Icons.Default.PushPin,
+                                contentDescription = "Pinned Card",
+                                tint = AccentTeal,
+                                modifier = Modifier.size(13.dp)
+                            )
+                        }
+                    }
 
                 // Middle Row: Amount & Visibility Toggle
                 Row(
@@ -933,6 +979,43 @@ fun AccountCardChip(
             }
         }
     }
+
+    DropdownMenu(
+        expanded = showMenu,
+        onDismissRequest = { showMenu = false },
+        shape = RoundedCornerShape(12.dp),
+        containerColor = CardDarker,
+        modifier = Modifier.border(1.dp, DividerColor, RoundedCornerShape(12.dp))
+    ) {
+        DropdownMenuItem(
+            text = {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.PushPin,
+                        contentDescription = null,
+                        tint = if (isPinned) ExpenseRed else AccentTeal,
+                        modifier = Modifier.size(14.dp)
+                    )
+                    Spacer(Modifier.width(6.dp))
+                    Text(
+                        text = if (isPinned) "Unpin" else "Pin to First",
+                        color = TextPrimary,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
+            },
+            onClick = {
+                showMenu = false
+                onPinToggle()
+            },
+            modifier = Modifier.height(36.dp),
+            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 0.dp)
+        )
+    }
+}
 }
 
 @Composable
