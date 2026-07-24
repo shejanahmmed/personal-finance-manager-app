@@ -1492,10 +1492,32 @@ private fun EditPendingSheet(
                 },
                 modifier = Modifier.background(CardDarker)
             ) {
-                val filteredBanks = accounts.filter { it.type == "BANK" && it.name.contains(fromAccountSearchText, ignoreCase = true) }
-                val filteredMfs = accounts.filter { it.type == "MFS" && it.name.contains(fromAccountSearchText, ignoreCase = true) }
+                val filteredCash  = accounts.filter { (it.type == "CASH" || it.name.contains("Cash", ignoreCase = true)) && it.name.contains(fromAccountSearchText, ignoreCase = true) }
+                val filteredBanks = accounts.filter { it.type == "BANK" && !it.name.contains("Cash", ignoreCase = true) && it.name.contains(fromAccountSearchText, ignoreCase = true) }
+                val filteredMfs   = accounts.filter { it.type == "MFS"  && !it.name.contains("Cash", ignoreCase = true) && it.name.contains(fromAccountSearchText, ignoreCase = true) }
+
+                if (filteredCash.isNotEmpty()) {
+                    DropdownMenuItem(
+                        text = { Text("Cash in Hand", color = IncomeGreen, fontWeight = FontWeight.Bold, fontSize = 11.sp) },
+                        onClick = {},
+                        enabled = false
+                    )
+                    filteredCash.forEach { acc ->
+                        DropdownMenuItem(
+                            text = { Text(acc.name, color = TextPrimary, fontSize = 13.sp) },
+                            onClick = {
+                                fromAccountId = acc.id
+                                fromAccountSearchText = acc.name
+                                showFromAccountDropdown = false
+                            }
+                        )
+                    }
+                }
 
                 if (filteredBanks.isNotEmpty()) {
+                    if (filteredCash.isNotEmpty()) {
+                        androidx.compose.material3.HorizontalDivider(color = DividerColor.copy(alpha = 0.5f))
+                    }
                     DropdownMenuItem(
                         text = { Text("Banks", color = AccentTeal, fontWeight = FontWeight.Bold, fontSize = 11.sp) },
                         onClick = {},
@@ -1514,7 +1536,7 @@ private fun EditPendingSheet(
                 }
 
                 if (filteredMfs.isNotEmpty()) {
-                    if (filteredBanks.isNotEmpty()) {
+                    if (filteredCash.isNotEmpty() || filteredBanks.isNotEmpty()) {
                         androidx.compose.material3.HorizontalDivider(color = DividerColor.copy(alpha = 0.5f))
                     }
                     DropdownMenuItem(
@@ -1604,10 +1626,32 @@ private fun EditPendingSheet(
                     },
                     modifier = Modifier.background(CardDarker)
                 ) {
-                    val filteredBanks = destAccounts.filter { it.type == "BANK" && it.name.contains(toAccountSearchText, ignoreCase = true) }
-                    val filteredMfs = destAccounts.filter { it.type == "MFS" && it.name.contains(toAccountSearchText, ignoreCase = true) }
+                    val filteredCash  = destAccounts.filter { (it.type == "CASH" || it.name.contains("Cash", ignoreCase = true)) && it.name.contains(toAccountSearchText, ignoreCase = true) }
+                    val filteredBanks = destAccounts.filter { it.type == "BANK" && !it.name.contains("Cash", ignoreCase = true) && it.name.contains(toAccountSearchText, ignoreCase = true) }
+                    val filteredMfs   = destAccounts.filter { it.type == "MFS"  && !it.name.contains("Cash", ignoreCase = true) && it.name.contains(toAccountSearchText, ignoreCase = true) }
+
+                    if (filteredCash.isNotEmpty()) {
+                        DropdownMenuItem(
+                            text = { Text("Cash in Hand", color = IncomeGreen, fontWeight = FontWeight.Bold, fontSize = 11.sp) },
+                            onClick = {},
+                            enabled = false
+                        )
+                        filteredCash.forEach { acc ->
+                            DropdownMenuItem(
+                                text = { Text(acc.name, color = TextPrimary, fontSize = 13.sp) },
+                                onClick = {
+                                    toAccountId = acc.id
+                                    toAccountSearchText = acc.name
+                                    showToAccountDropdown = false
+                                }
+                            )
+                        }
+                    }
 
                     if (filteredBanks.isNotEmpty()) {
+                        if (filteredCash.isNotEmpty()) {
+                            androidx.compose.material3.HorizontalDivider(color = DividerColor.copy(alpha = 0.5f))
+                        }
                         DropdownMenuItem(
                             text = { Text("Banks", color = AccentTeal, fontWeight = FontWeight.Bold, fontSize = 11.sp) },
                             onClick = {},
@@ -1626,7 +1670,7 @@ private fun EditPendingSheet(
                     }
 
                     if (filteredMfs.isNotEmpty()) {
-                        if (filteredBanks.isNotEmpty()) {
+                        if (filteredCash.isNotEmpty() || filteredBanks.isNotEmpty()) {
                             androidx.compose.material3.HorizontalDivider(color = DividerColor.copy(alpha = 0.5f))
                         }
                         DropdownMenuItem(

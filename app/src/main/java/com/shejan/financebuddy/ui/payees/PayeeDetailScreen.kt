@@ -490,11 +490,19 @@ private fun PayeeAccountFormSheet(
                     .padding(4.dp),
                 horizontalArrangement = Arrangement.spacedBy(4.dp)
             ) {
-                listOf("BANK", "MFS").forEach { t ->
+                listOf("CASH", "BANK", "MFS").forEach { t ->
                     val selected = type == t
                     val itemColor = if (selected) BackgroundDark else TextPrimary
-                    val icon = if (t == "BANK") Icons.Default.AccountBalance else Icons.Default.PhoneAndroid
-                    val label = if (t == "BANK") "Bank" else "MFS"
+                    val icon = when (t) {
+                        "CASH" -> Icons.Default.Payments
+                        "MFS"  -> Icons.Default.PhoneAndroid
+                        else   -> Icons.Default.AccountBalance
+                    }
+                    val label = when (t) {
+                        "CASH" -> "Cash"
+                        "MFS"  -> "MFS"
+                        else   -> "Bank"
+                    }
 
                     Box(
                         modifier = Modifier

@@ -56,6 +56,7 @@ import com.shejan.financebuddy.ui.theme.*
 import kotlinx.coroutines.launch
 import java.text.DecimalFormat
 
+private val PRESET_CASH = listOf("Cash in Hand", "Petty Cash", "Wallet Cash")
 private val PRESET_BANKS = listOf(
     "BRAC Bank PLC", "The City Bank PLC", "Eastern Bank PLC (EBL)",
     "Dutch-Bangla Bank PLC (DBBL)", "Prime Bank PLC", "Mutual Trust Bank PLC",
@@ -67,9 +68,12 @@ private val PRESET_BANKS = listOf(
 private val PRESET_MFS = listOf(
     "bKash", "Nagad", "Rocket", "Upay", "CellFin (IBBL)", "Ok Wallet", "MyCash"
 )
-private val ACCOUNT_SUBTYPES = listOf("Savings", "Current", "Salary", "Student", "Business", "Islamic", "Personal", "Merchant", "Agent", "Other")
+private val ACCOUNT_SUBTYPES = listOf("Savings", "Current", "Salary", "Student", "Business", "Islamic", "Personal", "Merchant", "Agent", "In Hand", "Wallet", "Petty Cash", "Other")
 
 private val BANK_COLOR_MAP = mapOf(
+    "Cash in Hand" to "#10B981",
+    "Petty Cash" to "#059669",
+    "Wallet Cash" to "#34D399",
     "BRAC Bank PLC" to "#0096FF",
     "The City Bank PLC" to "#007A33",
     "Eastern Bank PLC (EBL)" to "#003366",
@@ -98,9 +102,11 @@ fun BankAccountsScreen(
     onDeleteAccount: (AccountEntity) -> Unit
 ) {
     val currencyFormat = remember { DecimalFormat("##,##,##0.00") }
-    val banks = remember(accounts) { accounts.filter { it.type == "BANK" && it.accountSubtype.isNotBlank() } }
-    val mfs   = remember(accounts) { accounts.filter { it.type == "MFS"  && it.accountSubtype.isNotBlank() } }
+    val cash  = remember(accounts) { accounts.filter { it.type == "CASH" || it.name.contains("Cash", ignoreCase = true) } }
+    val banks = remember(accounts) { accounts.filter { it.type == "BANK" && !it.name.contains("Cash", ignoreCase = true) } }
+    val mfs   = remember(accounts) { accounts.filter { it.type == "MFS"  && !it.name.contains("Cash", ignoreCase = true) } }
     val totalBalance = remember(accounts) { accounts.sumOf { it.balance } }
+    val totalCashBalance = remember(cash) { cash.sumOf { it.balance } }
     val totalBankBalance = remember(banks) { banks.sumOf { it.balance } }
     val totalMfsBalance = remember(mfs) { mfs.sumOf { it.balance } }
 
@@ -235,16 +241,33 @@ fun BankAccountsScreen(
                     item {
                         AccountsHeroCard(
                             totalBalance = totalBalance,
+                            cashBalance = totalCashBalance,
                             bankBalance = totalBankBalance,
                             mfsBalance = totalMfsBalance,
+                            cashCount = cash.size,
                             bankCount = banks.size,
                             mfsCount = mfs.size,
                             currencyFormat = currencyFormat
                         )
                     }
 
+                    if (cash.isNotEmpty()) {
+                        item { SectionGroupHeader(title = "Cash in Hand", count = cash.size) }
+                        items(cash, key = { it.id }) { account ->
+                            AccountManageCard(
+                                account = account,
+                                currencyFormat = currencyFormat,
+                                onEdit = { editingAccount = account; showAddSheet = true },
+                                onDelete = { deletingAccount = account }
+                            )
+                        }
+                    }
+
                     if (banks.isNotEmpty()) {
-                        item { SectionGroupHeader(title = "Banks", count = banks.size) }
+                        item {
+                            if (cash.isNotEmpty()) Spacer(Modifier.height(4.dp))
+                            SectionGroupHeader(title = "Banks", count = banks.size)
+                        }
                         items(banks, key = { it.id }) { account ->
                             AccountManageCard(
                                 account = account,
@@ -314,8 +337,10 @@ fun BankAccountsScreen(
 @Composable
 private fun AccountsHeroCard(
     totalBalance: Double,
+    cashBalance: Double,
     bankBalance: Double,
     mfsBalance: Double,
+    cashCount: Int,
     bankCount: Int,
     mfsCount: Int,
     currencyFormat: DecimalFormat
@@ -389,7 +414,7 @@ private fun AccountsHeroCard(
                             .padding(horizontal = 10.dp, vertical = 4.dp)
                     ) {
                         Text(
-                            text = "${bankCount + mfsCount} Linked",
+                            text = "${cashCount + bankCount + mfsCount} Linked",
                             color = TextSecondary,
                             fontSize = 10.sp,
                             fontWeight = FontWeight.SemiBold
@@ -415,13 +440,43 @@ private fun AccountsHeroCard(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
+                    // Cash Pill
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier.weight(1f)
                     ) {
                         Box(
                             modifier = Modifier
-                                .size(32.dp)
+                                .size(28.dp)
+                                .clip(CircleShape)
+                                .background(IncomeGreen.copy(alpha = 0.12f)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Payments,
+                                contentDescription = null,
+                                tint = IncomeGreen,
+                                modifier = Modifier.size(15.dp)
+                            )
+                        }
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Column {
+                            Text("Cash ($cashCount)", fontSize = 10.sp, color = TextMuted)
+                            Text("৳${currencyFormat.format(cashBalance)}", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = TextPrimary)
+                        }
+                    }
+
+                    Box(modifier = Modifier.width(1.dp).height(24.dp).background(DividerColor))
+                    Spacer(modifier = Modifier.width(6.dp))
+
+                    // Banks Pill
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(28.dp)
                                 .clip(CircleShape)
                                 .background(AccentBlue.copy(alpha = 0.12f)),
                             contentAlignment = Alignment.Center
@@ -430,32 +485,27 @@ private fun AccountsHeroCard(
                                 imageVector = Icons.Default.AccountBalance,
                                 contentDescription = null,
                                 tint = AccentBlue,
-                                modifier = Modifier.size(16.dp)
+                                modifier = Modifier.size(15.dp)
                             )
                         }
-                        Spacer(modifier = Modifier.width(8.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
                         Column {
-                            Text("Banks ($bankCount)", fontSize = 11.sp, color = TextMuted)
-                            Text("৳${currencyFormat.format(bankBalance)}", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = TextPrimary)
+                            Text("Banks ($bankCount)", fontSize = 10.sp, color = TextMuted)
+                            Text("৳${currencyFormat.format(bankBalance)}", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = TextPrimary)
                         }
                     }
 
-                    Box(
-                        modifier = Modifier
-                            .width(1.dp)
-                            .height(28.dp)
-                            .background(DividerColor)
-                    )
+                    Box(modifier = Modifier.width(1.dp).height(24.dp).background(DividerColor))
+                    Spacer(modifier = Modifier.width(6.dp))
 
-                    Spacer(modifier = Modifier.width(12.dp))
-
+                    // MFS Pill
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier.weight(1f)
                     ) {
                         Box(
                             modifier = Modifier
-                                .size(32.dp)
+                                .size(28.dp)
                                 .clip(CircleShape)
                                 .background(ExpenseRed.copy(alpha = 0.12f)),
                             contentAlignment = Alignment.Center
@@ -464,13 +514,13 @@ private fun AccountsHeroCard(
                                 imageVector = Icons.Default.PhoneAndroid,
                                 contentDescription = null,
                                 tint = ExpenseRed,
-                                modifier = Modifier.size(16.dp)
+                                modifier = Modifier.size(15.dp)
                             )
                         }
-                        Spacer(modifier = Modifier.width(8.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
                         Column {
-                            Text("MFS ($mfsCount)", fontSize = 11.sp, color = TextMuted)
-                            Text("৳${currencyFormat.format(mfsBalance)}", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = TextPrimary)
+                            Text("MFS ($mfsCount)", fontSize = 10.sp, color = TextMuted)
+                            Text("৳${currencyFormat.format(mfsBalance)}", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = TextPrimary)
                         }
                     }
                 }
@@ -558,7 +608,7 @@ private fun AccountManageCard(
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
-                    imageVector = if (account.type == "MFS") Icons.Default.PhoneAndroid else Icons.Default.AccountBalance,
+                    imageVector = if (account.type == "CASH" || account.name.contains("Cash", ignoreCase = true)) Icons.Default.Payments else if (account.type == "MFS") Icons.Default.PhoneAndroid else Icons.Default.AccountBalance,
                     contentDescription = null,
                     tint = cardColor,
                     modifier = Modifier.size(22.dp)
@@ -832,11 +882,19 @@ private fun AccountFormSheet(
                     .padding(4.dp),
                 horizontalArrangement = Arrangement.spacedBy(4.dp)
             ) {
-                listOf("BANK", "MFS").forEach { t ->
+                listOf("CASH", "BANK", "MFS").forEach { t ->
                     val selected = accountType == t
                     val itemColor = if (selected) BackgroundDark else TextPrimary
-                    val icon = if (t == "BANK") Icons.Default.AccountBalance else Icons.Default.PhoneAndroid
-                    val label = if (t == "BANK") "Bank" else "MFS"
+                    val icon = when (t) {
+                        "CASH" -> Icons.Default.Payments
+                        "MFS"  -> Icons.Default.PhoneAndroid
+                        else   -> Icons.Default.AccountBalance
+                    }
+                    val label = when (t) {
+                        "CASH" -> "Cash"
+                        "MFS"  -> "MFS"
+                        else   -> "Bank"
+                    }
 
                     Box(
                         modifier = Modifier
@@ -861,7 +919,7 @@ private fun AccountFormSheet(
                                 tint = itemColor,
                                 modifier = Modifier.size(18.dp)
                             )
-                            Spacer(modifier = Modifier.width(8.dp))
+                            Spacer(modifier = Modifier.width(6.dp))
                             Text(
                                 text = label,
                                 color = itemColor,
@@ -886,11 +944,15 @@ private fun AccountFormSheet(
                         accountName = it
                         nameExpanded = true
                     },
-                    label = { Text(if (accountType == "BANK") "Bank Name" else "MFS Name") },
+                    label = { Text(if (accountType == "CASH") "Cash Account Name" else if (accountType == "BANK") "Bank Name" else "MFS Name") },
                     placeholder = { Text("Type or select\u2026", color = TextMuted) },
                     leadingIcon = {
                         Icon(
-                            imageVector = if (accountType == "BANK") Icons.Default.AccountBalance else Icons.Default.PhoneAndroid,
+                            imageVector = when (accountType) {
+                                "CASH" -> Icons.Default.Payments
+                                "MFS"  -> Icons.Default.PhoneAndroid
+                                else   -> Icons.Default.AccountBalance
+                            },
                             contentDescription = null,
                             tint = AccentTeal,
                             modifier = Modifier.size(20.dp)
@@ -1058,12 +1120,12 @@ private fun AccountFormSheet(
 
             Button(
                 onClick = {
-                    val colorHex = BANK_COLOR_MAP[accountName.text] ?: if (accountType == "MFS") "#FF5C7C" else "#0096FF"
+                    val colorHex = BANK_COLOR_MAP[accountName.text] ?: if (accountType == "CASH") "#10B981" else if (accountType == "MFS") "#FF5C7C" else "#0096FF"
                     val saved = if (isEditing) {
                         existingAccount!!.copy(
                             name = accountName.text.trim(),
                             type = accountType,
-                            accountSubtype = if (accountType == "BANK") accountSubtype else "",
+                            accountSubtype = if (accountType == "BANK" || accountType == "CASH") accountSubtype else "",
                             isManaged = false,
                             holderName = "",
                             accountNumber = accountNumber.trim(),
@@ -1076,7 +1138,7 @@ private fun AccountFormSheet(
                             type = accountType,
                             balance = initialBalance.toDoubleOrNull() ?: 0.0,
                             colorHex = colorHex,
-                            accountSubtype = if (accountType == "BANK") accountSubtype else "",
+                            accountSubtype = if (accountType == "BANK" || accountType == "CASH") accountSubtype else "",
                             isManaged = false,
                             holderName = "",
                             accountNumber = accountNumber.trim(),

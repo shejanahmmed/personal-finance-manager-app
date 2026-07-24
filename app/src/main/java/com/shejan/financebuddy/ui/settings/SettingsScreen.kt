@@ -14,6 +14,13 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material.icons.filled.Devices
@@ -84,6 +91,18 @@ fun SettingsScreen(
     // ─── Backup & Restore State ─────────────────────────────────
     var isExporting by remember { mutableStateOf(false) }
     var isImporting by remember { mutableStateOf(false) }
+
+    var toastMessage by remember { mutableStateOf<String?>(null) }
+    fun showToast(msg: String) {
+        toastMessage = msg
+    }
+
+    LaunchedEffect(toastMessage) {
+        if (toastMessage != null) {
+            kotlinx.coroutines.delay(2500)
+            toastMessage = null
+        }
+    }
     var showImportConfirmDialog by remember { mutableStateOf(false) }
     var pendingImportUri by remember { mutableStateOf<android.net.Uri?>(null) }
 
@@ -102,9 +121,9 @@ fun SettingsScreen(
                             BackupManager.exportData(context, outputStream, database, preferencesManager)
                         } ?: throw Exception("Could not open output stream")
                     }
-                    Toast.makeText(context, "Backup exported successfully \u2705", Toast.LENGTH_SHORT).show()
+                    showToast("Backup exported successfully \uD83D\uDCE6")
                 } catch (e: Exception) {
-                    Toast.makeText(context, "Export failed: ${e.message}", Toast.LENGTH_LONG).show()
+                    showToast("Export failed: ${e.message}")
                 } finally {
                     isExporting = false
                 }
@@ -242,6 +261,7 @@ fun SettingsScreen(
                         selected = themeMode == "SYSTEM",
                         onClick = {
                             scope.launch { preferencesManager.setThemeMode("SYSTEM") }
+                            showToast("Theme set to Follow System")
                         }
                     )
                     HorizontalDivider(color = DividerColor, modifier = Modifier.padding(horizontal = 16.dp))
@@ -252,6 +272,7 @@ fun SettingsScreen(
                         selected = themeMode == "LIGHT",
                         onClick = {
                             scope.launch { preferencesManager.setThemeMode("LIGHT") }
+                            showToast("Switched to Light Mode \u2600\uFE0F")
                         }
                     )
                     HorizontalDivider(color = DividerColor, modifier = Modifier.padding(horizontal = 16.dp))
@@ -262,6 +283,7 @@ fun SettingsScreen(
                         selected = themeMode == "DARK",
                         onClick = {
                             scope.launch { preferencesManager.setThemeMode("DARK") }
+                            showToast("Switched to Dark Mode \uD83C\uDF19")
                         }
                     )
                 }
@@ -292,6 +314,7 @@ fun SettingsScreen(
                         selected = smsSyncChoice == "SYNC_PREVIOUS",
                         onClick = {
                             scope.launch { preferencesManager.setSmsSyncChoice("SYNC_PREVIOUS") }
+                            showToast("SMS Sync set to Historical")
                         }
                     )
                     HorizontalDivider(color = DividerColor, modifier = Modifier.padding(horizontal = 16.dp))
@@ -302,6 +325,7 @@ fun SettingsScreen(
                         selected = smsSyncChoice == "START_NEW",
                         onClick = {
                             scope.launch { preferencesManager.setSmsSyncChoice("START_NEW") }
+                            showToast("SMS Sync set to Start From New")
                         }
                     )
                     HorizontalDivider(color = DividerColor, modifier = Modifier.padding(horizontal = 16.dp))
@@ -312,6 +336,7 @@ fun SettingsScreen(
                         selected = smsSyncChoice == "DISABLED" || smsSyncChoice == "PENDING",
                         onClick = {
                             scope.launch { preferencesManager.setSmsSyncChoice("DISABLED") }
+                            showToast("SMS Auto-Parsing Disabled")
                         }
                     )
                 }
@@ -341,7 +366,9 @@ fun SettingsScreen(
                         icon = Icons.Default.Shield,
                         selected = hideBalancesPref,
                         onClick = {
-                            scope.launch { preferencesManager.setHideCardBalances(!hideBalancesPref) }
+                            val nextState = !hideBalancesPref
+                            scope.launch { preferencesManager.setHideCardBalances(nextState) }
+                            showToast(if (nextState) "Card balances hidden" else "Card balances visible")
                         }
                     )
                 }
@@ -408,6 +435,8 @@ fun SettingsScreen(
                             }
                         }
 
+                        Spacer(modifier = Modifier.width(12.dp))
+
                         Switch(
                             checked = isAppLockEnabled,
                             onCheckedChange = { enable ->
@@ -416,10 +445,12 @@ fun SettingsScreen(
                                         showPinSetupDialog = true
                                     } else {
                                         scope.launch { preferencesManager.setAppLockEnabled(true) }
+                                        showToast("App Lock Enabled \uD83D\uDD12")
                                     }
                                 } else {
                                     verifyUserBeforeAction {
                                         scope.launch { preferencesManager.setAppLockEnabled(false) }
+                                        showToast("App Lock Disabled \uD83D\uDD13")
                                     }
                                 }
                             },
@@ -447,6 +478,7 @@ fun SettingsScreen(
                                 if (appLockType != "PIN") {
                                     verifyUserBeforeAction {
                                         scope.launch { preferencesManager.setAppLockType("PIN") }
+                                        showToast("Security set to 6-Digit PIN")
                                     }
                                 }
                             }
@@ -464,9 +496,10 @@ fun SettingsScreen(
                                     if (BiometricHelper.isBiometricAvailable(context)) {
                                         verifyUserBeforeAction {
                                             scope.launch { preferencesManager.setAppLockType("FINGERPRINT") }
+                                            showToast("Fingerprint Biometric Enabled \u261D\uFE0F")
                                         }
                                     } else {
-                                        Toast.makeText(context, "Biometric fingerprint is not set up on this device.", Toast.LENGTH_LONG).show()
+                                        showToast("Biometric fingerprint not setup on device")
                                     }
                                 }
                             }
@@ -581,6 +614,13 @@ fun SettingsScreen(
                                                 if (autoLockTimeout != key) {
                                                     verifyUserBeforeAction {
                                                         scope.launch { preferencesManager.setAutoLockTimeout(key) }
+                                                        val tMsg = when(key) {
+                                                            "IMMEDIATELY" -> "Auto-Lock set to Instant"
+                                                            "1_MIN" -> "Auto-Lock set to 1 Minute"
+                                                            "3_MIN" -> "Auto-Lock set to 3 Minutes"
+                                                            else -> "Auto-Lock set to 5 Minutes"
+                                                        }
+                                                        showToast(tMsg)
                                                     }
                                                 }
                                             }
@@ -872,6 +912,56 @@ fun SettingsScreen(
                 }
             )
         }
+
+        // Modern Floating Custom Toast Notification Banner
+        AnimatedVisibility(
+            visible = toastMessage != null,
+            enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
+            exit = slideOutVertically(targetOffsetY = { it }) + fadeOut(),
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .navigationBarsPadding()
+                .padding(bottom = 24.dp, start = 20.dp, end = 20.dp)
+        ) {
+            toastMessage?.let { msg ->
+                Surface(
+                    shape = RoundedCornerShape(16.dp),
+                    color = CardDark,
+                    tonalElevation = 6.dp,
+                    shadowElevation = 8.dp,
+                    border = BorderStroke(1.dp, AccentTeal.copy(alpha = 0.4f)),
+                    modifier = Modifier.wrapContentSize()
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .padding(horizontal = 16.dp, vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(24.dp)
+                                .clip(CircleShape)
+                                .background(AccentTeal.copy(alpha = 0.15f)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.CheckCircle,
+                                contentDescription = null,
+                                tint = AccentTeal,
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
+                        Text(
+                            text = msg,
+                            color = TextPrimary,
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -922,6 +1012,8 @@ fun ThemeOptionRow(
                 lineHeight = 14.sp
             )
         }
+
+        Spacer(modifier = Modifier.width(12.dp))
 
         // Selection dot
         Box(

@@ -201,6 +201,7 @@ fun NotificationsBottomSheet(
                         label = {
                             Text(
                                 text = filter,
+                                color = if (isSelected) OnAccent else TextPrimary,
                                 fontSize = 12.sp,
                                 fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
                             )
@@ -208,8 +209,8 @@ fun NotificationsBottomSheet(
                         colors = FilterChipDefaults.filterChipColors(
                             selectedContainerColor = AccentBlue,
                             selectedLabelColor = OnAccent,
-                            containerColor = CardDark,
-                            labelColor = TextSecondary
+                            containerColor = CardDarker,
+                            labelColor = TextPrimary
                         ),
                         border = FilterChipDefaults.filterChipBorder(
                             enabled = true,

@@ -297,23 +297,26 @@ fun AddTransactionSheet(
                         listOf("Own Account", "Other's Account").forEach { opt ->
                             val selected = (opt == "Own Account" && isOwnAccount) || (opt == "Other's Account" && !isOwnAccount)
                             val color = TransferYellow
-                            androidx.compose.material3.FilterChip(
-                                selected = selected,
-                                onClick  = { isOwnAccount = (opt == "Own Account") },
-                                label    = { Text(opt, fontSize = 10.sp, fontWeight = FontWeight.Bold) },
-                                colors   = androidx.compose.material3.FilterChipDefaults.filterChipColors(
-                                    selectedContainerColor = color.copy(alpha = 0.15f),
-                                    selectedLabelColor     = color,
-                                    labelColor             = TextSecondary,
-                                    containerColor         = CardDark
-                                ),
-                                border = androidx.compose.material3.FilterChipDefaults.filterChipBorder(
-                                    enabled = true, selected = selected,
-                                    selectedBorderColor = color, borderColor = DividerColor
-                                ),
-                                shape = RoundedCornerShape(8.dp),
-                                modifier = Modifier.height(28.dp)
-                            )
+                            Box(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(10.dp))
+                                    .background(if (selected) color.copy(alpha = 0.15f) else CardDarker)
+                                    .border(
+                                        width = 1.dp,
+                                        color = if (selected) color else DividerColor,
+                                        shape = RoundedCornerShape(10.dp)
+                                    )
+                                    .clickable { isOwnAccount = (opt == "Own Account") }
+                                    .padding(horizontal = 12.dp, vertical = 6.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = opt,
+                                    color = if (selected) color else TextPrimary,
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
                         }
                     }
                 }
@@ -336,6 +339,7 @@ fun AddTransactionSheet(
                         fromAccountSearchText = it
                         fromAccountExpanded = true
                     },
+                    textStyle = androidx.compose.ui.text.TextStyle(color = TextPrimary, fontSize = 14.sp, fontWeight = FontWeight.Medium),
                     label = { Text(if (selectedType == "TRANSFER") "From Account" else "Account", color = TextSecondary) },
                     placeholder = { Text("Select account", color = TextMuted) },
                     trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = fromAccountExpanded) },
@@ -360,6 +364,7 @@ fun AddTransactionSheet(
                     AccountDropdownItems(
                         searchText = fromAccountSearchText.text,
                         accountsList = accounts,
+                        allowPresetLinking = selectedType != "EXPENSE",
                         onSelectExisting = { account ->
                             selectedFromAccount = account
                             fromAccountSearchText = TextFieldValue(
@@ -405,6 +410,7 @@ fun AddTransactionSheet(
                             toAccountSearchText = it
                             toAccountExpanded = true
                         },
+                        textStyle = androidx.compose.ui.text.TextStyle(color = TextPrimary, fontSize = 14.sp, fontWeight = FontWeight.Medium),
                         label = { Text(if (isOwnAccount) "To Account" else "To Bank/MFS", color = TextSecondary) },
                         placeholder = { Text(if (isOwnAccount) "Select destination" else "Select bank", color = TextMuted) },
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = toAccountExpanded) },
@@ -483,6 +489,7 @@ fun AddTransactionSheet(
                             recipientName = it
                             payeeExpanded = true
                         },
+                        textStyle = androidx.compose.ui.text.TextStyle(color = TextPrimary, fontSize = 14.sp, fontWeight = FontWeight.Medium),
                         label = { Text("Recipient Name *", color = TextSecondary) },
                         placeholder = { Text("Enter or select recipient name", color = TextMuted) },
                         shape = RoundedCornerShape(12.dp),
@@ -573,6 +580,7 @@ fun AddTransactionSheet(
                             saveToPayees = false
                         }
                     },
+                    textStyle = androidx.compose.ui.text.TextStyle(color = TextPrimary, fontSize = 14.sp, fontWeight = FontWeight.Medium),
                     label = { Text("Recipient Account/Mobile Number *", color = TextSecondary) },
                     placeholder = { Text("Enter account or phone number", color = TextMuted) },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
@@ -690,6 +698,7 @@ fun AddTransactionSheet(
             OutlinedTextField(
                 value         = note,
                 onValueChange = { note = it },
+                textStyle     = androidx.compose.ui.text.TextStyle(color = TextPrimary, fontSize = 14.sp, fontWeight = FontWeight.Medium),
                 label         = { Text("Add Note (Optional)", color = TextSecondary) },
                 singleLine    = true,
                 modifier      = Modifier.fillMaxWidth(),
@@ -804,6 +813,7 @@ fun AddTransactionSheet(
                         OutlinedTextField(
                             value = newCategoryName,
                             onValueChange = { newCategoryName = it },
+                            textStyle = androidx.compose.ui.text.TextStyle(color = TextPrimary, fontSize = 14.sp, fontWeight = FontWeight.Medium),
                             label = { Text("Category Name", color = TextSecondary) },
                             singleLine = true,
                             colors = TextFieldColors(),
@@ -931,14 +941,18 @@ private fun TextStyleForAmount(color: Color) = androidx.compose.ui.text.TextStyl
 
 @Composable
 private fun TextFieldColors() = OutlinedTextFieldDefaults.colors(
-    focusedTextColor       = TextPrimary,
-    unfocusedTextColor     = TextPrimary,
-    focusedBorderColor     = AccentTeal,
-    unfocusedBorderColor   = DividerColor,
-    focusedContainerColor  = CardDark,
+    focusedTextColor        = TextPrimary,
+    unfocusedTextColor      = TextPrimary,
+    disabledTextColor       = TextPrimary,
+    focusedBorderColor      = AccentTeal,
+    unfocusedBorderColor    = DividerColor,
+    focusedContainerColor   = CardDark,
     unfocusedContainerColor = CardDark,
-    focusedLabelColor      = AccentTeal,
-    unfocusedLabelColor    = TextSecondary
+    disabledContainerColor  = CardDark,
+    focusedLabelColor       = AccentTeal,
+    unfocusedLabelColor     = TextSecondary,
+    focusedPlaceholderColor = TextMuted,
+    unfocusedPlaceholderColor = TextMuted
 )
 
 @Composable
@@ -948,6 +962,7 @@ fun LaunchedEffectForType(type: String, block: suspend () -> Unit) {
     }
 }
 
+private val PRESET_CASH = listOf("Cash in Hand")
 private val PRESET_BANKS = listOf(
     "BRAC Bank PLC", "The City Bank PLC", "Eastern Bank PLC (EBL)",
     "Dutch-Bangla Bank PLC (DBBL)", "Prime Bank PLC", "Mutual Trust Bank PLC",
@@ -959,10 +974,20 @@ private val PRESET_MFS = listOf(
 
 private fun createNewAccountEntity(name: String): AccountEntity {
     val presetMfs = listOf("bKash", "Nagad", "Rocket", "Upay", "CellFin (IBBL)", "Ok Wallet", "MyCash")
+    val isCash = name.contains("cash", ignoreCase = true)
     val isMfs = presetMfs.any { name.contains(it, ignoreCase = true) }
-    val type = if (isMfs) "MFS" else "BANK"
-    val subtype = if (isMfs) "Personal" else "Savings"
+    val type = when {
+        isCash -> "CASH"
+        isMfs  -> "MFS"
+        else   -> "BANK"
+    }
+    val subtype = when {
+        isCash -> "In Hand"
+        isMfs  -> "Personal"
+        else   -> "Savings"
+    }
     val colorHex = when {
+        isCash -> "#10B981"
         name.contains("BRAC", ignoreCase = true) -> "#0096FF"
         name.contains("City", ignoreCase = true) -> "#1A365D"
         name.contains("Eastern", ignoreCase = true) -> "#004B87"
@@ -993,20 +1018,86 @@ private fun createNewAccountEntity(name: String): AccountEntity {
 private fun androidx.compose.foundation.layout.ColumnScope.AccountDropdownItems(
     searchText: String,
     accountsList: List<AccountEntity>,
+    allowPresetLinking: Boolean = true,
     onSelectExisting: (AccountEntity) -> Unit,
     onSelectNew: (String) -> Unit
 ) {
-    val matchingExistingBanks = accountsList.filter { it.type == "BANK" && it.name.contains(searchText, ignoreCase = true) }
-    val matchingExistingMfs = accountsList.filter { it.type == "MFS" && it.name.contains(searchText, ignoreCase = true) }
+    val matchingExistingCash = accountsList.filter { (it.type == "CASH" || it.name.contains("Cash", ignoreCase = true)) && it.name.contains(searchText, ignoreCase = true) }
+    val matchingExistingBanks = accountsList.filter { it.type == "BANK" && !it.name.contains("Cash", ignoreCase = true) && it.name.contains(searchText, ignoreCase = true) }
+    val matchingExistingMfs = accountsList.filter { it.type == "MFS" && !it.name.contains("Cash", ignoreCase = true) && it.name.contains(searchText, ignoreCase = true) }
     val existingNames = accountsList.map { it.name.lowercase() }
-    val matchingPresetBanks = PRESET_BANKS.filter {
-        !existingNames.contains(it.lowercase()) && it.contains(searchText, ignoreCase = true)
-    }
-    val matchingPresetMfs = PRESET_MFS.filter {
-        !existingNames.contains(it.lowercase()) && it.contains(searchText, ignoreCase = true)
+
+    val matchingPresetCash = if (allowPresetLinking) {
+        PRESET_CASH.filter {
+            !existingNames.contains(it.lowercase()) && it.contains(searchText, ignoreCase = true)
+        }
+    } else emptyList()
+    val matchingPresetBanks = if (allowPresetLinking) {
+        PRESET_BANKS.filter {
+            !existingNames.contains(it.lowercase()) && it.contains(searchText, ignoreCase = true)
+        }
+    } else emptyList()
+    val matchingPresetMfs = if (allowPresetLinking) {
+        PRESET_MFS.filter {
+            !existingNames.contains(it.lowercase()) && it.contains(searchText, ignoreCase = true)
+        }
+    } else emptyList()
+
+    if (!allowPresetLinking && matchingExistingCash.isEmpty() && matchingExistingBanks.isEmpty() && matchingExistingMfs.isEmpty()) {
+        DropdownMenuItem(
+            text = { Text("No created accounts match search", color = TextMuted, fontSize = 12.sp) },
+            onClick = {},
+            enabled = false
+        )
     }
 
-    if (matchingExistingBanks.isNotEmpty()) {
+    // 1. Cash Section
+    if (matchingExistingCash.isNotEmpty() || matchingPresetCash.isNotEmpty()) {
+        DropdownMenuItem(
+            text = { Text("Cash in Hand", color = IncomeGreen, fontWeight = FontWeight.Bold, fontSize = 11.sp) },
+            onClick = {},
+            enabled = false
+        )
+        matchingExistingCash.forEach { account ->
+            DropdownMenuItem(
+                text = {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Text(account.name, color = TextPrimary, fontWeight = FontWeight.Medium)
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(6.dp))
+                                .background(IncomeGreen.copy(alpha = 0.12f))
+                                .border(1.dp, IncomeGreen.copy(alpha = 0.25f), RoundedCornerShape(6.dp))
+                                .padding(horizontal = 6.dp, vertical = 2.dp)
+                        ) {
+                            Text(
+                                text = "In Hand",
+                                color = IncomeGreen,
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+                },
+                onClick = { onSelectExisting(account) }
+            )
+        }
+        matchingPresetCash.forEach { preset ->
+            DropdownMenuItem(
+                text = { Text("+ Link $preset", color = TextPrimary) },
+                onClick = { onSelectNew(preset) }
+            )
+        }
+    }
+
+    // 2. Banks Section
+    if (matchingExistingBanks.isNotEmpty() || matchingPresetBanks.isNotEmpty()) {
+        if (matchingExistingCash.isNotEmpty() || matchingPresetCash.isNotEmpty()) {
+            androidx.compose.material3.HorizontalDivider(color = DividerColor.copy(alpha = 0.5f))
+        }
         DropdownMenuItem(
             text = { Text("Your Banks", color = AccentTeal, fontWeight = FontWeight.Bold, fontSize = 11.sp) },
             onClick = {},
@@ -1020,7 +1111,6 @@ private fun androidx.compose.foundation.layout.ColumnScope.AccountDropdownItems(
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         Text(account.name, color = TextPrimary, fontWeight = FontWeight.Medium)
-                        
                         if (account.accountNumber.isNotBlank()) {
                             val accLast4 = account.accountNumber.takeLast(4)
                             Box(
@@ -1038,39 +1128,11 @@ private fun androidx.compose.foundation.layout.ColumnScope.AccountDropdownItems(
                                 )
                             }
                         }
-                        
-                        if (account.showAs.isNotBlank()) {
-                            val tagColor = remember(account.colorHex) {
-                                try { Color(android.graphics.Color.parseColor(account.colorHex)) } catch (e: Exception) { AccentTeal }
-                            }
-                            Box(
-                                modifier = Modifier
-                                    .clip(RoundedCornerShape(6.dp))
-                                    .background(tagColor.copy(alpha = 0.12f))
-                                    .border(1.dp, tagColor.copy(alpha = 0.25f), RoundedCornerShape(6.dp))
-                                    .padding(horizontal = 6.dp, vertical = 2.dp)
-                            ) {
-                                Text(
-                                    text = account.showAs,
-                                    color = tagColor,
-                                    fontSize = 10.sp,
-                                    fontWeight = FontWeight.Bold
-                                )
-                            }
-                        }
                     }
                 },
                 onClick = { onSelectExisting(account) }
             )
         }
-    }
-
-    if (matchingPresetBanks.isNotEmpty()) {
-        DropdownMenuItem(
-            text = { Text("Link Bank Account", color = AccentTeal, fontWeight = FontWeight.Bold, fontSize = 11.sp) },
-            onClick = {},
-            enabled = false
-        )
         matchingPresetBanks.forEach { preset ->
             DropdownMenuItem(
                 text = { Text("+ Link $preset", color = TextPrimary) },
@@ -1079,8 +1141,9 @@ private fun androidx.compose.foundation.layout.ColumnScope.AccountDropdownItems(
         }
     }
 
-    if (matchingExistingMfs.isNotEmpty()) {
-        if (matchingExistingBanks.isNotEmpty() || matchingPresetBanks.isNotEmpty()) {
+    // 3. MFS Section
+    if (matchingExistingMfs.isNotEmpty() || matchingPresetMfs.isNotEmpty()) {
+        if (matchingExistingCash.isNotEmpty() || matchingPresetCash.isNotEmpty() || matchingExistingBanks.isNotEmpty() || matchingPresetBanks.isNotEmpty()) {
             androidx.compose.material3.HorizontalDivider(color = DividerColor.copy(alpha = 0.5f))
         }
         DropdownMenuItem(
@@ -1096,7 +1159,6 @@ private fun androidx.compose.foundation.layout.ColumnScope.AccountDropdownItems(
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         Text(account.name, color = TextPrimary, fontWeight = FontWeight.Medium)
-                        
                         if (account.accountNumber.isNotBlank()) {
                             val accLast4 = account.accountNumber.takeLast(4)
                             Box(
@@ -1114,42 +1176,11 @@ private fun androidx.compose.foundation.layout.ColumnScope.AccountDropdownItems(
                                 )
                             }
                         }
-                        
-                        if (account.showAs.isNotBlank()) {
-                            val tagColor = remember(account.colorHex) {
-                                try { Color(android.graphics.Color.parseColor(account.colorHex)) } catch (e: Exception) { AccentTeal }
-                            }
-                            Box(
-                                modifier = Modifier
-                                    .clip(RoundedCornerShape(6.dp))
-                                    .background(tagColor.copy(alpha = 0.12f))
-                                    .border(1.dp, tagColor.copy(alpha = 0.25f), RoundedCornerShape(6.dp))
-                                    .padding(horizontal = 6.dp, vertical = 2.dp)
-                            ) {
-                                Text(
-                                    text = account.showAs,
-                                    color = tagColor,
-                                    fontSize = 10.sp,
-                                    fontWeight = FontWeight.Bold
-                                )
-                            }
-                        }
                     }
                 },
                 onClick = { onSelectExisting(account) }
             )
         }
-    }
-
-    if (matchingPresetMfs.isNotEmpty()) {
-        if (matchingExistingBanks.isNotEmpty() || matchingPresetBanks.isNotEmpty() || matchingExistingMfs.isNotEmpty()) {
-            androidx.compose.material3.HorizontalDivider(color = DividerColor.copy(alpha = 0.5f))
-        }
-        DropdownMenuItem(
-            text = { Text("Link Mobile Wallet", color = AccentTeal, fontWeight = FontWeight.Bold, fontSize = 11.sp) },
-            onClick = {},
-            enabled = false
-        )
         matchingPresetMfs.forEach { preset ->
             DropdownMenuItem(
                 text = { Text("+ Link $preset", color = TextPrimary) },
@@ -1159,8 +1190,10 @@ private fun androidx.compose.foundation.layout.ColumnScope.AccountDropdownItems(
     }
 
     val typedTrimmed = searchText.trim()
-    if (typedTrimmed.isNotEmpty() &&
+    if (allowPresetLinking &&
+        typedTrimmed.isNotEmpty() &&
         !accountsList.any { it.name.equals(typedTrimmed, ignoreCase = true) } &&
+        !PRESET_CASH.any { it.equals(typedTrimmed, ignoreCase = true) } &&
         !PRESET_BANKS.any { it.equals(typedTrimmed, ignoreCase = true) } &&
         !PRESET_MFS.any { it.equals(typedTrimmed, ignoreCase = true) }
     ) {

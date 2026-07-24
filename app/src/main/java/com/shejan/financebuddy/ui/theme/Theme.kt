@@ -1,16 +1,29 @@
 package com.shejan.financebuddy.ui.theme
 
 import android.app.Activity
+import androidx.compose.foundation.IndicationNodeFactory
+import androidx.compose.foundation.LocalIndication
+import androidx.compose.foundation.interaction.InteractionSource
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.SideEffect
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
+
+private object NoIndication : IndicationNodeFactory {
+    override fun create(interactionSource: InteractionSource): Modifier.Node {
+        return object : Modifier.Node() {}
+    }
+    override fun equals(other: Any?): Boolean = other === this
+    override fun hashCode(): Int = System.identityHashCode(this)
+}
 
 private val FinanceBuddyDarkColorScheme = darkColorScheme(
     primary          = AccentTeal,
@@ -43,7 +56,7 @@ private val FinanceBuddyLightColorScheme = lightColorScheme(
     onTertiary           = Color.White,
     background           = Color(0xFFF1F5F9), // Slate 100 matte canvas
     onBackground         = Color(0xFF0F172A), // Slate 900 primary text
-    surface              = Color.White,       // Card background
+    surface              = Color(0xFFFFFFFF), // Crisp pure white card surface
     onSurface            = Color(0xFF0F172A),
     surfaceVariant       = Color(0xFFE2E8F0), // Secondary input/card container
     onSurfaceVariant     = Color(0xFF475569), // Secondary label text
@@ -80,9 +93,13 @@ fun FinanceBuddyTheme(
         }
     }
 
-    MaterialTheme(
-        colorScheme = colorScheme,
-        typography  = AppTypography,
-        content     = content,
-    )
+    CompositionLocalProvider(
+        LocalIndication provides NoIndication
+    ) {
+        MaterialTheme(
+            colorScheme = colorScheme,
+            typography  = AppTypography,
+            content     = content,
+        )
+    }
 }
