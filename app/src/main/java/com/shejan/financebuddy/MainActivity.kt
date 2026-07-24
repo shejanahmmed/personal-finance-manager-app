@@ -653,8 +653,6 @@ fun MainDashboardContainer(
                         }
                     }
 
-                    HorizontalDivider(color = DividerColor, modifier = Modifier.padding(horizontal = 20.dp))
-                    
                     // User Profile Info Card
                     Row(
                         modifier = Modifier

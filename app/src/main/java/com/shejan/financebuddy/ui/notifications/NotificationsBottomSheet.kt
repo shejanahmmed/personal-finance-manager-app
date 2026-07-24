@@ -3,7 +3,9 @@ package com.shejan.financebuddy.ui.notifications
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -106,6 +108,7 @@ fun NotificationsBottomSheet(
         sheetState = sheetState,
         containerColor = BackgroundDark,
         scrimColor = Color.Black.copy(alpha = 0.65f),
+        dragHandle = { BottomSheetDefaults.DragHandle(color = DividerColor) },
         shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
     ) {
         Column(
@@ -113,18 +116,6 @@ fun NotificationsBottomSheet(
                 .fillMaxWidth()
                 .padding(bottom = 24.dp)
         ) {
-            // Sheet Drag Handle Indicator
-            Box(
-                modifier = Modifier
-                    .width(40.dp)
-                    .height(4.dp)
-                    .clip(CircleShape)
-                    .background(TextMuted.copy(alpha = 0.4f))
-                    .align(Alignment.CenterHorizontally)
-            )
-
-            Spacer(modifier = Modifier.height(12.dp))
-
             // Header Section
             Row(
                 modifier = Modifier
@@ -345,6 +336,7 @@ private fun NotificationCardItem(
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
+        border = BorderStroke(1.dp, if (!notification.isRead) AccentBlue.copy(alpha = 0.3f) else DividerColor),
         colors = CardDefaults.cardColors(
             containerColor = if (notification.isRead) CardDarker else CardDark
         )
