@@ -485,7 +485,7 @@ private fun MonthlyComparisonBarChart(
             }
             drawText(
                 textMeasurer, lbl,
-                topLeft = Offset(2.dp.toPx(), y - 7.dp.toPx()),
+                topLeft = Offset(10.dp.toPx(), y - 7.dp.toPx()),
                 style = TextStyle(color = ChartLabel, fontSize = 9.sp)
             )
         }
@@ -593,7 +593,7 @@ private fun BalanceTrendChart(
             }
             drawText(
                 textMeasurer, lbl,
-                topLeft = Offset(2.dp.toPx(), y - 7.dp.toPx()),
+                topLeft = Offset(10.dp.toPx(), y - 7.dp.toPx()),
                 style = TextStyle(color = ChartLabel, fontSize = 9.sp)
             )
         }

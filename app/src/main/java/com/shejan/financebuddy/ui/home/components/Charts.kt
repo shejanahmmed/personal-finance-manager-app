@@ -29,6 +29,8 @@ import androidx.compose.ui.text.drawText
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.font.FontWeight
+import kotlin.math.roundToInt
 import com.shejan.financebuddy.ui.theme.*
 
 // ─────────────────────────────────────────────────────────────
@@ -93,7 +95,7 @@ fun ExpenseBarChart(
         ) {
             val w = size.width
             val h = size.height
-            val leftPad  = 52.dp.toPx()
+            val leftPad  = 42.dp.toPx()
             val rightPad = 16.dp.toPx()
             val topPad   = 28.dp.toPx()
             val botPad   = 32.dp.toPx()
@@ -133,7 +135,7 @@ fun ExpenseBarChart(
                 drawText(
                     textMeasurer = textMeasurer,
                     text         = labelText,
-                    topLeft      = Offset(4.dp.toPx(), y - 7.dp.toPx()),
+                    topLeft      = Offset(10.dp.toPx(), y - 7.dp.toPx()),
                     style        = TextStyle(
                         color    = ChartLabel,
                         fontSize = 9.sp,
@@ -206,36 +208,36 @@ fun ExpenseBarChart(
                         text  = amtText,
                         style = TextStyle(
                             color      = OnAccent,
-                            fontSize   = 11.sp,
+                            fontSize   = 10.sp,
                             fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
                         )
                     )
-                    val tW  = tooltipResult.size.width + 16.dp.toPx()
-                    val tH  = tooltipResult.size.height + 10.dp.toPx()
+                    val caretSize = 4.dp.toPx()
+                    val tW  = tooltipResult.size.width + 10.dp.toPx()
+                    val tH  = tooltipResult.size.height + 4.dp.toPx()
                     var tX  = cx - tW / 2f
                     tX = tX.coerceIn(leftPad, w - rightPad - tW)
-                    val tY  = (barY - tH - 6.dp.toPx()).coerceAtLeast(4.dp.toPx())
+                    val tY  = (barY - tH - caretSize - 6.dp.toPx()).coerceAtLeast(2.dp.toPx())
 
                     // Tooltip bubble
                     drawRoundRect(
                         color        = barColor,
                         topLeft      = Offset(tX, tY),
                         size         = Size(tW, tH),
-                        cornerRadius = CornerRadius(8.dp.toPx())
+                        cornerRadius = CornerRadius(6.dp.toPx())
                     )
                     // Tooltip text
                     drawText(
                         textMeasurer = textMeasurer,
                         text         = amtText,
-                        topLeft      = Offset(tX + 8.dp.toPx(), tY + 5.dp.toPx()),
+                        topLeft      = Offset(tX + 5.dp.toPx(), tY + 2.dp.toPx()),
                         style        = TextStyle(
                             color      = OnAccent,
-                            fontSize   = 11.sp,
+                            fontSize   = 10.sp,
                             fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
                         )
                     )
                     // Small caret triangle
-                    val caretSize = 5.dp.toPx()
                     val caretPath = Path().apply {
                         moveTo(cx - caretSize, tY + tH)
                         lineTo(cx + caretSize, tY + tH)
@@ -289,7 +291,7 @@ fun ExpenseBarChart(
 
 
 // ─────────────────────────────────────────────────────────────
-// Custom 30-Day Balance Trend Line Chart (Bezier Curve)
+// Custom 30-Day Balance Trend Line Chart (Interactive Bezier)
 // ─────────────────────────────────────────────────────────────
 
 @Composable
@@ -297,9 +299,10 @@ fun BalanceTrendLineChart(
     balances: List<Double>,
     modifier: Modifier = Modifier
 ) {
+    var selectedIndex by remember { mutableStateOf(-1) }
     val animProgress = remember { Animatable(0f) }
     LaunchedEffect(balances) {
-        animProgress.animateTo(1f, animationSpec = tween(1200))
+        animProgress.animateTo(1f, animationSpec = tween(900))
     }
 
     val textMeasurer = rememberTextMeasurer()
@@ -307,14 +310,29 @@ fun BalanceTrendLineChart(
     val maxVal = remember(balances) { (balances.maxOrNull() ?: 1.0).coerceAtLeast(minVal + 1.0) }
     val valRange = maxVal - minVal
 
-    Box(modifier = modifier) {
+    Box(
+        modifier = modifier.pointerInput(balances) {
+            detectTapGestures { offset ->
+                val w = size.width
+                val leftPadding = 44.dp.toPx()
+                val rightPadding = 16.dp.toPx()
+                val chartW = w - leftPadding - rightPadding
+                val pointsCount = balances.size
+                if (pointsCount >= 2 && chartW > 0) {
+                    val xStep = chartW / (pointsCount - 1)
+                    val tappedIdx = ((offset.x - leftPadding) / xStep).roundToInt().coerceIn(0, pointsCount - 1)
+                    selectedIndex = if (selectedIndex == tappedIdx) -1 else tappedIdx
+                }
+            }
+        }
+    ) {
         Canvas(modifier = Modifier.fillMaxSize()) {
             val w = size.width
             val h = size.height
-            val leftPadding = 48.dp.toPx()   // Space for Y-axis labels + margin
-            val rightPadding = 16.dp.toPx()  // Space to prevent line/dot clipping on the right
-            val topPadding = 16.dp.toPx()    // Space to prevent line/dot clipping on the top
-            val bottomPadding = 16.dp.toPx() // Space to prevent line clipping on the bottom
+            val leftPadding = 44.dp.toPx()
+            val rightPadding = 16.dp.toPx()
+            val topPadding = 24.dp.toPx()
+            val bottomPadding = 16.dp.toPx()
 
             val chartW = w - leftPadding - rightPadding
             val chartH = h - topPadding - bottomPadding
@@ -328,13 +346,16 @@ fun BalanceTrendLineChart(
                 val valAtLine = maxVal - (valRange * (i / gridLines.toFloat()))
 
                 drawLine(
-                    color       = DividerColor.copy(alpha = 0.5f),
+                    color       = ChartGridLine,
                     start       = Offset(leftPadding, y),
                     end         = Offset(w - rightPadding, y),
-                    strokeWidth = 1.dp.toPx()
+                    strokeWidth = 1.dp.toPx(),
+                    pathEffect  = PathEffect.dashPathEffect(floatArrayOf(6f, 8f), 0f)
                 )
 
-                val labelText = if (valAtLine >= 1000) {
+                val labelText = if (valAtLine >= 100_000) {
+                    String.format(java.util.Locale.US, "%.0fL", valAtLine / 100_000)
+                } else if (valAtLine >= 1000) {
                     val k = valAtLine / 1000.0
                     if (k % 1.0 == 0.0) "${k.toInt()}K" else String.format(java.util.Locale.US, "%.1fK", k)
                 } else {
@@ -344,8 +365,8 @@ fun BalanceTrendLineChart(
                 drawText(
                     textMeasurer = textMeasurer,
                     text         = labelText,
-                    topLeft      = Offset(8.dp.toPx(), y - 6.dp.toPx()),
-                    style        = TextStyle(color = TextSecondary, fontSize = 10.sp)
+                    topLeft      = Offset(10.dp.toPx(), y - 7.dp.toPx()),
+                    style        = TextStyle(color = ChartLabel, fontSize = 9.sp, fontWeight = FontWeight.Medium)
                 )
             }
 
@@ -356,14 +377,13 @@ fun BalanceTrendLineChart(
                 Offset(leftPadding + idx * xStep, (topPadding + chartH) - (normalizedY * chartH * animProgress.value))
             }
 
-            // Draw line curve via bezier
+            // Draw line curve via cubic bezier
             val strokePath = Path().apply {
                 if (points.isNotEmpty()) {
                     moveTo(points[0].x, points[0].y)
                     for (i in 1 until points.size) {
                         val prev = points[i - 1]
                         val curr = points[i]
-                        // Control points for smooth bezier curve
                         val cx1 = prev.x + (curr.x - prev.x) / 2f
                         val cy1 = prev.y
                         val cx2 = prev.x + (curr.x - prev.x) / 2f
@@ -373,7 +393,7 @@ fun BalanceTrendLineChart(
                 }
             }
 
-            // Draw filled gradient area under the curve
+            // Draw area gradient
             val fillPath = Path().apply {
                 addPath(strokePath)
                 lineTo(w - rightPadding, topPadding + chartH)
@@ -381,11 +401,10 @@ fun BalanceTrendLineChart(
                 close()
             }
 
-            // Draw area gradient
             drawPath(
                 path  = fillPath,
                 brush = Brush.verticalGradient(
-                    colors = listOf(AccentTeal.copy(alpha = 0.15f), Color.Transparent),
+                    colors = listOf(AccentTeal.copy(alpha = 0.20f), Color.Transparent),
                     startY = topPadding,
                     endY   = topPadding + chartH
                 )
@@ -394,30 +413,91 @@ fun BalanceTrendLineChart(
             // Draw path stroke
             drawPath(
                 path  = strokePath,
-                brush = Brush.linearGradient(
+                brush = Brush.horizontalGradient(
                     colors = listOf(AccentTeal, AccentBlue),
-                    start  = Offset(leftPadding, size.height / 2f),
-                    end    = Offset(w - rightPadding, size.height / 2f)
+                    startX = leftPadding,
+                    endX   = w - rightPadding
                 ),
-                style = Stroke(width = 3.dp.toPx(), cap = StrokeCap.Round)
+                style = Stroke(width = 2.5.dp.toPx(), cap = StrokeCap.Round)
             )
 
-            // Draw dynamic nodes on endpoints
-            if (points.isNotEmpty()) {
+            // ── Active Selection / Endpoint Marker ──────────────
+            val activeIdx = if (selectedIndex in 0 until pointsCount) selectedIndex else -1
+            if (activeIdx >= 0) {
+                val p = points[activeIdx]
+
+                // Vertical dashed guideline
+                drawLine(
+                    color       = AccentTeal.copy(alpha = 0.35f),
+                    start       = Offset(p.x, topPadding),
+                    end         = Offset(p.x, topPadding + chartH),
+                    strokeWidth = 1.dp.toPx(),
+                    pathEffect  = PathEffect.dashPathEffect(floatArrayOf(4f, 4f), 0f)
+                )
+
+                // Glowing node
+                drawCircle(color = AccentTeal.copy(alpha = 0.25f), radius = 10.dp.toPx(), center = p)
+                drawCircle(color = AccentTeal, radius = 5.dp.toPx(), center = p)
+                drawCircle(color = OnAccent, radius = 2.dp.toPx(), center = p)
+
+                // Tooltip bubble
+                val balAmt = balances[activeIdx]
+                val amtText = "৳${
+                    when {
+                        balAmt >= 100_000 -> String.format(java.util.Locale.US, "%.1fL", balAmt / 100_000)
+                        balAmt >= 1_000   -> String.format(java.util.Locale.US, "%.1fK", balAmt / 1000)
+                        else              -> String.format(java.util.Locale.US, "%.0f", balAmt)
+                    }
+                }"
+                val tooltipResult = textMeasurer.measure(
+                    text  = amtText,
+                    style = TextStyle(
+                        color      = OnAccent,
+                        fontSize   = 10.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                )
+                val caretSize = 4.dp.toPx()
+                val tW = tooltipResult.size.width + 10.dp.toPx()
+                val tH = tooltipResult.size.height + 4.dp.toPx()
+                var tX = p.x - tW / 2f
+                tX = tX.coerceIn(leftPadding, w - rightPadding - tW)
+                val tY = (p.y - tH - caretSize - 6.dp.toPx()).coerceAtLeast(2.dp.toPx())
+
+                // Tooltip background bubble
+                drawRoundRect(
+                    color        = AccentTeal,
+                    topLeft      = Offset(tX, tY),
+                    size         = Size(tW, tH),
+                    cornerRadius = CornerRadius(6.dp.toPx())
+                )
+                // Tooltip text
+                drawText(
+                    textMeasurer = textMeasurer,
+                    text         = amtText,
+                    topLeft      = Offset(tX + 5.dp.toPx(), tY + 2.dp.toPx()),
+                    style        = TextStyle(
+                        color      = OnAccent,
+                        fontSize   = 10.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                )
+                // Caret triangle
+                val caretPath = Path().apply {
+                    moveTo(p.x - caretSize, tY + tH)
+                    lineTo(p.x + caretSize, tY + tH)
+                    lineTo(p.x, tY + tH + caretSize)
+                    close()
+                }
+                drawPath(caretPath, color = AccentTeal)
+            } else if (points.isNotEmpty()) {
+                // Default endpoint marker
                 val lastPoint = points.last()
-                drawCircle(
-                    color  = AccentTeal,
-                    radius = 5.dp.toPx(),
-                    center = lastPoint
-                )
-                drawCircle(
-                    color  = AccentTeal.copy(alpha = 0.25f),
-                    radius = 12.dp.toPx(),
-                    center = lastPoint
-                )
+                drawCircle(color = AccentTeal.copy(alpha = 0.25f), radius = 8.dp.toPx(), center = lastPoint)
+                drawCircle(color = AccentTeal, radius = 4.dp.toPx(), center = lastPoint)
             }
         }
     }
 }
-// Add explicit StrokeCap import helper
+
 typealias StrokeCap = androidx.compose.ui.graphics.StrokeCap
