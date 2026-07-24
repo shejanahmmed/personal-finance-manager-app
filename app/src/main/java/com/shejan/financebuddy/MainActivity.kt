@@ -9,6 +9,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -146,10 +147,19 @@ class MainActivity : FragmentActivity() {
 
         setContent {
             val themeMode by preferencesManager.themeMode.collectAsState(initial = "SYSTEM")
+            val blockScreenshots by preferencesManager.blockScreenshots.collectAsState(initial = false)
             val isAppLockEnabled by preferencesManager.isAppLockEnabled.collectAsState(initial = false)
             val appLockType by preferencesManager.appLockType.collectAsState(initial = "PIN")
             val appLockPin by preferencesManager.appLockPin.collectAsState(initial = "")
             val autoLockTimeout by preferencesManager.autoLockTimeout.collectAsState(initial = "IMMEDIATELY")
+
+            LaunchedEffect(blockScreenshots) {
+                if (blockScreenshots) {
+                    window.addFlags(android.view.WindowManager.LayoutParams.FLAG_SECURE)
+                } else {
+                    window.clearFlags(android.view.WindowManager.LayoutParams.FLAG_SECURE)
+                }
+            }
 
             var isAppUnlocked by remember { mutableStateOf(false) }
             var lastBackgroundTime by remember { mutableLongStateOf(0L) }

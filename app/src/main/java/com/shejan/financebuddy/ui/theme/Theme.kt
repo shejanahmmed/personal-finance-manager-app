@@ -93,7 +93,9 @@ fun FinanceBuddyTheme(
         }
     }
 
+    @OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
     CompositionLocalProvider(
+        androidx.compose.material3.LocalRippleConfiguration provides null,
         LocalIndication provides NoIndication
     ) {
         MaterialTheme(

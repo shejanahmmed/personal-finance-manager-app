@@ -78,6 +78,7 @@ fun SettingsScreen(
     val themeMode by preferencesManager.themeMode.collectAsState(initial = "SYSTEM")
     val smsSyncChoice by preferencesManager.smsSyncChoice.collectAsState(initial = null)
     val hideBalancesPref by preferencesManager.hideCardBalances.collectAsState(initial = false)
+    val blockScreenshots by preferencesManager.blockScreenshots.collectAsState(initial = false)
 
     val isAppLockEnabled by preferencesManager.isAppLockEnabled.collectAsState(initial = false)
     val appLockType by preferencesManager.appLockType.collectAsState(initial = "PIN")
@@ -371,6 +372,70 @@ fun SettingsScreen(
                             showToast(if (nextState) "Card balances hidden" else "Card balances visible")
                         }
                     )
+
+                    HorizontalDivider(color = DividerColor, modifier = Modifier.padding(horizontal = 16.dp))
+
+                    // Block Screenshots & Recording Switch Row
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Row(
+                            modifier = Modifier.weight(1f),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(38.dp)
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .background(if (blockScreenshots) AccentTeal.copy(alpha = 0.15f) else DividerColor.copy(alpha = 0.5f)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Shield,
+                                    contentDescription = null,
+                                    tint = if (blockScreenshots) AccentTeal else TextSecondary,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
+                            Spacer(modifier = Modifier.width(16.dp))
+                            Column {
+                                Text(
+                                    text = "Block Screenshots & Recording",
+                                    color = TextPrimary,
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                                Text(
+                                    text = "Prevent taking screenshots or recording app screen for enhanced privacy",
+                                    color = TextSecondary,
+                                    fontSize = 11.sp,
+                                    lineHeight = 14.sp
+                                )
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.width(12.dp))
+
+                        Switch(
+                            checked = blockScreenshots,
+                            onCheckedChange = { enable ->
+                                scope.launch { preferencesManager.setBlockScreenshots(enable) }
+                                showToast(if (enable) "Screenshot protection enabled \uD83D\uDEE1\uFE0F" else "Screenshot protection disabled")
+                            },
+                            colors = SwitchDefaults.colors(
+                                checkedThumbColor = OnAccent,
+                                checkedTrackColor = AccentTeal,
+                                checkedBorderColor = Color.Transparent,
+                                uncheckedThumbColor = SwitchThumbUnchecked,
+                                uncheckedTrackColor = SwitchTrackUnchecked,
+                                uncheckedBorderColor = SwitchBorderUnchecked
+                            )
+                        )
+                    }
                 }
 
                 Spacer(modifier = Modifier.height(24.dp))

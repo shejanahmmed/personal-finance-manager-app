@@ -21,10 +21,23 @@ class PreferencesManager(private val context: Context) {
         private val PROFILE_NAME = stringPreferencesKey("profile_name")
         private val PROFILE_IMAGE_PATH = stringPreferencesKey("profile_image_path")
         private val HIDE_CARD_BALANCES = booleanPreferencesKey("hide_card_balances")
+        private val BLOCK_SCREENSHOTS = booleanPreferencesKey("block_screenshots")
         private val APP_LOCK_ENABLED = booleanPreferencesKey("app_lock_enabled")
         private val APP_LOCK_TYPE = stringPreferencesKey("app_lock_type")
         private val APP_LOCK_PIN = stringPreferencesKey("app_lock_pin")
         private val AUTO_LOCK_TIMEOUT = stringPreferencesKey("auto_lock_timeout")
+    }
+
+    /** Emits whether screenshots and screen recording are blocked. Defaults to false. */
+    val blockScreenshots: Flow<Boolean> = context.dataStore.data.map { prefs ->
+        prefs[BLOCK_SCREENSHOTS] ?: false
+    }
+
+    /** Sets the user's screenshot & screen recording blocking preference. */
+    suspend fun setBlockScreenshots(block: Boolean) {
+        context.dataStore.edit { prefs ->
+            prefs[BLOCK_SCREENSHOTS] = block
+        }
     }
 
     /** Emits whether App Lock security is enabled. Defaults to false. */

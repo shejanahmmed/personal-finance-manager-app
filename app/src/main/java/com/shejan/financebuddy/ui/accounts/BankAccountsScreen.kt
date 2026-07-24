@@ -794,15 +794,15 @@ private fun AccountFormSheet(
     onSave: (AccountEntity) -> Unit
 ) {
     val isEditing = existingAccount != null
+    var accountType    by remember(existingAccount) { mutableStateOf(existingAccount?.type ?: "BANK") }
     var accountName    by remember(existingAccount) {
         mutableStateOf(
             TextFieldValue(
-                text = existingAccount?.name ?: "",
-                selection = TextRange((existingAccount?.name ?: "").length)
+                text = existingAccount?.name ?: (if (accountType == "CASH") "Cash in Hand" else ""),
+                selection = TextRange((existingAccount?.name ?: (if (accountType == "CASH") "Cash in Hand" else "")).length)
             )
         )
     }
-    var accountType    by remember(existingAccount) { mutableStateOf(existingAccount?.type ?: "BANK") }
     var accountSubtype by remember(existingAccount) { mutableStateOf(existingAccount?.accountSubtype ?: "") }
     var initialBalance by remember(existingAccount) { mutableStateOf(if (isEditing) existingAccount!!.balance.toString() else "") }
     var accountNumber  by remember(existingAccount) { mutableStateOf(existingAccount?.accountNumber ?: "") }
@@ -857,13 +857,13 @@ private fun AccountFormSheet(
 
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = if (isEditing) "Edit Account" else "Add New Account",
+                        text = if (isEditing) (if (accountType == "CASH") "Edit Cash Record" else "Edit Account") else (if (accountType == "CASH") "Add Cash in Hand" else "Add New Account"),
                         color = TextPrimary,
                         fontSize = 20.sp,
                         fontWeight = FontWeight.Bold
                     )
                     Text(
-                        text = if (isEditing) "Update account details" else "Link a bank or MFS to track your money",
+                        text = if (isEditing) "Update account details" else if (accountType == "CASH") "Track physical cash in your hand or wallet" else "Link a bank or MFS to track your money",
                         color = TextMuted,
                         fontSize = 12.sp
                     )
@@ -903,7 +903,7 @@ private fun AccountFormSheet(
                             .background(if (selected) AccentTeal else Color.Transparent)
                             .clickable {
                                 accountType = t
-                                accountName = TextFieldValue("")
+                                accountName = TextFieldValue(if (t == "CASH") "Cash in Hand" else "")
                                 nameExpanded = false
                             }
                             .padding(vertical = 11.dp),
@@ -933,64 +933,63 @@ private fun AccountFormSheet(
 
             Spacer(Modifier.height(16.dp))
 
-            // Account name autocomplete (Opens keyboard + suggestions on tap)
-            ExposedDropdownMenuBox(
-                expanded = nameExpanded,
-                onExpandedChange = { nameExpanded = it }
-            ) {
-                OutlinedTextField(
-                    value = accountName,
-                    onValueChange = {
-                        accountName = it
-                        nameExpanded = true
-                    },
-                    label = { Text(if (accountType == "CASH") "Cash Account Name" else if (accountType == "BANK") "Bank Name" else "MFS Name") },
-                    placeholder = { Text("Type or select\u2026", color = TextMuted) },
-                    leadingIcon = {
-                        Icon(
-                            imageVector = when (accountType) {
-                                "CASH" -> Icons.Default.Payments
-                                "MFS"  -> Icons.Default.PhoneAndroid
-                                else   -> Icons.Default.AccountBalance
-                            },
-                            contentDescription = null,
-                            tint = AccentTeal,
-                            modifier = Modifier.size(20.dp)
-                        )
-                    },
-                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = nameExpanded) },
-                    singleLine = true,
-                    shape = RoundedCornerShape(14.dp),
-                    colors = formTextFieldColors(accountName.text.isEmpty()),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .menuAnchor(
-                            type = ExposedDropdownMenuAnchorType.PrimaryEditable,
-                            enabled = true
-                        )
-                )
-                if (filteredPresets.isNotEmpty()) {
-                    ExposedDropdownMenu(
-                        expanded = nameExpanded,
-                        onDismissRequest = { nameExpanded = false },
-                        modifier = Modifier
-                            .background(CardDarker)
-                            .border(1.dp, DividerColor, RoundedCornerShape(12.dp))
-                    ) {
-                        filteredPresets.forEach { preset ->
-                            DropdownMenuItem(
-                                text = { Text(preset, color = TextPrimary, fontSize = 13.sp) },
-                                onClick = {
-                                    accountName = TextFieldValue(
-                                        text = preset,
-                                        selection = TextRange(preset.length)
-                                    )
-                                    nameExpanded = false
-                                }
+            // Account name autocomplete (Banks and MFS only - hidden for Cash in Hand)
+            if (accountType != "CASH") {
+                ExposedDropdownMenuBox(
+                    expanded = nameExpanded,
+                    onExpandedChange = { nameExpanded = it }
+                ) {
+                    OutlinedTextField(
+                        value = accountName,
+                        onValueChange = {
+                            accountName = it
+                            nameExpanded = true
+                        },
+                        label = { Text(if (accountType == "BANK") "Bank Name" else "MFS Name") },
+                        placeholder = { Text("Type or select\u2026", color = TextMuted) },
+                        leadingIcon = {
+                            Icon(
+                                imageVector = if (accountType == "MFS") Icons.Default.PhoneAndroid else Icons.Default.AccountBalance,
+                                contentDescription = null,
+                                tint = AccentTeal,
+                                modifier = Modifier.size(20.dp)
                             )
+                        },
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = nameExpanded) },
+                        singleLine = true,
+                        shape = RoundedCornerShape(14.dp),
+                        colors = formTextFieldColors(accountName.text.isEmpty()),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .menuAnchor(
+                                type = ExposedDropdownMenuAnchorType.PrimaryEditable,
+                                enabled = true
+                            )
+                    )
+                    if (filteredPresets.isNotEmpty()) {
+                        ExposedDropdownMenu(
+                            expanded = nameExpanded,
+                            onDismissRequest = { nameExpanded = false },
+                            modifier = Modifier
+                                .background(CardDarker)
+                                .border(1.dp, DividerColor, RoundedCornerShape(12.dp))
+                        ) {
+                            filteredPresets.forEach { preset ->
+                                DropdownMenuItem(
+                                    text = { Text(preset, color = TextPrimary, fontSize = 13.sp) },
+                                    onClick = {
+                                        accountName = TextFieldValue(
+                                            text = preset,
+                                            selection = TextRange(preset.length)
+                                        )
+                                        nameExpanded = false
+                                    }
+                                )
+                            }
                         }
                     }
                 }
+                Spacer(Modifier.height(14.dp))
             }
 
             Spacer(Modifier.height(14.dp))
@@ -1065,34 +1064,35 @@ private fun AccountFormSheet(
                 Spacer(Modifier.height(14.dp))
             }
 
-            // Account Number (digits only)
-            OutlinedTextField(
-                value = accountNumber,
-                onValueChange = { input ->
-                    if (input.all { it.isDigit() }) {
-                        accountNumber = input
-                    }
-                },
-                label = { Text("Account Number") },
-                placeholder = { Text("Digits only", color = TextMuted) },
-                leadingIcon = {
-                    Icon(
-                        imageVector = Icons.Default.CreditCard,
-                        contentDescription = null,
-                        tint = AccentTeal,
-                        modifier = Modifier.size(20.dp)
-                    )
-                },
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                singleLine = true,
-                shape = RoundedCornerShape(14.dp),
-                colors = formTextFieldColors(accountNumber.isEmpty()),
-                modifier = Modifier.fillMaxWidth()
-            )
+            // Account Number (Banks and MFS only - hidden for Cash in Hand)
+            if (accountType != "CASH") {
+                OutlinedTextField(
+                    value = accountNumber,
+                    onValueChange = { input ->
+                        if (input.all { it.isDigit() }) {
+                            accountNumber = input
+                        }
+                    },
+                    label = { Text("Account Number") },
+                    placeholder = { Text("Digits only", color = TextMuted) },
+                    leadingIcon = {
+                        Icon(
+                            imageVector = Icons.Default.CreditCard,
+                            contentDescription = null,
+                            tint = AccentTeal,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    singleLine = true,
+                    shape = RoundedCornerShape(14.dp),
+                    colors = formTextFieldColors(accountNumber.isEmpty()),
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Spacer(Modifier.height(14.dp))
+            }
 
-            Spacer(Modifier.height(14.dp))
-
-            // Nickname (max 20 chars)
+            // Nickname / Location label (max 20 chars)
             OutlinedTextField(
                 value = showAs,
                 onValueChange = { input ->
@@ -1100,8 +1100,8 @@ private fun AccountFormSheet(
                         showAs = input
                     }
                 },
-                label = { Text("Nickname") },
-                placeholder = { Text("Nickname (max 20 letters)", color = TextMuted) },
+                label = { Text(if (accountType == "CASH") "Location / Tag (Optional)" else "Nickname") },
+                placeholder = { Text(if (accountType == "CASH") "e.g. Wallet, Safe..." else "Nickname (max 20 letters)", color = TextMuted) },
                 leadingIcon = {
                     Icon(
                         imageVector = Icons.Default.Badge,
@@ -1176,7 +1176,7 @@ private fun AccountFormSheet(
                         )
                         Spacer(Modifier.width(8.dp))
                         Text(
-                            text = if (isEditing) "Save Changes" else "Add Account",
+                            text = if (isEditing) "Save Changes" else if (accountType == "CASH") "Add Cash Record" else "Add Account",
                             color = if (isValid) BackgroundDark else TextMuted,
                             fontWeight = FontWeight.Bold,
                             fontSize = 15.sp
