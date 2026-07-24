@@ -48,6 +48,7 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
+import com.shejan.financebuddy.ui.theme.*
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
@@ -178,7 +179,7 @@ fun GoalsScreen(
                             .background(Brush.linearGradient(colors = listOf(AccentPurple, AccentBlue))),
                         contentAlignment = Alignment.Center
                     ) {
-                        Icon(imageVector = Icons.Default.Add, contentDescription = "Add Goal", tint = Color.White)
+                        Icon(imageVector = Icons.Default.Add, contentDescription = "Add Goal", tint = OnAccent)
                     }
                 }
             }
@@ -878,7 +879,7 @@ fun AddGoalSheet(
                     Text(
                         text  = "Create Goal",
                         style = MaterialTheme.typography.titleMedium,
-                        color = Color.White
+                        color = OnAccent
                     )
                 }
             }
@@ -1036,7 +1037,7 @@ fun DepositSheet(
                     Text(
                         text  = "Add Savings",
                         style = MaterialTheme.typography.titleMedium,
-                        color = Color.White
+                        color = OnAccent
                     )
                 }
             }

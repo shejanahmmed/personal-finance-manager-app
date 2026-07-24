@@ -28,13 +28,8 @@ import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.drawText
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.shejan.financebuddy.ui.theme.AccentBlue
-import com.shejan.financebuddy.ui.theme.AccentTeal
-import com.shejan.financebuddy.ui.theme.DividerColor
-import com.shejan.financebuddy.ui.theme.ExpenseRed
-import com.shejan.financebuddy.ui.theme.TextMuted
 import androidx.compose.ui.platform.LocalDensity
-import com.shejan.financebuddy.ui.theme.TextSecondary
+import com.shejan.financebuddy.ui.theme.*
 
 // ─────────────────────────────────────────────────────────────
 // Custom 7-Day Expense Bar Chart — Premium Redesign
@@ -119,7 +114,7 @@ fun ExpenseBarChart(
 
                 // Dashed grid line
                 drawLine(
-                    color = Color.White.copy(alpha = 0.06f),
+                    color = ChartGridLine,
                     start = Offset(leftPad, y),
                     end   = Offset(w - rightPad, y),
                     strokeWidth = 1.dp.toPx(),
@@ -140,7 +135,7 @@ fun ExpenseBarChart(
                     text         = labelText,
                     topLeft      = Offset(4.dp.toPx(), y - 7.dp.toPx()),
                     style        = TextStyle(
-                        color    = Color.White.copy(alpha = 0.35f),
+                        color    = ChartLabel,
                         fontSize = 9.sp,
                         fontWeight = androidx.compose.ui.text.font.FontWeight.Medium
                     )
@@ -191,7 +186,7 @@ fun ExpenseBarChart(
                 } else {
                     // Empty bar placeholder line
                     drawRoundRect(
-                        color        = Color.White.copy(alpha = 0.08f),
+                        color        = ChartGridLine,
                         topLeft      = Offset(barX, topPad + chartH - 3.dp.toPx()),
                         size         = Size(barW, 3.dp.toPx()),
                         cornerRadius = CornerRadius(3.dp.toPx())
@@ -210,7 +205,7 @@ fun ExpenseBarChart(
                     val tooltipResult = textMeasurer.measure(
                         text  = amtText,
                         style = TextStyle(
-                            color      = Color.White,
+                            color      = OnAccent,
                             fontSize   = 11.sp,
                             fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
                         )
@@ -234,7 +229,7 @@ fun ExpenseBarChart(
                         text         = amtText,
                         topLeft      = Offset(tX + 8.dp.toPx(), tY + 5.dp.toPx()),
                         style        = TextStyle(
-                            color      = Color.White,
+                            color      = OnAccent,
                             fontSize   = 11.sp,
                             fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
                         )
@@ -255,7 +250,7 @@ fun ExpenseBarChart(
                 val dayResult = textMeasurer.measure(
                     text  = dayLabel,
                     style = TextStyle(
-                        color      = if (isSelected) barColor else Color.White.copy(alpha = 0.40f),
+                        color      = if (isSelected) barColor else ChartLabel,
                         fontSize   = 10.sp,
                         fontWeight = if (isSelected)
                             androidx.compose.ui.text.font.FontWeight.Bold
@@ -271,7 +266,7 @@ fun ExpenseBarChart(
                         topPad + chartH + 8.dp.toPx()
                     ),
                     style = TextStyle(
-                        color      = if (isSelected) barColor else Color.White.copy(alpha = 0.40f),
+                        color      = if (isSelected) barColor else ChartLabel,
                         fontSize   = 10.sp,
                         fontWeight = if (isSelected)
                             androidx.compose.ui.text.font.FontWeight.Bold
@@ -283,7 +278,7 @@ fun ExpenseBarChart(
 
             // ── X-Axis baseline ────────────────────────────────────
             drawLine(
-                color       = Color.White.copy(alpha = 0.10f),
+                color       = ChartGridLine,
                 start       = Offset(leftPad, topPad + chartH),
                 end         = Offset(w - rightPad, topPad + chartH),
                 strokeWidth = 1.dp.toPx()

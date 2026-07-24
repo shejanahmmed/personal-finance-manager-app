@@ -35,3 +35,18 @@ val GradientEnd    = Color(0xFF0096FF)
 
 // === Dynamic Divider / Border ===
 val DividerColor: Color   get() = if (isDarkModeGlobal) Color(0xFF1E2540) else Color(0xFFE2E6F0)
+
+// === On-Accent (text/icons on AccentTeal/AccentBlue surfaces) ===
+// Dark: deep navy; Light: white — both ensure accessible contrast on teal/blue
+val OnAccent: Color       get() = if (isDarkModeGlobal) Color(0xFF0B0E1A) else Color(0xFFFFFFFF)
+
+// === Chart Tokens ===
+// Grid lines drawn on chart canvas backgrounds
+val ChartGridLine: Color  get() = if (isDarkModeGlobal) Color(0x1AFFFFFF) else Color(0x26334155)
+// Axis / tick labels on charts
+val ChartLabel: Color     get() = if (isDarkModeGlobal) Color(0x59FFFFFF) else Color(0xFF64748B)
+// Subtle chart fill background (very low alpha overlay)
+val ChartSurface: Color   get() = if (isDarkModeGlobal) Color(0x0FFFFFFF) else Color(0x0F334155)
+
+// === Scrim (bottom sheet / dialog overlay) ===
+val ScrimColor: Color     get() = if (isDarkModeGlobal) Color(0xA6000000) else Color(0x73000000)

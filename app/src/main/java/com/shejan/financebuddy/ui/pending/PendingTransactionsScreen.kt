@@ -467,7 +467,7 @@ fun PendingTransactionsScreen(
                         colors = ButtonDefaults.buttonColors(containerColor = ExpenseRed),
                         shape = RoundedCornerShape(10.dp)
                     ) {
-                        Text("Dismiss All", color = Color.White, fontWeight = FontWeight.Bold)
+                        Text("Dismiss All", color = OnAccent, fontWeight = FontWeight.Bold)
                     }
                 },
                 dismissButton = {

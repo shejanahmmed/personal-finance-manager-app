@@ -50,6 +50,7 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.SheetState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import com.shejan.financebuddy.ui.theme.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -107,7 +108,7 @@ fun NotificationsBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
         containerColor = BackgroundDark,
-        scrimColor = Color.Black.copy(alpha = 0.65f),
+        scrimColor = ScrimColor,
         dragHandle = { BottomSheetDefaults.DragHandle(color = DividerColor) },
         shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
     ) {
@@ -206,7 +207,7 @@ fun NotificationsBottomSheet(
                         },
                         colors = FilterChipDefaults.filterChipColors(
                             selectedContainerColor = AccentBlue,
-                            selectedLabelColor = Color.White,
+                            selectedLabelColor = OnAccent,
                             containerColor = CardDark,
                             labelColor = TextSecondary
                         ),
@@ -419,7 +420,7 @@ private fun NotificationCardItem(
                             shape = RoundedCornerShape(10.dp),
                             colors = ButtonDefaults.buttonColors(
                                 containerColor = AccentBlue,
-                                contentColor = Color.White
+                                contentColor = OnAccent
                             ),
                             contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp),
                             modifier = Modifier.height(32.dp)

@@ -178,7 +178,7 @@ fun EditProfileDialog(
                         Icon(
                             imageVector = Icons.Default.CameraAlt,
                             contentDescription = "Change Photo",
-                            tint = Color(0xFF0B0E1A), // deep navy color for contrast against bright AccentTeal
+                            tint = OnAccent,
                             modifier = Modifier.size(14.dp)
                         )
                     }
@@ -265,7 +265,7 @@ fun EditProfileDialog(
                         shape = RoundedCornerShape(12.dp),
                         colors = ButtonDefaults.buttonColors(
                             containerColor = AccentTeal,
-                            contentColor = Color(0xFF0B0E1A) // High contrast deep navy text on bright teal
+                            contentColor = OnAccent
                         ),
                         modifier = Modifier
                             .weight(1f)
@@ -273,7 +273,7 @@ fun EditProfileDialog(
                     ) {
                         Text(
                             text = "Save",
-                            color = Color(0xFF0B0E1A), // Explicit high contrast deep navy text
+                            color = OnAccent,
                             fontWeight = FontWeight.Bold,
                             fontSize = 14.sp
                         )

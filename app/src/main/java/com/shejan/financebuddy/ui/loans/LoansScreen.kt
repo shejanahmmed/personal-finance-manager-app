@@ -243,7 +243,7 @@ fun LoansScreen(
                             .background(Brush.linearGradient(colors = listOf(AccentBlue, AccentTeal))),
                         contentAlignment = Alignment.Center
                     ) {
-                        Icon(imageVector = Icons.Default.Add, contentDescription = "Add Loan", tint = Color.White)
+                        Icon(imageVector = Icons.Default.Add, contentDescription = "Add Loan", tint = OnAccent)
                     }
                 }
             }
@@ -1145,7 +1145,7 @@ fun LoanCardItem(
                     } else {
                         Button(
                             onClick = onRepayClick,
-                            colors = ButtonDefaults.buttonColors(containerColor = AccentTeal, contentColor = Color.White),
+                            colors = ButtonDefaults.buttonColors(containerColor = AccentTeal, contentColor = OnAccent),
                             shape = RoundedCornerShape(12.dp),
                             modifier = Modifier.fillMaxWidth().padding(top = 16.dp)
                         ) {
@@ -1404,7 +1404,7 @@ fun PersonalLoanCardItem(
                             onClick = onRepayClick,
                             colors = ButtonDefaults.buttonColors(
                                 containerColor = if (isLent) AccentPurple else AccentTeal,
-                                contentColor = Color.White
+                                contentColor = OnAccent
                             ),
                             shape = RoundedCornerShape(12.dp),
                             modifier = Modifier.fillMaxWidth().padding(top = 16.dp)

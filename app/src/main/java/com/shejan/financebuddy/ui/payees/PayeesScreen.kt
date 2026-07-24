@@ -389,7 +389,7 @@ private fun AddPayeeSheet(
                     ) {
                         listOf("BANK", "MFS").forEach { t ->
                             val selected = account.type == t
-                            val itemColor = if (selected) BackgroundDark else Color.White
+                            val itemColor = if (selected) BackgroundDark else TextPrimary
                             val icon = if (t == "BANK") Icons.Default.AccountBalance else Icons.Default.PhoneAndroid
                             val label = if (t == "BANK") "Bank" else "MFS"
 

@@ -267,7 +267,7 @@ fun ReportsScreen(
                 ) {
                     Text(
                         text = "Monthly Breakdown",
-                        color = if (isMonthly) Color.Black else TextSecondary,
+                        color = if (isMonthly) OnAccent else TextSecondary,
                         fontSize = 13.sp,
                         fontWeight = if (isMonthly) FontWeight.Bold else FontWeight.Medium
                     )
@@ -284,7 +284,7 @@ fun ReportsScreen(
                 ) {
                     Text(
                         text = "Yearly Summary",
-                        color = if (isYearly) Color.Black else TextSecondary,
+                        color = if (isYearly) OnAccent else TextSecondary,
                         fontSize = 13.sp,
                         fontWeight = if (isYearly) FontWeight.Bold else FontWeight.Medium
                     )
@@ -647,13 +647,13 @@ fun ReportsScreen(
                         Icon(
                             imageVector = Icons.Default.PictureAsPdf,
                             contentDescription = "Export PDF Icon",
-                            tint = Color.Black,
+                            tint = OnAccent,
                             modifier = Modifier.size(20.dp)
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
                             text = if (selectedReportType == "MONTHLY") "Export Monthly Statement as PDF" else "Export Annual Report as PDF",
-                            color = Color.Black,
+                            color = OnAccent,
                             fontSize = 14.sp,
                             fontWeight = FontWeight.Bold
                         )

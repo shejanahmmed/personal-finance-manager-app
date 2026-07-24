@@ -474,7 +474,7 @@ private fun MonthlyComparisonBarChart(
             val y = topPad + chartH * (i / 4f)
             val v = maxVal * (1f - i / 4f)
             drawLine(
-                color = Color.White.copy(alpha = 0.06f),
+                color = ChartGridLine,
                 start = Offset(leftPad, y), end = Offset(w - rightPad, y),
                 strokeWidth = 1.dp.toPx()
             )
@@ -486,7 +486,7 @@ private fun MonthlyComparisonBarChart(
             drawText(
                 textMeasurer, lbl,
                 topLeft = Offset(2.dp.toPx(), y - 7.dp.toPx()),
-                style = TextStyle(color = Color.White.copy(alpha = 0.35f), fontSize = 9.sp)
+                style = TextStyle(color = ChartLabel, fontSize = 9.sp)
             )
         }
 
@@ -530,18 +530,18 @@ private fun MonthlyComparisonBarChart(
             // X-axis label
             val mResult = textMeasurer.measure(
                 month,
-                style = TextStyle(color = Color.White.copy(alpha = 0.4f), fontSize = 9.sp)
+                style = TextStyle(color = ChartLabel, fontSize = 9.sp)
             )
             drawText(
                 textMeasurer, month,
                 topLeft = Offset(slotCenter - mResult.size.width / 2f, topPad + chartH + 7.dp.toPx()),
-                style = TextStyle(color = Color.White.copy(alpha = 0.4f), fontSize = 9.sp)
+                style = TextStyle(color = ChartLabel, fontSize = 9.sp)
             )
         }
 
         // X baseline
         drawLine(
-            color = Color.White.copy(alpha = 0.1f),
+            color = ChartGridLine,
             start = Offset(leftPad, topPad + chartH),
             end = Offset(w - rightPad, topPad + chartH),
             strokeWidth = 1.dp.toPx()
@@ -594,7 +594,7 @@ private fun BalanceTrendChart(
             drawText(
                 textMeasurer, lbl,
                 topLeft = Offset(2.dp.toPx(), y - 7.dp.toPx()),
-                style = TextStyle(color = Color.White.copy(alpha = 0.3f), fontSize = 9.sp)
+                style = TextStyle(color = ChartLabel, fontSize = 9.sp)
             )
         }
 
@@ -698,7 +698,7 @@ private fun DonutChart(
             startAngle += sweep + 1.5f  // small gap between segments
         }
 
-        // Center hole fill
-        drawCircle(color = Color(0xFF0D1117), radius = innerR * 0.92f, center = Offset(cx, cy))
+        // Center hole fill — uses BackgroundDark so it blends with card surface in both themes
+        drawCircle(color = BackgroundDark, radius = innerR * 0.92f, center = Offset(cx, cy))
     }
 }

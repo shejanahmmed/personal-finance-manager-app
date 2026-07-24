@@ -587,7 +587,7 @@ fun SettingsScreen(
                                             text = label,
                                             fontSize = 11.sp,
                                             fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                                            color = if (isSelected) Color.White else TextSecondary
+                                            color = if (isSelected) OnAccent else TextSecondary
                                         )
                                     }
                                 }

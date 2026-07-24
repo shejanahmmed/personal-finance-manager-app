@@ -43,6 +43,7 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.SheetState
+import com.shejan.financebuddy.ui.theme.*
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Tab
@@ -905,7 +906,7 @@ fun AddTransactionSheet(
                                 },
                                 colors = ButtonDefaults.buttonColors(containerColor = ExpenseRed)
                             ) {
-                                Text("Delete", color = Color.White, fontWeight = FontWeight.Bold)
+                                Text("Delete", color = OnAccent, fontWeight = FontWeight.Bold)
                             }
                         }
                     }

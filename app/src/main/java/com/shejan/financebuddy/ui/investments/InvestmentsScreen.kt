@@ -151,7 +151,7 @@ fun InvestmentsScreen(
                         Icon(
                             imageVector = Icons.Default.Add,
                             contentDescription = "Add Investment",
-                            tint = Color.White,
+                            tint = OnAccent,
                             modifier = Modifier.size(26.dp)
                         )
                     }
@@ -948,7 +948,7 @@ private fun AddEditInvestmentSheet(
                 shape = RoundedCornerShape(12.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = AccentTeal)
             ) {
-                Text("Save Investment", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                Text("Save Investment", color = OnAccent, fontWeight = FontWeight.Bold, fontSize = 15.sp)
             }
         }
     }
@@ -1006,7 +1006,7 @@ private fun QuickUpdateValueDialog(
                 },
                 colors = ButtonDefaults.buttonColors(containerColor = AccentTeal)
             ) {
-                Text("Update", color = Color.White, fontWeight = FontWeight.Bold)
+                Text("Update", color = OnAccent, fontWeight = FontWeight.Bold)
             }
         },
         dismissButton = {
@@ -1110,7 +1110,7 @@ private fun LogDividendDialog(
                 },
                 colors = ButtonDefaults.buttonColors(containerColor = AccentTeal)
             ) {
-                Text("Log Income", color = Color.White, fontWeight = FontWeight.Bold)
+                Text("Log Income", color = OnAccent, fontWeight = FontWeight.Bold)
             }
         },
         dismissButton = {
