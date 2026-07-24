@@ -91,6 +91,7 @@ import com.shejan.financebuddy.ui.home.TransactionListScreen
 import com.shejan.financebuddy.ui.history.HistoryScreen
 import com.shejan.financebuddy.ui.reports.ReportsScreen
 import com.shejan.financebuddy.ui.onboarding.OnboardingScreenRoot
+import com.shejan.financebuddy.ui.statistics.StatisticsScreen
 import com.shejan.financebuddy.ui.pending.PendingTransactionsScreen
 import com.shejan.financebuddy.ui.pending.PendingTransactionsViewModel
 import com.shejan.financebuddy.ui.theme.AccentBlue
@@ -269,7 +270,16 @@ fun AppNavigation(
                     onNavigateToPayees = { navController.navigate("payees") },
                     onNavigateToLoans = { navController.navigate("loans") },
                     onNavigateToHistory = { navController.navigate("transaction_history") },
-                    onNavigateToReports = { navController.navigate("reports") }
+                    onNavigateToReports = { navController.navigate("reports") },
+                    onNavigateToStatistics = { navController.navigate("statistics") }
+                )
+            }
+
+            composable("statistics") {
+                StatisticsScreen(
+                    allTransactions = allTransactions,
+                    accounts = accounts,
+                    onBack = { navController.popBackStack() }
                 )
             }
 
@@ -499,7 +509,8 @@ fun MainDashboardContainer(
     onNavigateToPayees: () -> Unit = {},
     onNavigateToLoans: () -> Unit = {},
     onNavigateToHistory: () -> Unit = {},
-    onNavigateToReports: () -> Unit = {}
+    onNavigateToReports: () -> Unit = {},
+    onNavigateToStatistics: () -> Unit = {}
 ) {
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val scope       = rememberCoroutineScope()
@@ -747,7 +758,12 @@ fun MainDashboardContainer(
                     DrawerMenuItem(
                         icon = Icons.Default.DateRange,
                         label = "Statistics",
-                        onClick = { scope.launch { drawerState.close() } }
+                        onClick = {
+                            scope.launch {
+                                drawerState.close()
+                                onNavigateToStatistics()
+                            }
+                        }
                     )
                     DrawerMenuItem(
                         icon = Icons.Default.Info,
