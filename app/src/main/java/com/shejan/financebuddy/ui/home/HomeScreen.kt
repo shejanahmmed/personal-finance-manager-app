@@ -1,6 +1,7 @@
 package com.shejan.financebuddy.ui.home
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import android.widget.Toast
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.foundation.clickable
@@ -169,18 +170,6 @@ fun HomeScreen(
             .background(BackgroundDark)
             .nestedScroll(nestedScrollConnection)
     ) {
-        // Ambient top glow flowing under the status bar
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(300.dp)
-                .background(
-                    Brush.verticalGradient(
-                        colors = listOf(AccentTeal.copy(alpha = 0.08f), Color.Transparent)
-                    )
-                )
-        )
-
         Scaffold(
             containerColor = Color.Transparent,
             // Empty topBar so we can overlay the floating top bar smoothly
@@ -602,38 +591,42 @@ fun HomeScreen(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(
-                        Brush.verticalGradient(
-                            colors = listOf(
-                                // Match the page top: BackgroundDark + AccentTeal at 8% — same as ambient glow
-                                Color(0xFF0B0E1A).copy(alpha = 1f).let {
-                                    Color(
-                                        red   = it.red   * 0.92f + AccentTeal.red   * 0.08f,
-                                        green = it.green * 0.92f + AccentTeal.green * 0.08f,
-                                        blue  = it.blue  * 0.92f + AccentTeal.blue  * 0.08f,
-                                    )
-                                },
-                                BackgroundDark
-                            )
-                        )
-                    )
+                    .background(BackgroundDark)
                     .statusBarsPadding()
-                    .padding(horizontal = 16.dp, vertical = 12.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
+                    .padding(horizontal = 12.dp, vertical = 12.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
+                // Left Drawer Menu Button (Clean icon with no circle container)
                 IconButton(onClick = onOpenDrawer) {
-                    Icon(imageVector = Icons.Default.Menu, contentDescription = "Menu", tint = TextPrimary)
+                    Icon(
+                        imageVector = Icons.Default.Menu,
+                        contentDescription = "Menu",
+                        tint = TextPrimary,
+                        modifier = Modifier.size(24.dp)
+                    )
                 }
 
-                Text(
-                    text       = "FinanceBuddy",
-                    style      = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color      = TextPrimary
-                )
+                Spacer(modifier = Modifier.width(8.dp))
 
-                IconButton(onClick = { showNotificationsSheet = true }) {
+                // Title + Subtitle Header Column
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "FinanceBuddy",
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = TextPrimary
+                    )
+                    Text(
+                        text = "Personal Finance Overview",
+                        fontSize = 12.sp,
+                        color = TextMuted
+                    )
+                }
+
+                // Right Notification Bell Button (Clean icon)
+                IconButton(
+                    onClick = { showNotificationsSheet = true }
+                ) {
                     if (unreadNotificationsCount > 0) {
                         BadgedBox(
                             badge = {
@@ -644,16 +637,26 @@ fun HomeScreen(
                                     Text(
                                         text = if (unreadNotificationsCount > 9) "9+" else unreadNotificationsCount.toString(),
                                         color = Color.White,
-                                        fontSize = 10.sp,
+                                        fontSize = 9.sp,
                                         fontWeight = FontWeight.Bold
                                     )
                                 }
                             }
                         ) {
-                            Icon(imageVector = Icons.Default.Notifications, contentDescription = "Notifications", tint = TextPrimary)
+                            Icon(
+                                imageVector = Icons.Default.Notifications,
+                                contentDescription = "Notifications",
+                                tint = TextPrimary,
+                                modifier = Modifier.size(22.dp)
+                            )
                         }
                     } else {
-                        Icon(imageVector = Icons.Default.Notifications, contentDescription = "Notifications", tint = TextPrimary)
+                        Icon(
+                            imageVector = Icons.Default.Notifications,
+                            contentDescription = "Notifications",
+                            tint = TextPrimary,
+                            modifier = Modifier.size(22.dp)
+                        )
                     }
                 }
             }
