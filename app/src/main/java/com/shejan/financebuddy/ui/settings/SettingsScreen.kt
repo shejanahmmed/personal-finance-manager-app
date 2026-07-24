@@ -22,6 +22,7 @@ import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Contrast
 import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material.icons.filled.Devices
 import androidx.compose.material.icons.filled.FileDownload
@@ -286,7 +287,18 @@ fun SettingsScreen(
                         selected = themeMode == "DARK",
                         onClick = {
                             scope.launch { preferencesManager.setThemeMode("DARK") }
-                            showToast("Switched to Dark Mode \uD83C\uDF19")
+                            showToast("Switched to Dark Mode 🌙")
+                        }
+                    )
+                    HorizontalDivider(color = DividerColor, modifier = Modifier.padding(horizontal = 16.dp))
+                    ThemeOptionRow(
+                        title = "AMOLED Black",
+                        description = "Pure 100% black (#000000) for maximum OLED battery savings",
+                        icon = Icons.Default.Contrast,
+                        selected = themeMode == "AMOLED",
+                        onClick = {
+                            scope.launch { preferencesManager.setThemeMode("AMOLED") }
+                            showToast("Switched to AMOLED Black ⚫")
                         }
                     )
                 }

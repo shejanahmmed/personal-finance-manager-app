@@ -69,15 +69,53 @@ private val FinanceBuddyLightColorScheme = lightColorScheme(
     scrim                = Color(0x59000000)
 )
 
+private val FinanceBuddyAmoledColorScheme = darkColorScheme(
+    primary              = Color.White,
+    onPrimary            = Color.Black,
+    primaryContainer     = Color.Black,
+    onPrimaryContainer   = Color.White,
+    secondary            = Color.White,
+    onSecondary          = Color.Black,
+    secondaryContainer   = Color.Black,
+    onSecondaryContainer = Color.White,
+    tertiary             = Color.White,
+    onTertiary           = Color.Black,
+    background           = Color.Black,
+    onBackground         = Color.White,
+    surface              = Color.Black,
+    onSurface            = Color.White,
+    surfaceVariant       = Color.Black,
+    onSurfaceVariant     = Color(0xB3FFFFFF),
+    outline              = Color(0x33FFFFFF),
+    outlineVariant       = Color(0x1AFFFFFF),
+    error                = Color.White,
+    onError              = Color.Black,
+    errorContainer       = Color.Black,
+    onErrorContainer     = Color.White,
+    scrim                = Color(0xCC000000)
+)
+
 @Composable
 fun FinanceBuddyTheme(
+    themeMode: String = "SYSTEM",
     darkTheme: Boolean = isSystemInDarkTheme(),
     content: @Composable () -> Unit
 ) {
-    // Synchronize global theme state variable
-    isDarkModeGlobal = darkTheme
+    val activeMode = when (themeMode) {
+        "AMOLED" -> "AMOLED"
+        "LIGHT"  -> "LIGHT"
+        "DARK"   -> "DARK"
+        else     -> if (darkTheme) "DARK" else "LIGHT"
+    }
 
-    val colorScheme = if (darkTheme) FinanceBuddyDarkColorScheme else FinanceBuddyLightColorScheme
+    // Synchronize global theme state
+    currentThemeModeState = activeMode
+
+    val colorScheme = when (activeMode) {
+        "AMOLED" -> FinanceBuddyAmoledColorScheme
+        "LIGHT"  -> FinanceBuddyLightColorScheme
+        else     -> FinanceBuddyDarkColorScheme
+    }
 
     val view = LocalView.current
     if (!view.isInEditMode) {
@@ -87,8 +125,8 @@ fun FinanceBuddyTheme(
             window.statusBarColor = android.graphics.Color.TRANSPARENT
             window.navigationBarColor = android.graphics.Color.TRANSPARENT
             WindowCompat.getInsetsController(window, view).apply {
-                isAppearanceLightStatusBars    = !darkTheme
-                isAppearanceLightNavigationBars = !darkTheme
+                isAppearanceLightStatusBars    = activeMode == "LIGHT"
+                isAppearanceLightNavigationBars = activeMode == "LIGHT"
             }
         }
     }

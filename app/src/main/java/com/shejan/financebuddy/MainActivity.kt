@@ -190,12 +190,7 @@ class MainActivity : FragmentActivity() {
                 }
             }
 
-            val darkTheme = when (themeMode) {
-                "DARK" -> true
-                "LIGHT" -> false
-                else -> isSystemInDarkTheme()
-            }
-            FinanceBuddyTheme(darkTheme = darkTheme) {
+            FinanceBuddyTheme(themeMode = themeMode) {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background

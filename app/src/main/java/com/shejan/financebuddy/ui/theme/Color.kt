@@ -6,49 +6,163 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 
 // === Global Theme Switcher State ===
-var isDarkModeGlobal by mutableStateOf(true)
+var currentThemeModeState by mutableStateOf("DARK")
+var isDarkModeGlobal: Boolean
+    get() = currentThemeModeState != "LIGHT"
+    set(value) {
+        currentThemeModeState = if (value) "DARK" else "LIGHT"
+    }
 
-// === Dynamic Background & Surface (Names kept identical to prevent breaking existing imports) ===
-val BackgroundDark: Color get() = if (isDarkModeGlobal) Color(0xFF0B0E1A) else Color(0xFFF1F5F9)
-val SurfaceDark: Color    get() = if (isDarkModeGlobal) Color(0xFF141827) else Color(0xFFFFFFFF)
-val CardDark: Color       get() = if (isDarkModeGlobal) Color(0xFF1C2235) else Color(0xFFFFFFFF)
-val CardDarker: Color     get() = if (isDarkModeGlobal) Color(0xFF111525) else Color(0xFFE2E8F0)
+// === Dynamic Background & Surface ===
+val BackgroundDark: Color get() = when (currentThemeModeState) {
+    "AMOLED" -> Color(0xFF000000)
+    "LIGHT"  -> Color(0xFFF1F5F9)
+    else     -> Color(0xFF0B0E1A)
+}
 
-// === Accent Colors (Soft matte for Light Mode, Vibrant for Dark Mode) ===
-val AccentTeal: Color     get() = if (isDarkModeGlobal) Color(0xFF00D4AA) else Color(0xFF0D9488)
-val AccentBlue: Color     get() = if (isDarkModeGlobal) Color(0xFF0096FF) else Color(0xFF2563EB)
-val AccentPurple: Color   get() = if (isDarkModeGlobal) Color(0xFF7C5CFC) else Color(0xFF7C3AED)
+val SurfaceDark: Color get() = when (currentThemeModeState) {
+    "AMOLED" -> Color(0xFF000000)
+    "LIGHT"  -> Color(0xFFFFFFFF)
+    else     -> Color(0xFF141827)
+}
+
+val CardDark: Color get() = when (currentThemeModeState) {
+    "AMOLED" -> Color(0xFF000000)
+    "LIGHT"  -> Color(0xFFFFFFFF)
+    else     -> Color(0xFF1C2235)
+}
+
+val CardDarker: Color get() = when (currentThemeModeState) {
+    "AMOLED" -> Color(0xFF000000)
+    "LIGHT"  -> Color(0xFFE2E8F0)
+    else     -> Color(0xFF111525)
+}
+
+// === Accent Colors ===
+val AccentTeal: Color get() = when (currentThemeModeState) {
+    "AMOLED" -> Color(0xFFFFFFFF)
+    "LIGHT"  -> Color(0xFF0D9488)
+    else     -> Color(0xFF00D4AA)
+}
+
+val AccentBlue: Color get() = when (currentThemeModeState) {
+    "AMOLED" -> Color(0xFFFFFFFF)
+    "LIGHT"  -> Color(0xFF2563EB)
+    else     -> Color(0xFF0096FF)
+}
+
+val AccentPurple: Color get() = when (currentThemeModeState) {
+    "AMOLED" -> Color(0xFFFFFFFF)
+    "LIGHT"  -> Color(0xFF7C3AED)
+    else     -> Color(0xFF7C5CFC)
+}
 
 // === Dynamic Text ===
-val TextPrimary: Color    get() = if (isDarkModeGlobal) Color(0xFFFFFFFF) else Color(0xFF0F172A)
-val TextSecondary: Color  get() = if (isDarkModeGlobal) Color(0xFF8A94B2) else Color(0xFF475569)
-val TextMuted: Color      get() = if (isDarkModeGlobal) Color(0xFF4A5270) else Color(0xFF64748B)
+val TextPrimary: Color get() = when (currentThemeModeState) {
+    "AMOLED" -> Color(0xFFFFFFFF) // 100%
+    "LIGHT"  -> Color(0xFF0F172A)
+    else     -> Color(0xFFFFFFFF)
+}
 
-// === Semantic (Rich Matte for Light Mode) ===
-val IncomeGreen: Color    get() = if (isDarkModeGlobal) Color(0xFF00C897) else Color(0xFF059669)
-val ExpenseRed: Color     get() = if (isDarkModeGlobal) Color(0xFFFF5C7C) else Color(0xFFE11D48)
-val TransferYellow: Color get() = if (isDarkModeGlobal) Color(0xFFFFBD2E) else Color(0xFFD97706)
+val TextSecondary: Color get() = when (currentThemeModeState) {
+    "AMOLED" -> Color(0xB3FFFFFF) // 70%
+    "LIGHT"  -> Color(0xFF475569)
+    else     -> Color(0xFF8A94B2)
+}
+
+val TextMuted: Color get() = when (currentThemeModeState) {
+    "AMOLED" -> Color(0x80FFFFFF) // 50%
+    "LIGHT"  -> Color(0xFF64748B)
+    else     -> Color(0xFF4A5270)
+}
+
+// === Semantic ===
+val IncomeGreen: Color get() = when (currentThemeModeState) {
+    "AMOLED" -> Color(0xFFFFFFFF) // 100%
+    "LIGHT"  -> Color(0xFF059669)
+    else     -> Color(0xFF00C897)
+}
+
+val ExpenseRed: Color get() = when (currentThemeModeState) {
+    "AMOLED" -> Color(0xB3FFFFFF) // 70%
+    "LIGHT"  -> Color(0xFFE11D48)
+    else     -> Color(0xFFFF5C7C)
+}
+
+val TransferYellow: Color get() = when (currentThemeModeState) {
+    "AMOLED" -> Color(0x80FFFFFF) // 50%
+    "LIGHT"  -> Color(0xFFD97706)
+    else     -> Color(0xFFFFBD2E)
+}
 
 // === Gradient Stops ===
-val GradientStart: Color  get() = if (isDarkModeGlobal) Color(0xFF00D4AA) else Color(0xFF0D9488)
-val GradientEnd: Color    get() = if (isDarkModeGlobal) Color(0xFF0096FF) else Color(0xFF2563EB)
+val GradientStart: Color get() = when (currentThemeModeState) {
+    "AMOLED" -> Color(0xFFFFFFFF)
+    "LIGHT"  -> Color(0xFF0D9488)
+    else     -> Color(0xFF00D4AA)
+}
+
+val GradientEnd: Color get() = when (currentThemeModeState) {
+    "AMOLED" -> Color(0xFFFFFFFF)
+    "LIGHT"  -> Color(0xFF2563EB)
+    else     -> Color(0xFF0096FF)
+}
 
 // === Dynamic Divider / Border ===
-val DividerColor: Color   get() = if (isDarkModeGlobal) Color(0xFF1E2540) else Color(0xFFCBD5E1)
+val DividerColor: Color get() = when (currentThemeModeState) {
+    "AMOLED" -> Color(0x33FFFFFF) // 20% opacity border
+    "LIGHT"  -> Color(0xFFCBD5E1)
+    else     -> Color(0xFF1E2540)
+}
 
-// === On-Accent (text/icons on AccentTeal/AccentBlue surfaces) ===
-// Dark: deep navy; Light: pure white — ensures 4.5+:1 WCAG contrast on buttons
-val OnAccent: Color       get() = if (isDarkModeGlobal) Color(0xFF0B0E1A) else Color(0xFFFFFFFF)
+// === On-Accent ===
+val OnAccent: Color get() = when (currentThemeModeState) {
+    "AMOLED" -> Color(0xFF000000)
+    "LIGHT"  -> Color(0xFFFFFFFF)
+    else     -> Color(0xFF0B0E1A)
+}
 
 // === Chart Tokens ===
-val ChartGridLine: Color  get() = if (isDarkModeGlobal) Color(0x1AFFFFFF) else Color(0x2694A3B8)
-val ChartLabel: Color     get() = if (isDarkModeGlobal) Color(0x59FFFFFF) else Color(0xFF64748B)
-val ChartSurface: Color   get() = if (isDarkModeGlobal) Color(0x0FFFFFFF) else Color(0x0F0F172A)
+val ChartGridLine: Color get() = when (currentThemeModeState) {
+    "AMOLED" -> Color(0x1AFFFFFF) // 10%
+    "LIGHT"  -> Color(0x2694A3B8)
+    else     -> Color(0x1AFFFFFF)
+}
+
+val ChartLabel: Color get() = when (currentThemeModeState) {
+    "AMOLED" -> Color(0x80FFFFFF) // 50%
+    "LIGHT"  -> Color(0xFF64748B)
+    else     -> Color(0x59FFFFFF)
+}
+
+val ChartSurface: Color get() = when (currentThemeModeState) {
+    "AMOLED" -> Color(0xFF000000)
+    "LIGHT"  -> Color(0x0F0F172A)
+    else     -> Color(0x0FFFFFFF)
+}
 
 // === Scrim (bottom sheet / dialog overlay) ===
-val ScrimColor: Color     get() = if (isDarkModeGlobal) Color(0xA6000000) else Color(0x59000000)
+val ScrimColor: Color get() = when (currentThemeModeState) {
+    "AMOLED" -> Color(0xCC000000)
+    "LIGHT"  -> Color(0x59000000)
+    else     -> Color(0xA6000000)
+}
 
 // === Toggle / Switch Colors ===
-val SwitchTrackUnchecked: Color  get() = if (isDarkModeGlobal) Color(0xFF1E2538) else Color(0xFFCBD5E1)
-val SwitchThumbUnchecked: Color  get() = if (isDarkModeGlobal) Color(0xFF9AA3B8) else Color(0xFF64748B)
-val SwitchBorderUnchecked: Color get() = if (isDarkModeGlobal) Color(0xFF333B54) else Color(0xFF94A3B8)
+val SwitchTrackUnchecked: Color get() = when (currentThemeModeState) {
+    "AMOLED" -> Color(0x33FFFFFF)
+    "LIGHT"  -> Color(0xFFCBD5E1)
+    else     -> Color(0xFF1E2538)
+}
+
+val SwitchThumbUnchecked: Color get() = when (currentThemeModeState) {
+    "AMOLED" -> Color(0x80FFFFFF)
+    "LIGHT"  -> Color(0xFF64748B)
+    else     -> Color(0xFF9AA3B8)
+}
+
+val SwitchBorderUnchecked: Color get() = when (currentThemeModeState) {
+    "AMOLED" -> Color(0x40FFFFFF)
+    "LIGHT"  -> Color(0xFF94A3B8)
+    else     -> Color(0xFF333B54)
+}
