@@ -17,6 +17,7 @@ import androidx.compose.material.icons.automirrored.filled.Notes
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.DoneAll
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
@@ -84,6 +85,7 @@ fun PendingTransactionsScreen(
     onDeletePermanently: (PendingSmsTransactionEntity) -> Unit = {},
     onUpdate: (PendingSmsTransactionEntity) -> Unit,
     onDismissAll: () -> Unit,
+    onConfirmAll: () -> Unit = {},
     onBack: () -> Unit
 ) {
     val context = LocalContext.current
@@ -134,6 +136,7 @@ fun PendingTransactionsScreen(
     var showMoreMenu by remember { mutableStateOf(false) }
     var editTarget by remember { mutableStateOf<PendingSmsTransactionEntity?>(null) }
     var showDismissAllDialog by remember { mutableStateOf(false) }
+    var showConfirmAllDialog by remember { mutableStateOf(false) }
     var showMappingConfigSheet by remember { mutableStateOf(false) }
     val configSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
@@ -201,26 +204,15 @@ fun PendingTransactionsScreen(
                     )
                 }
 
-                if (pendingList.isNotEmpty()) {
-                    Button(
-                        onClick = { showDismissAllDialog = true },
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = ExpenseRed.copy(alpha = 0.12f),
-                            contentColor = ExpenseRed
-                        ),
-                        shape = RoundedCornerShape(10.dp),
-                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
-                        modifier = Modifier.height(40.dp)
-                    ) {
-                        Text("Dismiss All", fontSize = 11.sp, fontWeight = FontWeight.Bold)
-                    }
-                    Spacer(modifier = Modifier.width(8.dp))
-                }
-
                 // 3-dot More Options Dropdown
                 Box {
                     IconButton(
-                        onClick = { showMoreMenu = true }
+                        onClick = { showMoreMenu = true },
+                        modifier = Modifier
+                            .size(40.dp)
+                            .clip(CircleShape)
+                            .background(CardDarker)
+                            .border(1.dp, DividerColor, CircleShape)
                     ) {
                         if (isScanning) {
                             CircularProgressIndicator(
@@ -233,7 +225,7 @@ fun PendingTransactionsScreen(
                                 imageVector = Icons.Default.MoreVert,
                                 contentDescription = "More Options",
                                 tint = TextPrimary,
-                                modifier = Modifier.size(22.dp)
+                                modifier = Modifier.size(20.dp)
                             )
                         }
                     }
@@ -245,6 +237,46 @@ fun PendingTransactionsScreen(
                             .background(CardDarker)
                             .border(1.dp, DividerColor, RoundedCornerShape(12.dp))
                     ) {
+                        if (pendingList.isNotEmpty()) {
+                            DropdownMenuItem(
+                                text = {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Icon(
+                                            imageVector = Icons.Default.DoneAll,
+                                            contentDescription = null,
+                                            tint = IncomeGreen,
+                                            modifier = Modifier.size(18.dp)
+                                        )
+                                        Spacer(modifier = Modifier.width(10.dp))
+                                        Text("Accept All Pending (${pendingList.size})", color = TextPrimary, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+                                    }
+                                },
+                                onClick = {
+                                    showMoreMenu = false
+                                    showConfirmAllDialog = true
+                                }
+                            )
+                            DropdownMenuItem(
+                                text = {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Icon(
+                                            imageVector = Icons.Default.Close,
+                                            contentDescription = null,
+                                            tint = ExpenseRed,
+                                            modifier = Modifier.size(18.dp)
+                                        )
+                                        Spacer(modifier = Modifier.width(10.dp))
+                                        Text("Dismiss All Pending (${pendingList.size})", color = TextPrimary, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+                                    }
+                                },
+                                onClick = {
+                                    showMoreMenu = false
+                                    showDismissAllDialog = true
+                                }
+                            )
+                            HorizontalDivider(color = DividerColor, modifier = Modifier.padding(vertical = 4.dp))
+                        }
+
                         DropdownMenuItem(
                             text = {
                                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -438,6 +470,46 @@ fun PendingTransactionsScreen(
             }
         }
 
+        // ── Confirm All Dialog ─────────────────────────────────────────────
+        if (showConfirmAllDialog) {
+            AlertDialog(
+                onDismissRequest = { showConfirmAllDialog = false },
+                containerColor   = CardDarker,
+                title = {
+                    Text(
+                        "Accept All Pending Transactions?",
+                        color = TextPrimary,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 18.sp
+                    )
+                },
+                text = {
+                    Text(
+                        "All ${pendingList.size} unconfirmed SMS detections will be accepted and added to your financial accounts.",
+                        color = TextSecondary,
+                        fontSize = 14.sp
+                    )
+                },
+                confirmButton = {
+                    Button(
+                        onClick = {
+                            onConfirmAll()
+                            showConfirmAllDialog = false
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = IncomeGreen),
+                        shape = RoundedCornerShape(10.dp)
+                    ) {
+                        Text("Accept All", color = OnAccent, fontWeight = FontWeight.Bold)
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showConfirmAllDialog = false }) {
+                        Text("Cancel", color = TextSecondary)
+                    }
+                }
+            )
+        }
+
         // ── Dismiss All Dialog ─────────────────────────────────────────────
         if (showDismissAllDialog) {
             AlertDialog(
@@ -453,7 +525,7 @@ fun PendingTransactionsScreen(
                 },
                 text = {
                     Text(
-                        "All ${pendingList.size} unconfirmed SMS detections will be permanently cleared from the queue.",
+                        "All ${pendingList.size} unconfirmed SMS detections will be moved to the Dismissed tab.",
                         color = TextSecondary,
                         fontSize = 14.sp
                     )

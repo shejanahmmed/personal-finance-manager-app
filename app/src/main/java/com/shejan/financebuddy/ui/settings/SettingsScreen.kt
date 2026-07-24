@@ -555,7 +555,7 @@ fun SettingsScreen(
 
                             // Timeout selection chips
                             val timeoutOptions = listOf(
-                                "IMMEDIATELY" to "Immediately",
+                                "IMMEDIATELY" to "Instant",
                                 "1_MIN" to "1 Min",
                                 "3_MIN" to "3 Mins",
                                 "5_MIN" to "5 Mins"
@@ -580,12 +580,14 @@ fun SettingsScreen(
                                                     }
                                                 }
                                             }
-                                            .padding(vertical = 8.dp),
+                                            .padding(vertical = 8.dp, horizontal = 2.dp),
                                         contentAlignment = Alignment.Center
                                     ) {
                                         Text(
                                             text = label,
-                                            fontSize = 11.sp,
+                                            fontSize = 10.5.sp,
+                                            maxLines = 1,
+                                            softWrap = false,
                                             fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
                                             color = if (isSelected) OnAccent else TextSecondary
                                         )

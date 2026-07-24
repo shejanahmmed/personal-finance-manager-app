@@ -153,4 +153,27 @@ class PendingTransactionsViewModel(private val database: FinanceDatabase) : View
             pendingSmsDao.dismissAllPending()
         }
     }
+
+    /**
+     * Confirms all currently pending entries in batch.
+     */
+    fun confirmAll() {
+        viewModelScope.launch(Dispatchers.IO) {
+            val items = pendingList.value
+            items.forEach { item ->
+                val updated = item.copy(status = "CONFIRMED")
+                val transaction = TransactionEntity(
+                    amount        = updated.amount,
+                    type          = updated.type,
+                    category      = updated.category,
+                    timestamp     = updated.timestamp,
+                    fromAccountId = updated.fromAccountId,
+                    toAccountId   = updated.toAccountId,
+                    note          = updated.note
+                )
+                transactionDao.insertTransaction(transaction)
+                pendingSmsDao.updatePending(updated)
+            }
+        }
+    }
 }

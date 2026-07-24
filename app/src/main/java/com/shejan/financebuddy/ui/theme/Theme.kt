@@ -31,21 +31,29 @@ private val FinanceBuddyDarkColorScheme = darkColorScheme(
 )
 
 private val FinanceBuddyLightColorScheme = lightColorScheme(
-    primary          = AccentTeal,
-    onPrimary        = Color.White,
-    primaryContainer = Color.White,
-    secondary        = AccentBlue,
-    onSecondary      = Color.White,
-    tertiary         = AccentPurple,
-    background       = Color(0xFFF5F7FA),
-    onBackground     = Color(0xFF191D24),
-    surface          = Color.White,
-    onSurface        = Color(0xFF191D24),
-    surfaceVariant   = Color.White,
-    onSurfaceVariant = Color(0xFF5A6275),
-    outline          = Color(0xFFE2E6F0),
-    error            = Color(0xFFFF5C7C),
-    onError          = Color.White,
+    primary              = Color(0xFF0D9488), // Matte Teal 600
+    onPrimary            = Color.White,
+    primaryContainer     = Color(0xFFCCFBF1), // Soft Teal container
+    onPrimaryContainer   = Color(0xFF115E59),
+    secondary            = Color(0xFF2563EB), // Matte Royal Blue 600
+    onSecondary          = Color.White,
+    secondaryContainer   = Color(0xFFDBEAFE),
+    onSecondaryContainer = Color(0xFF1E40AF),
+    tertiary             = Color(0xFF7C3AED), // Matte Violet 600
+    onTertiary           = Color.White,
+    background           = Color(0xFFF1F5F9), // Slate 100 matte canvas
+    onBackground         = Color(0xFF0F172A), // Slate 900 primary text
+    surface              = Color.White,       // Card background
+    onSurface            = Color(0xFF0F172A),
+    surfaceVariant       = Color(0xFFE2E8F0), // Secondary input/card container
+    onSurfaceVariant     = Color(0xFF475569), // Secondary label text
+    outline              = Color(0xFFCBD5E1), // Crisp subtle border outline
+    outlineVariant       = Color(0xFFE2E8F0),
+    error                = Color(0xFFE11D48), // Rose 600 error
+    onError              = Color.White,
+    errorContainer       = Color(0xFFFFE4E6),
+    onErrorContainer     = Color(0xFF9F1239),
+    scrim                = Color(0x59000000)
 )
 
 @Composable

@@ -523,6 +523,7 @@ fun AppNavigation(
                     onDeletePermanently = { viewModel.deletePermanently(it) },
                     onUpdate      = { viewModel.update(it) },
                     onDismissAll  = { viewModel.dismissAll() },
+                    onConfirmAll  = { viewModel.confirmAll() },
                     onBack        = { navController.popBackStack() }
                 )
             }
