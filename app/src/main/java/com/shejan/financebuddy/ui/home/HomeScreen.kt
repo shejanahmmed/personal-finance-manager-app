@@ -64,6 +64,7 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -205,6 +206,18 @@ fun HomeScreen(
                 // Spacer matching top bar height (64.dp) + status bar padding
                 Spacer(modifier = Modifier.statusBarsPadding().height(64.dp))
 
+                val context = LocalContext.current
+                val preferencesManager = remember { com.shejan.financebuddy.data.PreferencesManager(context.applicationContext) }
+                val hideTotalBalance by preferencesManager.hideTotalBalance.collectAsState(initial = false)
+                var showTemporarily by remember { mutableStateOf(false) }
+
+                LaunchedEffect(showTemporarily) {
+                    if (showTemporarily) {
+                        kotlinx.coroutines.delay(2000)
+                        showTemporarily = false
+                    }
+                }
+
                 // ── 1. Balance Overview Card ──────────────────────────
                 Column(
                     modifier = Modifier
@@ -213,12 +226,39 @@ fun HomeScreen(
                 ) {
                     Text(text = "Total Balance", style = MaterialTheme.typography.labelMedium, color = TextSecondary)
                     Spacer(modifier = Modifier.height(2.dp))
-                    Text(
-                        text       = "৳${currencyFormat.format(totalBalance)}",
-                        style      = MaterialTheme.typography.displayMedium,
-                        fontWeight = FontWeight.Bold,
-                        color      = TextPrimary
-                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        val balanceStr = "৳${currencyFormat.format(totalBalance)}"
+                        val displayText = if (hideTotalBalance && !showTemporarily) {
+                            "৳" + balanceStr.substring(1).filter { it != ',' && it != '.' }.map { '*' }.joinToString("")
+                        } else {
+                            balanceStr
+                        }
+
+                        Text(
+                            text       = displayText,
+                            style      = MaterialTheme.typography.displayMedium,
+                            fontWeight = FontWeight.Bold,
+                            color      = TextPrimary
+                        )
+
+                        if (hideTotalBalance) {
+                            IconButton(
+                                onClick = { showTemporarily = true },
+                                modifier = Modifier.size(32.dp)
+                            ) {
+                                Icon(
+                                    imageVector = if (showTemporarily) Icons.Default.Visibility else Icons.Default.VisibilityOff,
+                                    contentDescription = "Show/Hide Balance",
+                                    tint = AccentTeal,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
+                        }
+                    }
                 }
 
                 // Swipeable Account Chips (only show accounts with a non-zero balance)

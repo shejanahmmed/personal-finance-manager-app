@@ -41,6 +41,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
@@ -424,12 +425,51 @@ private fun AccountsHeroCard(
 
                 Spacer(modifier = Modifier.height(10.dp))
 
-                Text(
-                    text = "৳${currencyFormat.format(totalBalance)}",
-                    fontSize = 28.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = TextPrimary
-                )
+                val context = LocalContext.current
+                val preferencesManager = remember { com.shejan.financebuddy.data.PreferencesManager(context.applicationContext) }
+                val hideTotalBalance by preferencesManager.hideTotalBalance.collectAsState(initial = false)
+                var showTemporarily by remember { mutableStateOf(false) }
+
+                LaunchedEffect(showTemporarily) {
+                    if (showTemporarily) {
+                        kotlinx.coroutines.delay(2000)
+                        showTemporarily = false
+                    }
+                }
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    val balanceStr = "৳${currencyFormat.format(totalBalance)}"
+                    val displayText = if (hideTotalBalance && !showTemporarily) {
+                        "৳" + balanceStr.substring(1).filter { it != ',' && it != '.' }.map { '*' }.joinToString("")
+                    } else {
+                        balanceStr
+                    }
+
+                    Text(
+                        text = displayText,
+                        fontSize = 28.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = TextPrimary
+                    )
+
+                    if (hideTotalBalance) {
+                        IconButton(
+                            onClick = { showTemporarily = true },
+                            modifier = Modifier.size(32.dp)
+                        ) {
+                            Icon(
+                                imageVector = if (showTemporarily) Icons.Default.Visibility else Icons.Default.VisibilityOff,
+                                contentDescription = "Show/Hide Balance",
+                                tint = AccentTeal,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+                    }
+                }
 
                 Spacer(modifier = Modifier.height(16.dp))
                 HorizontalDivider(color = DividerColor.copy(alpha = 0.6f))

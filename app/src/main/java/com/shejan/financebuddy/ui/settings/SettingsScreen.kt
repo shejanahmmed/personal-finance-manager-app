@@ -35,6 +35,7 @@ import androidx.compose.material.icons.filled.Shield
 import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material.icons.filled.SyncDisabled
 import androidx.compose.material.icons.filled.Timer
+import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -78,6 +79,7 @@ fun SettingsScreen(
     val themeMode by preferencesManager.themeMode.collectAsState(initial = "SYSTEM")
     val smsSyncChoice by preferencesManager.smsSyncChoice.collectAsState(initial = null)
     val hideBalancesPref by preferencesManager.hideCardBalances.collectAsState(initial = false)
+    val hideTotalBalance by preferencesManager.hideTotalBalance.collectAsState(initial = false)
     val blockScreenshots by preferencesManager.blockScreenshots.collectAsState(initial = false)
 
     val isAppLockEnabled by preferencesManager.isAppLockEnabled.collectAsState(initial = false)
@@ -370,6 +372,20 @@ fun SettingsScreen(
                             val nextState = !hideBalancesPref
                             scope.launch { preferencesManager.setHideCardBalances(nextState) }
                             showToast(if (nextState) "Card balances hidden" else "Card balances visible")
+                        }
+                    )
+
+                    HorizontalDivider(color = DividerColor, modifier = Modifier.padding(horizontal = 16.dp))
+
+                    ThemeOptionRow(
+                        title = "Hide Total Balance",
+                        description = "Mask dashboard net balance with asterisks; tap eye icon to reveal",
+                        icon = Icons.Default.VisibilityOff,
+                        selected = hideTotalBalance,
+                        onClick = {
+                            val nextState = !hideTotalBalance
+                            scope.launch { preferencesManager.setHideTotalBalance(nextState) }
+                            showToast(if (nextState) "Total balance masked" else "Total balance visible")
                         }
                     )
 

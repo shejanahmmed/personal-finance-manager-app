@@ -21,11 +21,24 @@ class PreferencesManager(private val context: Context) {
         private val PROFILE_NAME = stringPreferencesKey("profile_name")
         private val PROFILE_IMAGE_PATH = stringPreferencesKey("profile_image_path")
         private val HIDE_CARD_BALANCES = booleanPreferencesKey("hide_card_balances")
+        private val HIDE_TOTAL_BALANCE = booleanPreferencesKey("hide_total_balance")
         private val BLOCK_SCREENSHOTS = booleanPreferencesKey("block_screenshots")
         private val APP_LOCK_ENABLED = booleanPreferencesKey("app_lock_enabled")
         private val APP_LOCK_TYPE = stringPreferencesKey("app_lock_type")
         private val APP_LOCK_PIN = stringPreferencesKey("app_lock_pin")
         private val AUTO_LOCK_TIMEOUT = stringPreferencesKey("auto_lock_timeout")
+    }
+
+    /** Emits whether total balance should be masked with asterisks. Defaults to false. */
+    val hideTotalBalance: Flow<Boolean> = context.dataStore.data.map { prefs ->
+        prefs[HIDE_TOTAL_BALANCE] ?: false
+    }
+
+    /** Sets the user's hide total balance preference. */
+    suspend fun setHideTotalBalance(hide: Boolean) {
+        context.dataStore.edit { prefs ->
+            prefs[HIDE_TOTAL_BALANCE] = hide
+        }
     }
 
     /** Emits whether screenshots and screen recording are blocked. Defaults to false. */
