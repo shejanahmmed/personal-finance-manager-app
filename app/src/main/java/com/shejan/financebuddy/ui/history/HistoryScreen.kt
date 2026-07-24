@@ -2,6 +2,7 @@ package com.shejan.financebuddy.ui.history
 
 import android.app.DatePickerDialog
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -12,6 +13,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.CreditCard
@@ -235,50 +237,42 @@ fun HistoryScreen(
         )
 
         Column(modifier = Modifier.fillMaxSize()) {
-            // ─── Header Top Bar ──────────────────────────────────────────
-            Box(
+            // ─── Header Top Bar (Matching Bank Accounts Page Design) ─────
+            Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .statusBarsPadding()
-                    .padding(top = 16.dp, start = 20.dp, end = 20.dp, bottom = 12.dp)
+                    .padding(horizontal = 12.dp, vertical = 12.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
+                IconButton(
+                    onClick = onBack,
+                    modifier = Modifier
+                        .size(40.dp)
+                        .clip(CircleShape)
+                        .background(CardDarker)
+                        .border(1.dp, DividerColor, CircleShape)
                 ) {
-                    Column {
-                        Text(
-                            text = "Transaction History",
-                            color = TextPrimary,
-                            fontSize = 22.sp,
-                            fontWeight = FontWeight.Bold,
-                            letterSpacing = (-0.5).sp
-                        )
-                        Text(
-                            text = "Complete record of all financial activity",
-                            color = TextSecondary,
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Medium
-                        )
-                    }
-
-                    Box(
-                        modifier = Modifier
-                            .size(34.dp)
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(CardDark)
-                            .border(1.dp, DividerColor, RoundedCornerShape(8.dp))
-                            .clickable { onBack() },
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Close,
-                            contentDescription = "Go Back",
-                            tint = TextPrimary,
-                            modifier = Modifier.size(18.dp)
-                        )
-                    }
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.KeyboardArrowLeft,
+                        contentDescription = "Back",
+                        tint = TextPrimary,
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
+                Spacer(modifier = Modifier.width(12.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "Transaction History",
+                        color = TextPrimary,
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        text = "Complete record of all financial activity",
+                        color = TextMuted,
+                        fontSize = 12.sp
+                    )
                 }
             }
 
@@ -286,34 +280,63 @@ fun HistoryScreen(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 20.dp, vertical = 6.dp)
+                    .padding(horizontal = 20.dp, vertical = 4.dp)
+                    .height(44.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(CardDark)
+                    .border(1.dp, if (searchQuery.isNotEmpty()) AccentTeal else DividerColor, RoundedCornerShape(12.dp))
+                    .padding(horizontal = 12.dp),
+                contentAlignment = Alignment.CenterStart
             ) {
-                OutlinedTextField(
-                    value = searchQuery,
-                    onValueChange = { searchQuery = it },
-                    placeholder = { Text("Search transactions, accounts, notes...", color = TextMuted, fontSize = 13.sp) },
-                    leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = TextMuted, modifier = Modifier.size(18.dp)) },
-                    trailingIcon = {
-                        if (searchQuery.isNotEmpty()) {
-                            IconButton(onClick = { searchQuery = "" }) {
-                                Icon(Icons.Default.Close, contentDescription = "Clear search", tint = TextSecondary, modifier = Modifier.size(16.dp))
-                            }
-                        }
-                    },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(52.dp),
-                    shape = RoundedCornerShape(12.dp),
-                    singleLine = true,
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedContainerColor = CardDark,
-                        unfocusedContainerColor = CardDark,
-                        focusedBorderColor = AccentTeal,
-                        unfocusedBorderColor = DividerColor,
-                        focusedTextColor = TextPrimary,
-                        unfocusedTextColor = TextPrimary
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Search,
+                        contentDescription = null,
+                        tint = TextMuted,
+                        modifier = Modifier.size(18.dp)
                     )
-                )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Box(modifier = Modifier.weight(1f)) {
+                        if (searchQuery.isEmpty()) {
+                            Text(
+                                text = "Search transactions, accounts, notes...",
+                                color = TextMuted,
+                                fontSize = 13.sp,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+                        androidx.compose.foundation.text.BasicTextField(
+                            value = searchQuery,
+                            onValueChange = { searchQuery = it },
+                            singleLine = true,
+                            textStyle = androidx.compose.ui.text.TextStyle(
+                                color = TextPrimary,
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Medium
+                            ),
+                            cursorBrush = androidx.compose.ui.graphics.SolidColor(AccentTeal),
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+                    if (searchQuery.isNotEmpty()) {
+                        Spacer(modifier = Modifier.width(6.dp))
+                        IconButton(
+                            onClick = { searchQuery = "" },
+                            modifier = Modifier.size(24.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Close,
+                                contentDescription = "Clear search",
+                                tint = TextSecondary,
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
+                    }
+                }
             }
 
             // ─── Filter Chips Bars ────────────────────────────────────────
@@ -498,13 +521,14 @@ private fun HistoryMetricCard(
     modifier: Modifier = Modifier
 ) {
     Card(
-        shape = RoundedCornerShape(12.dp),
+        shape = RoundedCornerShape(14.dp),
         colors = CardDefaults.cardColors(containerColor = CardDark),
+        border = BorderStroke(1.dp, color.copy(alpha = 0.25f)),
         modifier = modifier
     ) {
         Column(
-            modifier = Modifier.padding(10.dp),
-            verticalArrangement = Arrangement.spacedBy(2.dp)
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+            verticalArrangement = Arrangement.spacedBy(1.dp)
         ) {
             Text(title, fontSize = 10.sp, color = TextMuted, fontWeight = FontWeight.Medium)
             Text(
@@ -563,8 +587,9 @@ private fun HistoryTransactionCard(
     }
 
     Card(
-        shape = RoundedCornerShape(14.dp),
+        shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = CardDark),
+        border = BorderStroke(1.dp, badgeColor.copy(alpha = 0.2f)),
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 20.dp, vertical = 5.dp)
